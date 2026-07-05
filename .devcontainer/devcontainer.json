@@ -1,0 +1,83 @@
+{
+  "name": "TradeVision AI",
+
+  // Use the full dev stack via compose
+  "dockerComposeFile": [
+    "../docker-compose.yml",
+    "../docker-compose.dev.yml",
+    "docker-compose.devcontainer.yml"
+  ],
+  "service": "backend",
+  "workspaceFolder": "/app",
+  "shutdownAction": "stopCompose",
+
+  // Features layered onto the backend container
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        // Python tooling
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-python.black-formatter",
+        "ms-python.isort",
+        "ms-python.mypy-type-checker",
+        "charliermarsh.ruff",
+
+        // Database
+        "mtxr.sqltools",
+        "mtxr.sqltools-driver-pg",
+
+        // Docker & config
+        "ms-azuretools.vscode-docker",
+        "redhat.vscode-yaml",
+
+        // Git & DX
+        "eamodio.gitlens",
+        "usernamehw.errorlens",
+        "christian-kohler.path-intellisense",
+        "streetsidesoftware.code-spell-checker"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.analysis.typeCheckingMode": "basic",
+
+        "[python]": {
+          "editor.defaultFormatter": "ms-python.black-formatter",
+          "editor.formatOnSave": true,
+          "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit"
+          }
+        },
+
+        "mypy-type-checker.importStrategy": "fromEnvironment",
+        "ruff.importStrategy": "fromEnvironment",
+        "isort.check": true,
+
+        "editor.rulers": [88],
+        "files.insertFinalNewline": true,
+        "files.trimTrailingWhitespace": true
+      }
+    }
+  },
+
+  // Forward all relevant dev ports to the host
+  "forwardPorts": [8000, 5173, 5432, 6432, 6379, 5555],
+  "portsAttributes": {
+    "8000": { "label": "Django / Daphne (ASGI)" },
+    "5173": { "label": "Vite (Frontend)" },
+    "5432": { "label": "PostgreSQL (TimescaleDB)" },
+    "6432": { "label": "PgBouncer" },
+    "6379": { "label": "Redis" },
+    "5555": { "label": "Flower (Celery)" }
+  },
+
+  // Run once after the container is created
+  "postCreateCommand": "pip install --quiet -r requirements/development.txt && pre-commit install && echo '✅ Dev environment ready.'",
+
+  "remoteUser": "root"
+}

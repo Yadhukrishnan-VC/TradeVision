@@ -1,0 +1,297 @@
+services:
+  # ---------------------------------------------------------------------------
+  # Data tier — postgres is the TimescaleDB-enabled primary; pgbouncer pools
+  # connections between the application layer and postgres so Celery workers
+  # do not exhaust pg max_connections under concurrent load.
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: timescale/timescaledb:latest-pg16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  pgbouncer:
+    image: bitnami/pgbouncer:1.23.1
+    environment:
+      POSTGRESQL_HOST: postgres
+      POSTGRESQL_PORT: 5432
+      POSTGRESQL_DATABASE: ${POSTGRES_DB}
+      POSTGRESQL_USERNAME: ${POSTGRES_USER}
+      POSTGRESQL_PASSWORD: ${POSTGRES_PASSWORD}
+      PGBOUNCER_DATABASE: ${POSTGRES_DB}
+      PGBOUNCER_POOL_MODE: transaction
+      PGBOUNCER_PORT: 6432
+      PGBOUNCER_MAX_CLIENT_CONN: 200
+      PGBOUNCER_DEFAULT_POOL_SIZE: 20
+      PGBOUNCER_MIN_POOL_SIZE: 5
+      PGBOUNCER_RESERVE_POOL_SIZE: 10
+      PGBOUNCER_STATS_USERS: ${POSTGRES_USER}
+      PGBOUNCER_AUTH_TYPE: scram-sha-256
+    networks:
+      - data
+      - app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # TCP probe — pgbouncer is a proxy; a successful TCP connection is the
+    # correct health signal. psql/pg_isready may not be in the image.
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/6432' 2>/dev/null && echo ok || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    # AOF persistence (everysec fsync) for broker durability; LRU eviction
+    # policy with 512 MB cap prevents unbounded growth from stale task results.
+    command: >
+      redis-server
+      --appendonly yes
+      --appendfsync everysec
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --save 3600 1
+    volumes:
+      - redis-data:/data
+    networks:
+      - app
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Application tier — all share the same image; queue routing differentiates
+  # the Celery workers.
+  # ---------------------------------------------------------------------------
+  backend:
+    build:
+      context: .
+      dockerfile: infra/docker/backend/Dockerfile.dev
+    env_file:
+      - .env
+    volumes:
+      - static-files:/app/staticfiles
+      - media-files:/app/mediafiles
+    networks:
+      - app
+      - edge
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # Health check requires the /api/v1/health/ endpoint, added in Phase 1.
+    # Until then the container runs but reports unhealthy — expected in Phase 0.
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/api/v1/health/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    entrypoint: ["/entrypoint.backend.sh"]
+    command: ["daphne", "-b", "0.0.0.0", "-p", "8000", "--proxy-headers", "config.asgi:application"]
+
+  # Handles: market_data · processing · intelligence · rule_engine queues
+  celery-worker-market:
+    build:
+      context: .
+      dockerfile: infra/docker/backend/Dockerfile.dev
+    env_file:
+      - .env
+    networks:
+      - app
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A config.celery inspect ping -d celery@$$HOSTNAME --timeout 5 2>&1 | grep -q pong || exit 1"]
+      interval: 60s
+      timeout: 30s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    entrypoint: ["/entrypoint.celery.sh"]
+    command:
+      - celery
+      - -A
+      - config.celery
+      - worker
+      - --queues=market_data,processing,intelligence,rule_engine
+      - --loglevel=info
+      - --concurrency=4
+      - --hostname=worker-market@%h
+
+  # Handles: ai queue — concurrency limited to honour API rate limits
+  celery-worker-ai:
+    build:
+      context: .
+      dockerfile: infra/docker/backend/Dockerfile.dev
+    env_file:
+      - .env
+    networks:
+      - app
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A config.celery inspect ping -d celery@$$HOSTNAME --timeout 5 2>&1 | grep -q pong || exit 1"]
+      interval: 60s
+      timeout: 30s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    entrypoint: ["/entrypoint.celery.sh"]
+    command:
+      - celery
+      - -A
+      - config.celery
+      - worker
+      - --queues=ai
+      - --loglevel=info
+      - --concurrency=2
+      - --hostname=worker-ai@%h
+
+  # Handles: notifications · analytics · default queues
+  celery-worker-default:
+    build:
+      context: .
+      dockerfile: infra/docker/backend/Dockerfile.dev
+    env_file:
+      - .env
+    networks:
+      - app
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A config.celery inspect ping -d celery@$$HOSTNAME --timeout 5 2>&1 | grep -q pong || exit 1"]
+      interval: 60s
+      timeout: 30s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    entrypoint: ["/entrypoint.celery.sh"]
+    command:
+      - celery
+      - -A
+      - config.celery
+      - worker
+      - --queues=notifications,analytics,default
+      - --loglevel=info
+      - --concurrency=4
+      - --hostname=worker-default@%h
+
+  # Single Beat instance — only one must run to avoid duplicate scheduled tasks
+  celery-beat:
+    build:
+      context: .
+      dockerfile: infra/docker/backend/Dockerfile.dev
+    env_file:
+      - .env
+    networks:
+      - app
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A config.celery inspect ping --timeout 5 2>&1 | grep -q pong || exit 1"]
+      interval: 120s
+      timeout: 30s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    entrypoint: ["/entrypoint.celery.sh"]
+    command:
+      - celery
+      - -A
+      - config.celery
+      - beat
+      - --loglevel=info
+      - --scheduler=django_celery_beat.schedulers:DatabaseScheduler
+
+  # ---------------------------------------------------------------------------
+  # Frontend — React/Vite app
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: .
+      dockerfile: infra/docker/frontend/Dockerfile.dev
+    networks:
+      - edge
+    # start_period is generous because `npm install` runs at container start
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5173 2>/dev/null | grep -q html || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Edge — Nginx reverse proxy
+  # ---------------------------------------------------------------------------
+  nginx:
+    image: nginx:1.27-alpine
+    volumes:
+      - ./infra/docker/nginx/nginx.dev.conf:/etc/nginx/nginx.conf:ro
+      - static-files:/app/staticfiles:ro
+      - media-files:/app/mediafiles:ro
+    ports:
+      - "80:80"
+    networks:
+      - edge
+    depends_on:
+      - backend
+      - frontend
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/nginx-health 2>/dev/null | grep -q healthy || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  redis-data:
+  static-files:
+  media-files:
+
+networks:
+  # Public-facing: nginx, frontend, backend
+  edge:
+    driver: bridge
+  # Internal application traffic: backend, workers, redis, pgbouncer
+  app:
+    driver: bridge
+  # Database tier: postgres, pgbouncer only
+  data:
+    driver: bridge

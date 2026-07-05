@@ -1,0 +1,96 @@
+services:
+  # ---------------------------------------------------------------------------
+  # Backend — mount source for hot-reload; expose debug port
+  # ---------------------------------------------------------------------------
+  backend:
+    volumes:
+      - ./backend:/app
+      - static-files:/app/staticfiles
+      - media-files:/app/mediafiles
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.development
+    ports:
+      - "8000:8000"
+
+  # ---------------------------------------------------------------------------
+  # Celery workers — mount source so code changes are picked up on restart
+  # ---------------------------------------------------------------------------
+  celery-worker-market:
+    volumes:
+      - ./backend:/app
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.development
+
+  celery-worker-ai:
+    volumes:
+      - ./backend:/app
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.development
+
+  celery-worker-default:
+    volumes:
+      - ./backend:/app
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.development
+
+  celery-beat:
+    volumes:
+      - ./backend:/app
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.development
+
+  # ---------------------------------------------------------------------------
+  # Frontend — mount source for Vite HMR; expose Vite port directly
+  # ---------------------------------------------------------------------------
+  frontend:
+    volumes:
+      - ./frontend:/app
+      # Preserve node_modules inside the container (not overwritten by host mount)
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL — expose port for direct DB client access (dev only)
+  # ---------------------------------------------------------------------------
+  postgres:
+    ports:
+      - "5432:5432"
+
+  # ---------------------------------------------------------------------------
+  # Redis — expose port for direct inspection (dev only)
+  # ---------------------------------------------------------------------------
+  redis:
+    ports:
+      - "6379:6379"
+
+  # ---------------------------------------------------------------------------
+  # PgBouncer — expose admin port (dev only)
+  # ---------------------------------------------------------------------------
+  pgbouncer:
+    ports:
+      - "6432:6432"
+
+  # ---------------------------------------------------------------------------
+  # Flower — Celery task monitoring (dev + staging only, not in prod)
+  # ---------------------------------------------------------------------------
+  flower:
+    image: mher/flower:2.0
+    environment:
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://redis:6379/0}
+      FLOWER_PORT: 5555
+      FLOWER_BASIC_AUTH: ${FLOWER_USER:-admin}:${FLOWER_PASSWORD:-tradevision}
+    ports:
+      - "5555:5555"
+    networks:
+      - app
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5555/healthcheck 2>/dev/null | grep -q ok || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped

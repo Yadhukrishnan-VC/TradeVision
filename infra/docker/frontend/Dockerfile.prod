@@ -1,0 +1,50 @@
+# =============================================================================
+# TradeVision AI — Frontend Production Image (multi-stage)
+# Build context: project root (.)
+# Stage 1 (builder): installs deps and runs `npm run build`
+# Stage 2 (runtime): nginx serves the static dist/ bundle
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Stage 1 — Builder
+# ---------------------------------------------------------------------------
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Copy manifests first to leverage Docker layer cache
+COPY frontend/package.json frontend/package-lock.json* ./
+
+RUN npm ci --frozen-lockfile
+
+# Copy source and build
+COPY frontend/ .
+
+# Build args are injected at image build time for prod env vars
+ARG VITE_API_BASE_URL
+ARG VITE_WS_BASE_URL
+ARG VITE_APP_NAME=TradeVision\ AI
+ARG VITE_ENVIRONMENT=production
+
+ENV VITE_API_BASE_URL=${VITE_API_BASE_URL} \
+    VITE_WS_BASE_URL=${VITE_WS_BASE_URL} \
+    VITE_APP_NAME=${VITE_APP_NAME} \
+    VITE_ENVIRONMENT=${VITE_ENVIRONMENT}
+
+RUN npm run build
+
+# ---------------------------------------------------------------------------
+# Stage 2 — Runtime (nginx serves built static assets)
+# ---------------------------------------------------------------------------
+FROM nginx:1.27-alpine AS runtime
+
+# Copy built assets from builder
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# nginx config is injected via volume in docker-compose.prod.yml
+# This default config is a fallback for standalone image usage
+COPY infra/docker/nginx/nginx.prod.conf /etc/nginx/nginx.conf
+
+EXPOSE 80 443
+
+CMD ["nginx", "-g", "daemon off;"]

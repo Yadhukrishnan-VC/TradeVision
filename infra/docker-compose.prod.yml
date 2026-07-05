@@ -1,0 +1,128 @@
+services:
+  # ---------------------------------------------------------------------------
+  # Backend — immutable production image; strict resource limits
+  # ---------------------------------------------------------------------------
+  backend:
+    build:
+      context: .
+      dockerfile: infra/docker/backend/Dockerfile.prod
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.production
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+
+  celery-worker-market:
+    build:
+      context: .
+      dockerfile: infra/docker/backend/Dockerfile.prod
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.production
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
+        reservations:
+          cpus: "0.5"
+          memory: 512M
+
+  celery-worker-ai:
+    build:
+      context: .
+      dockerfile: infra/docker/backend/Dockerfile.prod
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.production
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+
+  celery-worker-default:
+    build:
+      context: .
+      dockerfile: infra/docker/backend/Dockerfile.prod
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.production
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+
+  celery-beat:
+    build:
+      context: .
+      dockerfile: infra/docker/backend/Dockerfile.prod
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.production
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 256M
+
+  # ---------------------------------------------------------------------------
+  # Frontend — built static bundle served by Nginx; no dev server
+  # ---------------------------------------------------------------------------
+  frontend:
+    build:
+      context: .
+      dockerfile: infra/docker/frontend/Dockerfile.prod
+
+  # ---------------------------------------------------------------------------
+  # Nginx — production config with TLS; expose both HTTP and HTTPS
+  # ---------------------------------------------------------------------------
+  nginx:
+    volumes:
+      - ./infra/docker/nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - static-files:/app/staticfiles:ro
+      - media-files:/app/mediafiles:ro
+      # Mount TLS certificates (provision separately via certbot or cloud provider)
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+
+  # ---------------------------------------------------------------------------
+  # Postgres — production resource limits
+  # ---------------------------------------------------------------------------
+  postgres:
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 4G
+        reservations:
+          cpus: "1.0"
+          memory: 2G
+
+  # ---------------------------------------------------------------------------
+  # Redis — production resource limits
+  # ---------------------------------------------------------------------------
+  redis:
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 1G
+        reservations:
+          cpus: "0.25"
+          memory: 512M

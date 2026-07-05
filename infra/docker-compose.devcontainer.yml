@@ -1,0 +1,17 @@
+services:
+  # Override backend for devcontainer usage:
+  # - Mount the entire repo as /workspace for full cross-service navigation
+  # - Replace the default entrypoint with `sleep infinity` so VS Code manages
+  #   the process lifecycle rather than Daphne
+  backend:
+    volumes:
+      - ..:/workspace:cached
+      - ..:/app:cached
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.development
+    # VS Code attaches to this process; it manages restarts itself
+    entrypoint: []
+    command: sleep infinity
+    # Disable health check so devcontainer is not blocked by Django not running
+    healthcheck:
+      disable: true

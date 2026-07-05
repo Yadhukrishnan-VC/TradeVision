@@ -1,0 +1,68 @@
+# =============================================================================
+# TradeVision AI — Backend Production Image (multi-stage)
+# Build context: project root (.)
+# Stage 1 (builder): installs all dependencies
+# Stage 2 (runtime): minimal image with only what's needed to run
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Stage 1 — Builder
+# ---------------------------------------------------------------------------
+FROM python:3.12-slim-bookworm AS builder
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /build
+
+COPY backend/requirements/base.txt requirements/base.txt
+COPY backend/requirements/production.txt requirements/production.txt
+
+RUN pip install --upgrade pip \
+    && pip install --prefix=/install -r requirements/production.txt
+
+# ---------------------------------------------------------------------------
+# Stage 2 — Runtime (minimal attack surface)
+# ---------------------------------------------------------------------------
+FROM python:3.12-slim-bookworm AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+# Only runtime system deps — no compilers, no build tools
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    postgresql-client \
+    redis-tools \
+    curl \
+    libpq5 \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd -r appgroup \
+    && useradd -r -g appgroup -u 1000 appuser
+
+# Copy installed Python packages from builder
+COPY --from=builder /install /usr/local
+
+WORKDIR /app
+
+# Copy application source — immutable in production
+COPY backend/ .
+
+# Copy entrypoint scripts
+COPY infra/scripts/entrypoint.backend.sh /entrypoint.backend.sh
+COPY infra/scripts/entrypoint.celery.sh /entrypoint.celery.sh
+RUN chmod +x /entrypoint.backend.sh /entrypoint.celery.sh \
+    && chown -R appuser:appgroup /app
+
+USER appuser
+
+EXPOSE 8000
+
+ENTRYPOINT ["/entrypoint.backend.sh"]
+CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "--proxy-headers", "config.asgi:application"]

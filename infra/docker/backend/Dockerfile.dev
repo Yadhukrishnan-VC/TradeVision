@@ -1,0 +1,44 @@
+# =============================================================================
+# TradeVision AI — Backend Development Image
+# Build context: project root (.)
+# =============================================================================
+FROM python:3.12-slim-bookworm
+
+# Prevents .pyc files and enables stdout/stderr flushing for Docker logs
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# System packages:
+#   - postgresql-client: pg_isready used in entrypoint health checks
+#   - redis-tools: redis-cli used in entrypoint health checks
+#   - curl: used by Django health check endpoint probe
+#   - build-essential + libpq-dev: required to compile psycopg2
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    postgresql-client \
+    redis-tools \
+    curl \
+    build-essential \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Install Python dependencies before copying source to maximise layer cache.
+# In dev the source is bind-mounted, so this layer rarely changes.
+COPY backend/requirements/base.txt requirements/base.txt
+COPY backend/requirements/development.txt requirements/development.txt
+RUN pip install --upgrade pip \
+    && pip install -r requirements/development.txt
+
+# Copy entrypoint scripts from the project-level infra directory
+COPY infra/scripts/entrypoint.backend.sh /entrypoint.backend.sh
+COPY infra/scripts/entrypoint.celery.sh /entrypoint.celery.sh
+RUN chmod +x /entrypoint.backend.sh /entrypoint.celery.sh
+
+EXPOSE 8000
+
+# Source code is bind-mounted at runtime in dev via docker-compose.dev.yml
+ENTRYPOINT ["/entrypoint.backend.sh"]
+CMD ["daphne", "-b", "0.0.0.0", "-p", "8000", "--proxy-headers", "config.asgi:application"]

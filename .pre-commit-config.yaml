@@ -1,0 +1,82 @@
+repos:
+  # ---------------------------------------------------------------------------
+  # General file hygiene
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: [--unsafe]
+      - id: check-json
+      - id: check-toml
+      - id: check-added-large-files
+        args: [--maxkb=1024]
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: debug-statements
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: no-commit-to-branch
+        args: [--branch, main, --branch, production]
+
+  # ---------------------------------------------------------------------------
+  # Python formatting — Black
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/psf/black
+    rev: 24.10.0
+    hooks:
+      - id: black
+        language_version: python3.12
+        files: ^backend/
+
+  # ---------------------------------------------------------------------------
+  # Import sorting — isort (Black-compatible profile)
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        args: [--profile, black]
+        files: ^backend/
+
+  # ---------------------------------------------------------------------------
+  # Linting — Ruff (replaces flake8, pyupgrade, bandit, and others)
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.7.4
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+        files: ^backend/
+
+  # ---------------------------------------------------------------------------
+  # Type checking — mypy
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.13.0
+    hooks:
+      - id: mypy
+        files: ^backend/
+        args:
+          - --ignore-missing-imports
+          - --no-error-summary
+          - --pretty
+        additional_dependencies:
+          - django-stubs[compatible-mypy]==5.1.1
+          - djangorestframework-stubs==3.15.1
+          - types-redis==4.6.0.20241004
+          - types-requests==2.32.0.20241016
+          - celery-types==0.22.0
+        pass_filenames: false
+
+  # ---------------------------------------------------------------------------
+  # Docker / YAML / Shell
+  # ---------------------------------------------------------------------------
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.10.0.1
+    hooks:
+      - id: shellcheck
+        files: \.(sh)$
+        args: [--severity=warning]

@@ -1,0 +1,17 @@
+# =============================================================================
+# TradeVision AI — Frontend Development Image
+# Build context: project root (.)
+# Source code is bind-mounted at runtime; this image only provides Node + deps.
+# =============================================================================
+FROM node:20-alpine
+
+# wget is used by the health check in docker-compose.yml
+RUN apk add --no-cache wget
+
+WORKDIR /app
+
+# package.json is bind-mounted from ./frontend in dev.
+# npm install runs at container start to ensure node_modules is always current.
+EXPOSE 5173
+
+CMD ["sh", "-c", "npm install && npm run dev -- --host 0.0.0.0 --port 5173"]
