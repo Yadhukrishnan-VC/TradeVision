@@ -13,25 +13,25 @@ _IST = ZoneInfo("Asia/Kolkata")
 class TestMarketCalendar:
 
     def test_weekend_is_closed(self) -> None:
-        # Saturday 2024-03-16 10:00 IST
-        dt = datetime(2024, 3, 16, 10, 0, tzinfo=_IST)
-        session = MarketCalendar.get_session(dt)
-        assert session == MarketSession.CLOSED
+        cal = MarketCalendar()
+        dt = datetime(2024, 3, 9, 10, 0, tzinfo=_IST)  # Saturday — not a holiday
+        session = cal.get_session(dt)
+        assert session == MarketSession.HOLIDAY
 
     def test_weekday_midday_is_open(self) -> None:
-        # Wednesday 2024-03-13 10:30 IST
+        cal = MarketCalendar()
         dt = datetime(2024, 3, 13, 10, 30, tzinfo=_IST)
-        session = MarketCalendar.get_session(dt)
-        assert session == MarketSession.OPEN
+        session = cal.get_session(dt)
+        assert session == MarketSession.MARKET_HOURS
 
     def test_pre_open_session(self) -> None:
-        # Wednesday 2024-03-13 09:05 IST
+        cal = MarketCalendar()
         dt = datetime(2024, 3, 13, 9, 5, tzinfo=_IST)
-        session = MarketCalendar.get_session(dt)
-        assert session == MarketSession.PRE_OPEN
+        session = cal.get_session(dt)
+        assert session == MarketSession.PRE_MARKET
 
     def test_post_close_session(self) -> None:
-        # Wednesday 2024-03-13 15:45 IST
+        cal = MarketCalendar()
         dt = datetime(2024, 3, 13, 15, 45, tzinfo=_IST)
-        session = MarketCalendar.get_session(dt)
-        assert session == MarketSession.POST_CLOSE
+        session = cal.get_session(dt)
+        assert session == MarketSession.POST_MARKET

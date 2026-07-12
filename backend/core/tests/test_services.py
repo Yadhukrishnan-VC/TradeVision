@@ -1,5 +1,5 @@
 """
-Tests for core.services — logger init, correlation ID bind/clear.
+Tests for core.services — logger init, context bind/clear, correlation ID generation.
 """
 
 from core.services import BaseService
@@ -9,17 +9,15 @@ class TestBaseService:
 
     def test_logger_init(self) -> None:
         svc = BaseService()
-        assert svc.logger is not None
+        assert svc._logger is not None
 
-    def test_bind_and_clear_correlation(self) -> None:
+    def test_bind_and_clear_context(self) -> None:
         svc = BaseService()
-        cid = svc.bind_correlation()
+        svc.bind_context(symbol="RELIANCE", correlation_id="test-123")
+        svc.clear_context()
+
+    def test_generate_correlation_id(self) -> None:
+        svc = BaseService()
+        cid = svc.generate_correlation_id()
         assert isinstance(cid, str)
         assert len(cid) > 0
-        svc.clear_correlation()
-
-    def test_bind_custom_correlation(self) -> None:
-        svc = BaseService()
-        cid = svc.bind_correlation("custom-id-123")
-        assert cid == "custom-id-123"
-        svc.clear_correlation()

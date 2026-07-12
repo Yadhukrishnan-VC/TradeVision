@@ -1,109 +1,156 @@
 """
 TradeVision AI — AI provider factory.
 
-Singleton factory that creates and caches the active AI provider instance.
-Uses ``TradeVisionConfig`` instead of ``django.conf.settings`` directly,
-making provider code testable outside the Django process.
+Implements the singleton pattern for AI provider instances. The active
+provider is determined by ``TradeVisionConfig.ai_provider`` (which reads
+``settings.AI_PROVIDER``) and created exactly once per process.
+
+Thread-safe double-checked locking prevents multiple instantiations under
+concurrent request load.
+
+Usage::
+
+    from core.ai.provider_factory import AIProviderFactory
+
+    provider = AIProviderFactory.get_provider()
+    ok = provider.validate_connection()
 """
 
-from typing import Any
+import logging
+import threading
+from typing import ClassVar
 
 from core.ai.base_provider import BaseAIProvider
-from core.ai.exceptions import AIProviderError
-from core.config import config
+from core.ai.exceptions import AIAuthenticationError, AIProviderError
 
-# Provider class registry — maps provider name to class
-_PROVIDER_REGISTRY: dict[str, type[BaseAIProvider]] = {}
+logger = logging.getLogger(__name__)
 
 
-def _load_providers() -> None:
-    """Lazy-load provider classes to avoid import-time side effects."""
-    if _PROVIDER_REGISTRY:
-        return
-    from core.ai.providers.gemini_provider import GeminiProvider
-    from core.ai.providers.openai_provider import OpenAIProvider
-    from core.ai.providers.claude_provider import ClaudeProvider
-    from core.ai.providers.ollama_provider import OllamaProvider
+class AIProviderFactory:
+    """
+    Singleton factory for AI provider instances.
 
-    _PROVIDER_REGISTRY.update(
-        {
+    Only one provider instance exists per process. Calling ``get_provider()``
+    multiple times returns the same object. Call ``reset()`` to destroy the
+    current instance and force re-creation on the next call — used for test
+    isolation and provider switching.
+
+    Provider selection is driven by ``TradeVisionConfig.ai_provider``.
+    The factory reads the config at first call, not at import time, so
+    settings overrides in tests take effect correctly.
+    """
+
+    _instance: ClassVar[BaseAIProvider | None] = None
+    _lock: ClassVar[threading.Lock] = threading.Lock()
+
+    @classmethod
+    def get_provider(cls) -> BaseAIProvider:
+        """
+        Return the active AI provider singleton.
+
+        Creates the provider on first call using the configuration in
+        ``TradeVisionConfig``. Thread-safe via double-checked locking.
+
+        Returns:
+            The configured ``BaseAIProvider`` instance.
+
+        Raises:
+            AIProviderError:       If the configured provider name is unknown.
+            AIAuthenticationError: If the provider cannot authenticate with
+                                   the supplied credentials.
+        """
+        if cls._instance is None:
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = cls._create_provider()
+        return cls._instance
+
+    @classmethod
+    def reset(cls) -> None:
+        """
+        Destroy the current singleton and release its resources.
+
+        The next call to ``get_provider()`` will create a fresh instance.
+        Intended for test isolation and graceful provider switching.
+        """
+        with cls._lock:
+            if cls._instance is not None:
+                try:
+                    cls._instance.close()
+                except NotImplementedError:
+                    logger.debug(
+                        "provider_close_not_implemented_during_reset",
+                        extra={"provider": cls._instance.provider_name},
+                    )
+                except Exception as exc:
+                    logger.warning(
+                        "provider_close_error_during_reset",
+                        extra={"error": str(exc)},
+                    )
+            cls._instance = None
+            logger.debug("ai_provider_factory_reset")
+
+    @classmethod
+    def _create_provider(cls) -> BaseAIProvider:
+        """
+        Instantiate and return the correct provider for the current configuration.
+
+        Imports are deferred to this method to avoid circular imports at
+        module load time.
+
+        Returns:
+            A freshly instantiated ``BaseAIProvider``.
+
+        Raises:
+            AIProviderError:       If the provider name is not recognised.
+            AIAuthenticationError: If provider credentials are missing or invalid.
+        """
+        from core.ai.providers.claude_provider import ClaudeProvider
+        from core.ai.providers.gemini_provider import GeminiProvider
+        from core.ai.providers.ollama_provider import OllamaProvider
+        from core.ai.providers.openai_provider import OpenAIProvider
+        from core.config import config
+
+        provider_name: str = config.ai_provider.lower()
+
+        provider_map: dict[str, type[BaseAIProvider]] = {
             "gemini": GeminiProvider,
             "openai": OpenAIProvider,
             "claude": ClaudeProvider,
             "ollama": OllamaProvider,
         }
-    )
 
-
-class AIProviderFactory:
-    """
-    Singleton factory for creating and managing AI provider instances.
-
-    The factory reads the active provider name from ``TradeVisionConfig``
-    and lazily instantiates the corresponding provider class. The instance
-    is cached for the lifetime of the process.
-
-    Usage::
-
-        provider = AIProviderFactory.get_provider()
-        response = provider.complete(request)
-    """
-
-    _instance: BaseAIProvider | None = None
-    _provider_name: str | None = None
-
-    @classmethod
-    def get_provider(cls) -> BaseAIProvider:
-        """
-        Return the active AI provider, creating it if necessary.
-
-        Returns:
-            The cached provider instance.
-
-        Raises:
-            AIProviderError: If the configured provider name is unknown.
-        """
-        provider_name = config.ai_provider
-
-        if cls._instance is not None and cls._provider_name == provider_name:
-            return cls._instance
-
-        _load_providers()
-
-        provider_cls = _PROVIDER_REGISTRY.get(provider_name)
-        if provider_cls is None:
+        if provider_name not in provider_map:
             raise AIProviderError(
                 f"Unknown AI provider: '{provider_name}'. "
-                f"Available: {', '.join(sorted(_PROVIDER_REGISTRY))}"
+                f"Supported providers: {sorted(provider_map.keys())}. "
+                "Update settings.AI_PROVIDER to a supported value."
             )
 
-        # Build kwargs based on provider
-        kwargs: dict[str, Any] = {"model": getattr(config, f"{provider_name}_model", "")}
+        logger.info(
+            "ai_provider_creating",
+            extra={"provider": provider_name},
+        )
 
         if provider_name == "gemini":
-            kwargs["api_key"] = config.gemini_api_key
+            if not config.gemini_api_key:
+                raise AIAuthenticationError(
+                    "GEMINI_API_KEY is not set. "
+                    "Configure it in your .env file before starting the application."
+                )
+            instance: BaseAIProvider = GeminiProvider(
+                api_key=config.gemini_api_key,
+                model_name=config.gemini_model,
+            )
         elif provider_name == "openai":
-            kwargs["api_key"] = config.openai_api_key
+            instance = OpenAIProvider()
         elif provider_name == "claude":
-            kwargs["api_key"] = config.anthropic_api_key
-        elif provider_name == "ollama":
-            kwargs["base_url"] = config.ollama_base_url
+            instance = ClaudeProvider()
+        else:
+            instance = OllamaProvider()
 
-        cls._instance = provider_cls(**kwargs)  # type: ignore[arg-type]
-        cls._provider_name = provider_name
-        return cls._instance
-
-    @classmethod
-    def reset(cls) -> None:
-        """Reset the factory — closes the current provider and clears cache.
-
-        Intended for test teardown. After calling ``reset()``, the next
-        call to ``get_provider()`` will create a fresh instance.
-        """
-        if cls._instance is not None:
-            try:
-                cls._instance.close()
-            except Exception:
-                pass
-        cls._instance = None
-        cls._provider_name = None
+        logger.info(
+            "ai_provider_created",
+            extra={"provider": provider_name, "class": type(instance).__name__},
+        )
+        return instance

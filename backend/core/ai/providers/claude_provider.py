@@ -1,36 +1,55 @@
 """
 TradeVision AI — Anthropic Claude provider stub.
 
-Typed stub — all four lifecycle methods raise ``NotImplementedError``.
-Will be fully implemented in a future phase when Claude is supported.
+Phase 0: All lifecycle methods raise NotImplementedError.
+Will be fully implemented when Claude is designated as the active provider.
+
+To activate: set AI_PROVIDER=claude and ANTHROPIC_API_KEY in your environment,
+then implement this class following the GeminiProvider as a reference.
 """
 
-from typing import Any
+import logging
+from typing import Any, ClassVar
 
-from core.ai.base_provider import AIRequest, AIRawResponse, BaseAIProvider
+from core.ai.base_provider import AIRawResponse, AIRequest, BaseAIProvider
+
+logger = logging.getLogger(__name__)
 
 
 class ClaudeProvider(BaseAIProvider):
-    """Anthropic Claude provider stub — not yet implemented."""
+    """
+    Anthropic Claude provider — Phase 0 stub.
 
-    provider_name = "claude"
+    All methods raise ``NotImplementedError``. The class exists to satisfy
+    the factory's provider map and to act as a typed extension point.
+    """
 
-    def __init__(self, api_key: str = "", model: str = "claude-3-5-sonnet-20241022") -> None:
-        self._api_key = api_key
-        self._model = model
+    provider_name: ClassVar[str] = "claude"
 
     def validate_connection(self) -> bool:
-        """Not implemented."""
-        raise NotImplementedError("ClaudeProvider.validate_connection() is not implemented.")
+        """Not implemented in Phase 0."""
+        raise NotImplementedError(
+            "ClaudeProvider.validate_connection() is not implemented in Phase 0. "
+            "Implement this method when configuring AI_PROVIDER=claude."
+        )
 
     def health_check(self) -> dict[str, Any]:
-        """Not implemented."""
-        raise NotImplementedError("ClaudeProvider.health_check() is not implemented.")
+        """Not implemented in Phase 0."""
+        raise NotImplementedError(
+            "ClaudeProvider.health_check() is not implemented in Phase 0. "
+            "Implement this method when configuring AI_PROVIDER=claude."
+        )
 
     def complete(self, request: AIRequest) -> AIRawResponse:
-        """Not implemented."""
-        raise NotImplementedError("ClaudeProvider.complete() is not implemented.")
+        """Not implemented in Phase 0."""
+        raise NotImplementedError(
+            "ClaudeProvider.complete() is not implemented in Phase 0. "
+            "Implement this method when configuring AI_PROVIDER=claude."
+        )
 
     def close(self) -> None:
-        """Not implemented."""
-        raise NotImplementedError("ClaudeProvider.close() is not implemented.")
+        """No resources to release for this stub provider."""
+        logger.debug(
+            "claude_stub_provider_close_called",
+            extra={"provider": self.provider_name},
+        )

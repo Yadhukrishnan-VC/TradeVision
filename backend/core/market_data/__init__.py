@@ -1,7 +1,10 @@
 """
-TradeVision AI — Market data provider framework.
+TradeVision AI — Market data provider framework package.
 
-Exposes the public API for market data provider interaction::
+Exports the public interface for market data access:
+    from core.market_data.provider_factory import MarketDataProviderFactory
+    from core.market_data.base_provider import MarketDataRequest, MarketDataResponse
 
-    from core.market_data import MarketDataProviderFactory, MarketDataRequest
+Phase 0: Only the ``mock`` provider is available.
+Phase 1: NSE/BSE data vendor provider will be added.
 """

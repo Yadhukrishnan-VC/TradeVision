@@ -1,172 +1,261 @@
 """
-TradeVision AI — Abstract AI provider interface.
+TradeVision AI — Abstract AI provider interface and request/response contracts.
 
-Defines the ``BaseAIProvider`` ABC that every AI provider must implement,
-along with the request/response data contracts used throughout the AI layer.
+The AI layer is a structured reasoning engine. Providers receive a fully
+rendered prompt string assembled by the ContextBuilder (Phase 4) and return
+raw text. Parsing and validation are handled by ``AIResponseValidator``.
 
-Lifecycle::
-
-    provider = GeminiProvider(api_key="...", model="gemini-1.5-pro")
-    provider.validate_connection()   # → True
-    status = provider.health_check() # → {"status": "healthy", ...}
-    response = provider.complete(request)
-    provider.close()
+Frozen dataclasses enforce immutability for all data transfer objects.
+All datetime fields are validated as timezone-aware in ``__post_init__``.
 """
 
-import abc
-import dataclasses
+import logging
 import uuid
+from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
-from typing import Any
+from typing import Any, ClassVar
 
 from core.ai.exceptions import AIProviderError
-from core.constants import RecommendationDirection, RiskLevel
+from core.constants import RecommendationDirection, RecommendationTimeHorizon, RiskLevel
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
-# Request / Response dataclasses
+# Request and response dataclasses
 # ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
 class AIRequest:
     """
-    A structured request to an AI provider for analysis.
+    A fully prepared AI inference request.
+
+    The ``prompt`` field contains the rendered prompt string assembled by
+    the ContextBuilder from an IntelligencePacket. Providers must not modify
+    the prompt — they send it verbatim to the underlying LLM.
 
     Attributes:
-        event_type:      Classification of the market event.
-        symbol:          NSE/BSE stock symbol.
-        prompt:          Rendered Jinja2 prompt string.
-        trigger_data:    Rule-specific data that triggered this request.
-        correlation_id:  Unique ID for request tracing.
-        max_tokens:      Maximum tokens in the AI response.
-        temperature:     Sampling temperature (0.0–2.0).
+        id:              Unique request identifier (UUID4).
+        prompt:          Fully rendered prompt string (constructed in Phase 4).
+        event_type:      String value of the EventType that triggered this call.
+        symbol:          The NSE/BSE stock symbol being analysed.
+        prompt_version:  Version tag of the prompt template used (e.g. ``"v1.0"``).
+        max_tokens:      Maximum output tokens requested from the provider.
+        timestamp:       UTC datetime when the request was created.
     """
 
+    id: uuid.UUID
+    prompt: str
     event_type: str
     symbol: str
-    prompt: str
-    trigger_data: dict[str, Any] = dataclasses.field(default_factory=dict)
-    correlation_id: str = dataclasses.field(default_factory=lambda: str(uuid.uuid4()))
-    max_tokens: int = 4096
-    temperature: float = 0.3
+    prompt_version: str
+    max_tokens: int
+    timestamp: datetime
+
+    def __post_init__(self) -> None:
+        if self.timestamp.tzinfo is None:
+            raise ValueError(
+                "AIRequest.timestamp must be timezone-aware. "
+                f"Got naive datetime: {self.timestamp!r}"
+            )
+        if not self.prompt:
+            raise ValueError("AIRequest.prompt must not be empty.")
+        if self.max_tokens < 1:
+            raise ValueError(
+                f"AIRequest.max_tokens must be a positive integer, got {self.max_tokens}."
+            )
 
 
 @dataclass(frozen=True)
 class AIRawResponse:
     """
-    The raw, unvalidated response from an AI provider.
+    The unprocessed response returned by an AI provider.
+
+    Contains the raw LLM output text alongside metadata required for
+    cost tracking, latency measurement, and audit logging. The
+    ``AIResponseValidator`` parses this into a structured ``AIRecommendation``.
 
     Attributes:
-        provider:          Name of the provider that produced this response.
-        content:           Raw text content from the AI.
-        model:             Model identifier that generated the response.
-        token_usage:       Dict with prompt_tokens, completion_tokens, total_tokens.
-        latency_ms:        Round-trip time in milliseconds.
-        correlation_id:    Matches the originating request.
-        raw_metadata:      Provider-specific metadata dict.
+        request_id:          Links back to the originating ``AIRequest.id``.
+        provider:            Provider name string (e.g. ``"gemini"``).
+        raw_text:            Raw output text from the LLM.
+        input_tokens:        Number of tokens consumed by the prompt.
+        output_tokens:       Number of tokens in the response.
+        latency_ms:          Total provider round-trip latency in milliseconds.
+        estimated_cost_usd:  Estimated USD cost for this call (Decimal precision).
+        timestamp:           UTC datetime when the response was received.
     """
 
+    request_id: uuid.UUID
     provider: str
-    content: str
-    model: str
-    token_usage: dict[str, int] = dataclasses.field(default_factory=dict)
-    latency_ms: float = 0.0
-    correlation_id: str = ""
-    raw_metadata: dict[str, Any] = dataclasses.field(default_factory=dict)
+    raw_text: str
+    input_tokens: int
+    output_tokens: int
+    latency_ms: float
+    estimated_cost_usd: Decimal
+    timestamp: datetime
+
+    def __post_init__(self) -> None:
+        if self.timestamp.tzinfo is None:
+            raise ValueError(
+                "AIRawResponse.timestamp must be timezone-aware. "
+                f"Got naive datetime: {self.timestamp!r}"
+            )
+        if self.input_tokens < 0 or self.output_tokens < 0:
+            raise ValueError("Token counts must be non-negative.")
+        if self.latency_ms < 0:
+            raise ValueError("latency_ms must be non-negative.")
+
+    @property
+    def total_tokens(self) -> int:
+        """Return the total token count for this response."""
+        return self.input_tokens + self.output_tokens
 
 
 @dataclass(frozen=True)
 class AIRecommendation:
     """
-    A validated, structured recommendation parsed from an AI response.
+    A fully parsed and validated AI recommendation.
+
+    Produced by parsing an ``AIRawResponse`` through ``AIResponseValidator``
+    and stored in ``TraderMemory`` as the permanent record of an AI inference.
 
     Attributes:
-        direction:          BUY, SELL, WATCH, or AVOID.
-        confidence:         0.0–1.0 confidence score.
-        reasoning:          Human-readable explanation.
-        risk_level:         LOW, MEDIUM, HIGH, VERY_HIGH.
-        time_horizon:       INTRADAY, SHORT, MEDIUM, LONG.
-        target_price:       Optional target price.
-        stop_loss:          Optional stop-loss price.
-        key_factors:        List of key contributing factors.
-        provider:           AI provider name.
-        model:              Model identifier.
-        correlation_id:     Tracing ID.
+        request_id:           Links to the originating ``AIRequest``.
+        direction:            Recommended action (BUY / SELL / WATCH / AVOID).
+        confidence_score:     Model confidence in [0.0, 1.0].
+        reasoning:            Human-readable explanation of the recommendation.
+        risk_level:           Assessed risk level from the Risk Agent.
+        risk_explanation:     Narrative explanation of risk factors.
+        key_factors:          Ordered tuple of supporting evidence strings.
+        contradicting_factors: Tuple of evidence that argues against the direction.
+        time_horizon:         Intended holding period for this recommendation.
+        follow_up_triggers:   Conditions that should prompt a re-evaluation.
+        prompt_version:       Version of the prompt template that generated this.
+        provider:             AI provider that generated this recommendation.
+        data_quality_flagged: True if the IntelligencePacket quality was below threshold.
+        timestamp:            UTC datetime when the recommendation was produced.
     """
 
+    request_id: uuid.UUID
     direction: RecommendationDirection
-    confidence: Decimal
+    confidence_score: float
     reasoning: str
     risk_level: RiskLevel
-    time_horizon: str = "SHORT"
-    target_price: Decimal | None = None
-    stop_loss: Decimal | None = None
-    key_factors: tuple[str, ...] = ()
-    provider: str = ""
-    model: str = ""
-    correlation_id: str = ""
+    risk_explanation: str
+    key_factors: tuple[str, ...]
+    contradicting_factors: tuple[str, ...]
+    time_horizon: RecommendationTimeHorizon
+    follow_up_triggers: tuple[str, ...]
+    prompt_version: str
+    provider: str
+    data_quality_flagged: bool
+    timestamp: datetime
+
+    def __post_init__(self) -> None:
+        if self.timestamp.tzinfo is None:
+            raise ValueError(
+                "AIRecommendation.timestamp must be timezone-aware. "
+                f"Got naive datetime: {self.timestamp!r}"
+            )
+        if not 0.0 <= self.confidence_score <= 1.0:
+            raise ValueError(
+                f"confidence_score must be in [0.0, 1.0], got {self.confidence_score}."
+            )
+        if not self.reasoning:
+            raise ValueError("AIRecommendation.reasoning must not be empty.")
 
 
 # ---------------------------------------------------------------------------
-# Abstract base provider
+# Abstract provider interface
 # ---------------------------------------------------------------------------
 
 
-class BaseAIProvider(abc.ABC):
+class BaseAIProvider(ABC):
     """
-    Abstract interface for all AI providers.
+    Abstract interface for all AI inference providers.
 
-    Subclasses must implement the four lifecycle methods. The provider
-    factory calls these methods in order during provider initialization
-    and shutdown.
+    Every concrete provider (Gemini, OpenAI, Claude, Ollama) must implement
+    the full lifecycle contract defined here. The factory returns a
+    ``BaseAIProvider`` instance — application code never imports concrete
+    provider classes.
 
-    Class Attributes:
-        provider_name:  Unique identifier (e.g. ``"gemini"``, ``"openai"``).
+    Lifecycle::
+
+        provider = AIProviderFactory.get_provider()   # obtain singleton
+        ok = provider.validate_connection()            # verify credentials
+        status = provider.health_check()               # check availability
+        raw = provider.complete(request)               # inference (Phase 4)
+        provider.close()                               # release resources
+
+    Class attributes:
+        provider_name: Unique string identifier matching ``settings.AI_PROVIDER``.
     """
 
-    provider_name: str
+    provider_name: ClassVar[str]
 
-    @abc.abstractmethod
+    @abstractmethod
     def validate_connection(self) -> bool:
         """
-        Verify that the provider is reachable and credentials are valid.
+        Perform a lightweight check to verify credentials and connectivity.
 
         Returns:
-            True if the connection is valid.
+            ``True`` if the provider is reachable and credentials are valid.
 
         Raises:
-            AIAuthenticationError: If credentials are rejected.
+            AIAuthenticationError: If the provider rejects credentials.
             AIConnectionError:     If the provider is unreachable.
         """
 
-    @abc.abstractmethod
+    @abstractmethod
     def health_check(self) -> dict[str, Any]:
         """
-        Return a health status dict for the provider.
+        Return a health status dictionary for this provider.
+
+        The returned dict must include at minimum:
+            - ``status``:     ``"healthy"`` | ``"degraded"`` | ``"unhealthy"``
+            - ``provider``:   ``self.provider_name``
+            - ``latency_ms``: float, provider round-trip time
 
         Returns:
-            A dict with at minimum ``{"status": "healthy"|"degraded"|"unhealthy"}``
-            and optionally ``latency_ms``, ``model``, ``detail`` keys.
+            Status dictionary suitable for inclusion in a ``HealthResponse``.
         """
 
-    @abc.abstractmethod
+    @abstractmethod
     def complete(self, request: AIRequest) -> AIRawResponse:
         """
-        Send a prompt to the AI provider and return the raw response.
+        Submit the prompt in ``request`` to the AI provider and return raw output.
+
+        This method is implemented in Phase 4 alongside the ContextBuilder,
+        ResponseParser, budget enforcement, and deduplication logic.
 
         Args:
-            request: The structured AI request.
+            request: A fully populated ``AIRequest`` with a rendered prompt.
 
         Returns:
-            An ``AIRawResponse`` with the raw provider output.
+            ``AIRawResponse`` containing the raw LLM text and token metadata.
 
         Raises:
-            AIProviderError: On any provider-level failure.
-            NotImplementedError: On stub providers not yet implemented.
+            AIProviderError:           On any provider-side error.
+            AIRateLimitError:          When the provider rate limits the request.
+            AIQuotaExceededError:      When provider quota is exhausted.
+            AIResponseValidationError: If the response cannot be parsed.
+            NotImplementedError:       In Phase 0 stubs.
         """
 
-    @abc.abstractmethod
+    @abstractmethod
     def close(self) -> None:
-        """Release any resources held by the provider (HTTP clients, etc.)."""
+        """
+        Release all resources held by this provider.
+
+        Called by ``AIProviderFactory.reset()`` and at application shutdown.
+        Implementations should close HTTP sessions, nullify client references,
+        and perform any other cleanup required by the underlying SDK.
+        """
+
+    def __repr__(self) -> str:
+        """Return an unambiguous developer representation."""
+        return f"<{self.__class__.__name__} provider={self.provider_name!r}>"

@@ -1,89 +1,206 @@
 """
-TradeVision AI — Celery base task class.
+TradeVision AI — Celery base task with structured logging and correlation IDs.
 
-``BaseTask`` extends ``celery.Task`` to provide structured logging, correlation
-ID binding, timing instrumentation, and standard retry constants for all
-TradeVision Celery tasks.
+Every Celery task in the project should set ``base=BaseTask``. This provides:
+    - Automatic correlation ID binding to the structlog context
+    - Structured ``task_started`` / ``task_completed`` / ``task_failed`` events
+    - Wall-clock timing recorded in milliseconds
+    - A static helper for constructing deterministic idempotency keys
+
+Retry constants are module-level so they can be imported independently::
+
+    from core.tasks.base import AI_MAX_RETRIES, DEFAULT_RETRY_DELAY
 """
 
+import logging
 import time
 from typing import Any
 
 from celery import Task
 
-from core.logging import get_logger, bind_context, clear_context
-from core.utils import generate_correlation_id, get_now
+from core.logging import bind_context, clear_context, get_logger
+from core.utils import generate_correlation_id
+
+logger = get_logger(__name__)
+
+# ---------------------------------------------------------------------------
+# Retry constants — import and use in task decorators for consistency
+# ---------------------------------------------------------------------------
+
+DEFAULT_MAX_RETRIES: int = 3
+"""Standard maximum retry count for most task queues."""
+
+DEFAULT_RETRY_DELAY: int = 60
+"""Seconds between retry attempts for standard tasks."""
+
+DEFAULT_RETRY_BACKOFF: float = 2.0
+"""Exponential backoff multiplier applied between retries."""
+
+AI_MAX_RETRIES: int = 5
+"""Higher retry count for the AI queue — provider calls may be intermittently slow."""
+
+AI_RETRY_DELAY: int = 120
+"""Longer retry delay for AI tasks to avoid hammering a rate-limited provider."""
+
+INGESTION_MAX_RETRIES: int = 3
+"""Standard retry count for market data ingestion tasks."""
+
+INGESTION_RETRY_DELAY: int = 30
+"""Short retry delay for ingestion tasks — stale data must be recovered quickly."""
+
+NOTIFICATION_MAX_RETRIES: int = 5
+"""Higher retry count for notification delivery — user-facing, must not be dropped."""
+
+NOTIFICATION_RETRY_DELAY: int = 10
+"""Short retry delay for notifications — time-sensitive delivery."""
+
+
+# ---------------------------------------------------------------------------
+# Base task
+# ---------------------------------------------------------------------------
 
 
 class BaseTask(Task):
     """
-    Base class for all TradeVision Celery tasks.
+    Abstract Celery base task providing structured logging and correlation IDs.
 
-    Provides:
-        - Automatic correlation ID binding per task execution
-        - Structured logging via ``self.logger``
-        - Timing instrumentation (task duration logged on completion)
-        - Standard retry constants
-        - Idempotency key helper
+    Set ``base=BaseTask`` on any task that should participate in request
+    tracing. The correlation ID is read from ``kwargs["correlation_id"]``
+    if present, or generated fresh for tasks that are scheduled by Celery
+    Beat or triggered without an explicit correlation context.
+
+    Hooks used:
+        ``before_start`` — binds correlation ID and records start time
+        ``after_return``  — logs completion with duration and clears context
+        ``on_failure``    — logs failure details at ERROR level
+
+    Example::
+
+        @app.task(base=BaseTask, bind=True, max_retries=AI_MAX_RETRIES)
+        def call_ai_provider(self, request_id: str, correlation_id: str = "") -> None:
+            ...
     """
 
-    name: str = "tradevision.base"
-    max_retries: int = 3
-    default_retry_delay: int = 60
-    autoretry_for: tuple[type[Exception], ...] = ()
-    retry_backoff: bool = True
-    retry_backoff_max: int = 300
-    retry_jitter: bool = True
+    abstract: bool = True
 
-    def __init__(self) -> None:
-        super().__init__()
-        self.logger = get_logger(self.__name__)
+    def before_start(
+        self,
+        task_id: str,
+        args: tuple[Any, ...],
+        kwargs: dict[str, Any],
+    ) -> None:
+        """
+        Bind correlation ID and record the task start time.
 
-    def __call__(self, *args: Any, **kwargs: Any) -> Any:
-        """Wrap task execution with correlation ID, logging, and timing."""
-        correlation_id = generate_correlation_id()
-        bind_context(correlation_id=correlation_id, task_name=self.name)
+        Called immediately before ``run()`` executes. The start time is stored
+        as an instance attribute so ``after_return`` can compute duration.
 
-        start = time.monotonic()
-        self.logger.info(
+        Args:
+            task_id: Celery-assigned task UUID.
+            args:    Positional task arguments.
+            kwargs:  Keyword task arguments (may include ``correlation_id``).
+        """
+        correlation_id: str = kwargs.get("correlation_id") or generate_correlation_id()
+        bind_context(
+            correlation_id=correlation_id,
+            task_id=task_id,
+            task_name=self.name or "",
+        )
+        self._task_start_time: float = time.monotonic()
+
+        logger.info(
             "task_started",
-            extra={"task_name": self.name, "correlation_id": correlation_id},
+            extra={
+                "task_name": self.name,
+                "task_id": task_id,
+                "correlation_id": correlation_id,
+            },
         )
 
-        try:
-            result = super().__call__(*args, **kwargs)
-            duration_ms = (time.monotonic() - start) * 1000
-            self.logger.info(
-                "task_completed",
-                extra={
-                    "task_name": self.name,
-                    "correlation_id": correlation_id,
-                    "duration_ms": round(duration_ms, 2),
-                },
-            )
-            return result
-        except Exception as exc:
-            duration_ms = (time.monotonic() - start) * 1000
-            self.logger.error(
-                "task_failed",
-                extra={
-                    "task_name": self.name,
-                    "correlation_id": correlation_id,
-                    "duration_ms": round(duration_ms, 2),
-                    "error": str(exc),
-                },
-            )
-            raise
-        finally:
-            clear_context()
+    def after_return(
+        self,
+        status: str,
+        retval: Any,
+        task_id: str,
+        args: tuple[Any, ...],
+        kwargs: dict[str, Any],
+        einfo: Any,
+    ) -> None:
+        """
+        Log task completion with duration and clear the structlog context.
+
+        Called after the task returns regardless of success or failure.
+
+        Args:
+            status:  Celery task status string (e.g. ``"SUCCESS"``, ``"FAILURE"``).
+            retval:  Return value or exception instance.
+            task_id: Celery-assigned task UUID.
+            args:    Positional task arguments.
+            kwargs:  Keyword task arguments.
+            einfo:   Exception info object (``None`` on success).
+        """
+        start: float = getattr(self, "_task_start_time", time.monotonic())
+        duration_ms: float = round((time.monotonic() - start) * 1000, 2)
+
+        logger.info(
+            "task_completed",
+            extra={
+                "task_name": self.name,
+                "task_id": task_id,
+                "status": status,
+                "duration_ms": duration_ms,
+            },
+        )
+        clear_context()
+
+    def on_failure(
+        self,
+        exc: Exception,
+        task_id: str,
+        args: tuple[Any, ...],
+        kwargs: dict[str, Any],
+        einfo: Any,
+    ) -> None:
+        """
+        Log unhandled task failure at ERROR level.
+
+        Called when the task raises an exception that is not retried.
+
+        Args:
+            exc:     The exception that caused the failure.
+            task_id: Celery-assigned task UUID.
+            args:    Positional task arguments.
+            kwargs:  Keyword task arguments.
+            einfo:   Formatted exception traceback info.
+        """
+        logger.error(
+            "task_failed",
+            exc_info=exc,
+            extra={
+                "task_name": self.name,
+                "task_id": task_id,
+                "exception_type": type(exc).__name__,
+            },
+        )
 
     @staticmethod
-    def idempotency_key(*parts: Any) -> str:
+    def make_idempotency_key(*parts: str) -> str:
         """
-        Generate a deterministic idempotency key from the given parts.
+        Construct a deterministic, namespaced idempotency key.
 
-        Useful for deduplicating task executions::
+        Joins ``parts`` with ``:`` and prepends the ``idempotency:`` namespace.
+        Suitable for use as a Redis key to detect duplicate task executions.
 
-            key = BaseTask.idempotency_key("ingest", symbol, "2024-03-17T10:00:00")
+        Args:
+            *parts: String components to compose the key from (e.g. symbol,
+                    event type, timestamp truncated to the minute).
+
+        Returns:
+            A string key in the form ``"idempotency:part1:part2:…"``.
+
+        Example::
+
+            key = BaseTask.make_idempotency_key("RELIANCE", "price_movement", "2024-01-15T09:30")
+            # → "idempotency:RELIANCE:price_movement:2024-01-15T09:30"
         """
-        return ":".join(str(p) for p in parts)
+        return "idempotency:" + ":".join(str(p) for p in parts)

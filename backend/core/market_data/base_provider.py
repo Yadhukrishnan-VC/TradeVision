@@ -1,128 +1,224 @@
 """
-TradeVision AI — Abstract market data provider interface.
+TradeVision AI — Abstract market data provider interface and data contracts.
 
-Defines the ``BaseMarketDataProvider`` ABC and the request/response data
-contracts for the market data ingestion layer.
+Defines the contract that all market data providers must implement.
+Each provider exposes the same lifecycle (validate_connection, health_check,
+fetch, close) regardless of the underlying data vendor.
 
-Lifecycle::
-
-    provider = MockMarketDataProvider()
-    provider.validate_connection()   # → True
-    status = provider.health_check() # → {"status": "healthy", ...}
-    response = provider.fetch(request)
-    provider.close()
+Frozen dataclasses enforce immutability for all data transfer objects.
+All datetime fields are validated as timezone-aware in ``__post_init__``.
 """
 
-import abc
-import dataclasses
+import logging
+import uuid
+from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
-from typing import Any
+from typing import Any, ClassVar
 
-from core.exceptions import DataProviderError, DataIngestionError
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
-# Request / Response dataclasses
+# Request and response dataclasses
 # ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
 class MarketDataRequest:
     """
-    A structured request to a market data provider.
+    A request for OHLCV market data for a specific symbol and time range.
 
     Attributes:
-        symbol:    NSE/BSE stock symbol.
-        interval:  Data granularity (e.g. "1min", "5min", "1day").
-        start:     Start of the time range (optional).
-        end:       End of the time range (optional).
-        fields:    Specific data fields to request (optional).
+        symbol:         NSE/BSE stock symbol (e.g. ``"RELIANCE"``).
+        interval:       Bar interval string: ``"1min"``, ``"5min"``,
+                        ``"15min"``, ``"1hr"``, ``"1D"``.
+        from_timestamp: Start of the requested range (UTC, timezone-aware).
+        to_timestamp:   End of the requested range (UTC, timezone-aware).
+        request_id:     Optional caller-provided ID for correlation.
     """
 
     symbol: str
-    interval: str = "1day"
-    start: datetime | None = None
-    end: datetime | None = None
-    fields: tuple[str, ...] = ()
+    interval: str
+    from_timestamp: datetime
+    to_timestamp: datetime
+    request_id: str = ""
+
+    def __post_init__(self) -> None:
+        if self.from_timestamp.tzinfo is None:
+            raise ValueError(
+                "MarketDataRequest.from_timestamp must be timezone-aware."
+            )
+        if self.to_timestamp.tzinfo is None:
+            raise ValueError(
+                "MarketDataRequest.to_timestamp must be timezone-aware."
+            )
+        if self.from_timestamp >= self.to_timestamp:
+            raise ValueError(
+                "from_timestamp must be strictly before to_timestamp. "
+                f"Got: from={self.from_timestamp!r}, to={self.to_timestamp!r}"
+            )
+        if not self.symbol:
+            raise ValueError("MarketDataRequest.symbol must not be empty.")
+
+
+@dataclass(frozen=True)
+class OHLCVBar:
+    """
+    A single OHLCV (Open / High / Low / Close / Volume) price bar.
+
+    All price fields use ``Decimal`` to preserve precision across
+    aggregation and indicator computation.
+
+    Attributes:
+        timestamp:    Bar open time (UTC, timezone-aware).
+        open_price:   Opening price for the bar interval.
+        high:         Highest traded price within the interval.
+        low:          Lowest traded price within the interval.
+        close_price:  Closing price for the bar interval.
+        volume:       Total number of shares traded in the interval.
+    """
+
+    timestamp: datetime
+    open_price: Decimal
+    high: Decimal
+    low: Decimal
+    close_price: Decimal
+    volume: int
+
+    def __post_init__(self) -> None:
+        if self.timestamp.tzinfo is None:
+            raise ValueError(
+                "OHLCVBar.timestamp must be timezone-aware. "
+                f"Got naive datetime: {self.timestamp!r}"
+            )
+        if self.high < self.low:
+            raise ValueError(
+                f"OHLCVBar.high ({self.high}) must be >= low ({self.low})."
+            )
+        if self.volume < 0:
+            raise ValueError(f"OHLCVBar.volume must be non-negative, got {self.volume}.")
 
 
 @dataclass(frozen=True)
 class MarketDataResponse:
     """
-    The response from a market data provider fetch.
+    The response to a ``MarketDataRequest``, containing OHLCV bars.
 
     Attributes:
-        provider:    Provider name that served this response.
-        symbol:      The stock symbol.
-        interval:    Data granularity.
-        data_points: List of data point dicts (each with OHLCV fields).
-        latency_ms:  Round-trip time in milliseconds.
-        metadata:    Provider-specific metadata.
+        request_id:  Echoes the ``MarketDataRequest.request_id`` for correlation.
+        symbol:      The requested stock symbol.
+        interval:    The bar interval (e.g. ``"1min"``).
+        bars:        Immutable tuple of ``OHLCVBar`` instances, chronological.
+        provider:    Provider name that produced this response.
+        fetched_at:  UTC datetime when this response was produced.
+        is_complete: ``False`` if the provider returned a partial response
+                     (e.g. data gap in the requested range).
+        meta:        Optional provider-specific metadata.
+                     Note: the dict reference is immutable; treat as read-only.
     """
 
-    provider: str
+    request_id: str
     symbol: str
     interval: str
-    data_points: tuple[dict[str, Any], ...] = ()
-    latency_ms: float = 0.0
-    metadata: dict[str, Any] = dataclasses.field(default_factory=dict)
+    bars: tuple[OHLCVBar, ...]
+    provider: str
+    fetched_at: datetime
+    is_complete: bool = True
+    meta: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if self.fetched_at.tzinfo is None:
+            raise ValueError(
+                "MarketDataResponse.fetched_at must be timezone-aware. "
+                f"Got naive datetime: {self.fetched_at!r}"
+            )
+
+    @property
+    def bar_count(self) -> int:
+        """Return the number of OHLCV bars in this response."""
+        return len(self.bars)
 
 
 # ---------------------------------------------------------------------------
-# Abstract base provider
+# Abstract provider interface
 # ---------------------------------------------------------------------------
 
 
-class BaseMarketDataProvider(abc.ABC):
+class BaseMarketDataProvider(ABC):
     """
     Abstract interface for all market data providers.
 
-    Subclasses must implement the four lifecycle methods.
+    Every concrete provider (Mock, NSE vendor, broker API) must implement
+    the full lifecycle contract defined here. The factory returns a
+    ``BaseMarketDataProvider`` instance — application code never imports
+    concrete provider classes.
 
-    Class Attributes:
-        provider_name:  Unique identifier (e.g. ``"mock"``, ``"yfinance"``).
+    Lifecycle::
+
+        provider = MarketDataProviderFactory.get_provider()
+        ok = provider.validate_connection()
+        status = provider.health_check()
+        response = provider.fetch(request)
+        provider.close()
+
+    Class attributes:
+        provider_name: Unique string identifier matching ``settings.MARKET_DATA_PROVIDER``.
     """
 
-    provider_name: str
+    provider_name: ClassVar[str]
 
-    @abc.abstractmethod
+    @abstractmethod
     def validate_connection(self) -> bool:
         """
-        Verify that the provider is reachable and accessible.
+        Verify that the provider is reachable and credentials are valid.
 
         Returns:
-            True if the connection is valid.
+            ``True`` if the connection is healthy.
 
         Raises:
-            DataProviderError: If the provider is unreachable.
+            DataProviderError: If the connection cannot be established.
         """
 
-    @abc.abstractmethod
+    @abstractmethod
     def health_check(self) -> dict[str, Any]:
         """
-        Return a health status dict for the provider.
+        Return a health status dictionary for this provider.
+
+        The returned dict must include at minimum:
+            - ``status``:     ``"healthy"`` | ``"degraded"`` | ``"unhealthy"``
+            - ``provider``:   ``self.provider_name``
+            - ``latency_ms``: float
 
         Returns:
-            A dict with at minimum ``{"status": "healthy"|"degraded"|"unhealthy"}``
-            and optionally ``latency_ms``, ``detail`` keys.
+            Status dictionary for inclusion in a ``HealthResponse``.
         """
 
-    @abc.abstractmethod
+    @abstractmethod
     def fetch(self, request: MarketDataRequest) -> MarketDataResponse:
         """
-        Fetch market data for the given request.
+        Retrieve OHLCV bars for the symbol and time range in ``request``.
 
         Args:
-            request: The structured market data request.
+            request: A populated ``MarketDataRequest``.
 
         Returns:
-            A ``MarketDataResponse`` with the fetched data.
+            ``MarketDataResponse`` containing chronological OHLCV bars.
 
         Raises:
-            DataIngestionError: On any data retrieval failure.
+            DataIngestionError:  If the provider returns an error response.
+            DataProviderError:   On connection or authentication failures.
         """
 
-    @abc.abstractmethod
+    @abstractmethod
     def close(self) -> None:
-        """Release any resources held by the provider."""
+        """
+        Release all resources held by this provider.
+
+        Called by ``MarketDataProviderFactory.reset()`` and at shutdown.
+        """
+
+    def __repr__(self) -> str:
+        """Return an unambiguous developer representation."""
+        return f"<{self.__class__.__name__} provider={self.provider_name!r}>"

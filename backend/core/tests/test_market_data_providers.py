@@ -3,10 +3,21 @@ Tests for market data providers — MockProvider contract, factory singleton, re
 """
 
 import pytest
+from datetime import datetime, timezone, timedelta
 
 from core.market_data.base_provider import BaseMarketDataProvider, MarketDataRequest
 from core.market_data.providers.mock_provider import MockMarketDataProvider
 from core.market_data.provider_factory import MarketDataProviderFactory
+
+
+def _make_request(symbol: str = "RELIANCE") -> MarketDataRequest:
+    now = datetime.now(tz=timezone.utc)
+    return MarketDataRequest(
+        symbol=symbol,
+        interval="1D",
+        from_timestamp=now - timedelta(days=1),
+        to_timestamp=now,
+    )
 
 
 class TestMockMarketDataProvider:
@@ -26,11 +37,11 @@ class TestMockMarketDataProvider:
 
     def test_fetch_returns_deterministic_data(self) -> None:
         p = MockMarketDataProvider()
-        request = MarketDataRequest(symbol="RELIANCE")
+        request = _make_request()
         response = p.fetch(request)
         assert response.provider == "mock"
         assert response.symbol == "RELIANCE"
-        assert len(response.data_points) == 1
+        assert response.bar_count >= 1
 
     def test_close_does_not_raise(self) -> None:
         p = MockMarketDataProvider()

@@ -1,54 +1,85 @@
 """
-TradeVision AI — Structural Protocol classes.
+TradeVision AI — Structural protocols for domain entity contracts.
 
-Defines ``typing.Protocol`` classes that capture the structural contracts
-expected by the repository and service layers. These are not base classes
-to inherit from — they describe the shape that concrete classes must satisfy.
+Python ``Protocol`` classes define structural interfaces without requiring
+inheritance. They complement the abstract base classes in ``core.models``
+by providing type-safe contracts that can be checked with ``isinstance()``
+at runtime (via ``@runtime_checkable``).
+
+These protocols are used in type annotations across service and repository
+layers to express constraints without coupling to concrete Django model
+classes.
 
 Usage::
 
     from core.protocols import Identifiable, SoftDeletable
 
-    def delete_record(obj: SoftDeletable) -> None:
-        obj.soft_delete()
+    def archive(entity: SoftDeletable) -> None:
+        entity.delete()
 """
 
-from typing import Protocol, runtime_checkable
+import uuid
+from datetime import datetime
+from typing import Any, Protocol, runtime_checkable
 
 
 @runtime_checkable
 class Identifiable(Protocol):
-    """Structural protocol for objects with a primary key."""
+    """
+    Protocol for entities that carry a UUID primary key.
 
-    @property
-    def pk(self) -> object: ...
+    Satisfied by any object with an ``id`` attribute of type ``uuid.UUID``.
+    All models that inherit from ``UUIDMixin`` automatically satisfy this.
+    """
+
+    id: uuid.UUID
 
 
 @runtime_checkable
 class Timestamped(Protocol):
-    """Structural protocol for objects with creation and update timestamps."""
+    """
+    Protocol for entities that track creation and modification times.
 
-    @property
-    def created_at(self) -> object: ...
+    Satisfied by any object with ``created_at`` and ``updated_at`` attributes
+    of type ``datetime``. All models that inherit from ``TimestampMixin``
+    automatically satisfy this.
+    """
 
-    @property
-    def updated_at(self) -> object: ...
+    created_at: datetime
+    updated_at: datetime
 
 
 @runtime_checkable
 class SoftDeletable(Protocol):
-    """Structural protocol for objects that support soft-deletion."""
+    """
+    Protocol for entities that support soft-deletion semantics.
+
+    Satisfied by any object that exposes ``is_deleted``, ``deleted_at``,
+    a ``delete()`` method, and a ``restore()`` method. All models that
+    inherit from ``SoftDeleteMixin`` automatically satisfy this.
+    """
 
     is_deleted: bool
+    deleted_at: datetime | None
 
-    def delete(self) -> None: ...
+    def delete(self) -> None:
+        """Soft-delete this entity."""
+        ...
 
-    def restore(self) -> None: ...
+    def restore(self) -> None:
+        """Restore a previously soft-deleted entity."""
+        ...
 
 
 @runtime_checkable
 class Auditable(Protocol):
-    """Structural protocol for objects that track who created/updated them."""
+    """
+    Protocol for entities that track which user created or modified them.
 
-    created_by: object
-    updated_by: object
+    Satisfied by any object with ``created_by`` and ``updated_by`` attributes.
+    All models that inherit from ``AuditMixin`` automatically satisfy this.
+    The attribute type is ``Any`` because the User model varies by project.
+    """
+
+    created_by: Any
+    updated_by: Any

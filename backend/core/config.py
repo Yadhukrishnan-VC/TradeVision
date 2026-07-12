@@ -1,38 +1,265 @@
 """
-TradeVision AI — Centralised typed configuration.
+TradeVision AI — Centralised, typed configuration interface.
 
-Provides ``TradeVisionConfig`` — a thin, typed wrapper around Django settings
-that gives the rest of the codebase a single, testable access point for all
-TradeVision-specific configuration values. Providers and core modules should
-import ``config`` from this module rather than reaching into
-``django.conf.settings`` directly.
+Application code should import ``config`` from this module rather than
+accessing ``django.conf.settings`` directly. This provides:
+    - A single point of change if a setting is renamed
+    - Typed property access with explicit defaults
+    - Clear documentation of every setting the application depends on
 
-Usage::
+All AI providers and market data providers must use this config singleton::
 
     from core.config import config
 
-    provider_name = config.ai_provider
-    gemini_key = config.gemini_api_key
+    api_key = config.gemini_api_key
+    provider = config.ai_provider
+
+Never scatter ``from django.conf import settings`` throughout the codebase.
 """
 
+import logging
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 class TradeVisionConfig:
     """
-    Typed, centralised access to all TradeVision settings.
+    Typed, centralised interface to all TradeVision AI settings.
 
-    Reads values lazily from ``django.conf.settings`` on first access,
-    caching them for the lifetime of the process. This avoids import-time
-    coupling to Django settings while keeping access convenient.
+    Each property reads from ``django.conf.settings`` with a sensible default
+    so the application starts cleanly even with a minimal ``.env`` file.
+    Import and use the module-level ``config`` singleton rather than
+    instantiating this class directly.
     """
 
-    def __getattr__(self, name: str) -> Any:
-        """Proxy attribute access to Django settings."""
+    # ---------------------------------------------------------------------------
+    # AI provider
+    # ---------------------------------------------------------------------------
+
+    @property
+    def ai_provider(self) -> str:
+        """Active AI provider name. Matches a key in the provider map."""
         from django.conf import settings
 
-        return getattr(settings, name)
+        return getattr(settings, "AI_PROVIDER", "gemini").lower()
+
+    @property
+    def gemini_api_key(self) -> str:
+        """Google Gemini API key."""
+        from django.conf import settings
+
+        return getattr(settings, "GEMINI_API_KEY", "")
+
+    @property
+    def gemini_model(self) -> str:
+        """Gemini model identifier (e.g. ``gemini-1.5-pro``)."""
+        from django.conf import settings
+
+        return getattr(settings, "GEMINI_MODEL", "gemini-1.5-pro")
+
+    @property
+    def openai_api_key(self) -> str:
+        """OpenAI API key."""
+        from django.conf import settings
+
+        return getattr(settings, "OPENAI_API_KEY", "")
+
+    @property
+    def openai_model(self) -> str:
+        """OpenAI model identifier (e.g. ``gpt-4o``)."""
+        from django.conf import settings
+
+        return getattr(settings, "OPENAI_MODEL", "gpt-4o")
+
+    @property
+    def anthropic_api_key(self) -> str:
+        """Anthropic Claude API key."""
+        from django.conf import settings
+
+        return getattr(settings, "ANTHROPIC_API_KEY", "")
+
+    @property
+    def anthropic_model(self) -> str:
+        """Anthropic model identifier (e.g. ``claude-3-5-sonnet-20241022``)."""
+        from django.conf import settings
+
+        return getattr(settings, "ANTHROPIC_MODEL", "claude-3-5-sonnet-20241022")
+
+    @property
+    def ollama_base_url(self) -> str:
+        """Base URL for the local Ollama server."""
+        from django.conf import settings
+
+        return getattr(settings, "OLLAMA_BASE_URL", "http://localhost:11434")
+
+    @property
+    def ollama_model(self) -> str:
+        """Ollama model identifier (e.g. ``llama3.2``)."""
+        from django.conf import settings
+
+        return getattr(settings, "OLLAMA_MODEL", "llama3.2")
+
+    # ---------------------------------------------------------------------------
+    # AI governance
+    # ---------------------------------------------------------------------------
+
+    @property
+    def ai_confidence_floor(self) -> float:
+        """Minimum confidence score required to deliver a recommendation."""
+        from django.conf import settings
+
+        return float(getattr(settings, "AI_CONFIDENCE_FLOOR", 0.55))
+
+    @property
+    def ai_daily_budget_usd(self) -> float:
+        """Hard daily AI spend limit in USD enforced via Redis counter."""
+        from django.conf import settings
+
+        return float(getattr(settings, "AI_DAILY_BUDGET_USD", 10.0))
+
+    @property
+    def ai_dedup_window_seconds(self) -> int:
+        """
+        Seconds within which a second AI call for the same symbol and event
+        type is suppressed.
+        """
+        from django.conf import settings
+
+        return int(getattr(settings, "AI_DEDUP_WINDOW_SECONDS", 300))
+
+    @property
+    def ai_max_tokens(self) -> int:
+        """Maximum tokens per AI prompt."""
+        from django.conf import settings
+
+        return int(getattr(settings, "AI_MAX_TOKENS", 4096))
+
+    # ---------------------------------------------------------------------------
+    # Market data provider
+    # ---------------------------------------------------------------------------
+
+    @property
+    def market_data_provider(self) -> str:
+        """Active market data provider name (e.g. ``mock``, ``nse``)."""
+        from django.conf import settings
+
+        return getattr(settings, "MARKET_DATA_PROVIDER", "mock").lower()
+
+    # ---------------------------------------------------------------------------
+    # Market and exchange
+    # ---------------------------------------------------------------------------
+
+    @property
+    def market_timezone(self) -> str:
+        """IANA timezone string for all market operations (e.g. ``Asia/Kolkata``)."""
+        from django.conf import settings
+
+        return getattr(settings, "MARKET_TIMEZONE", "Asia/Kolkata")
+
+    @property
+    def default_exchange(self) -> str:
+        """Primary exchange for the platform (``NSE`` or ``BSE``)."""
+        from django.conf import settings
+
+        return getattr(settings, "MARKET_EXCHANGE", "NSE")
+
+    # ---------------------------------------------------------------------------
+    # Data quality thresholds
+    # ---------------------------------------------------------------------------
+
+    @property
+    def tick_freshness_threshold_seconds(self) -> int:
+        """Maximum age in seconds for tick data before it is considered stale."""
+        from django.conf import settings
+
+        return int(getattr(settings, "TICK_FRESHNESS_THRESHOLD_SECONDS", 120))
+
+    @property
+    def indicator_freshness_threshold_seconds(self) -> int:
+        """Maximum age in seconds for computed indicators before considered stale."""
+        from django.conf import settings
+
+        return int(getattr(settings, "INDICATOR_FRESHNESS_THRESHOLD_SECONDS", 300))
+
+    @property
+    def intelligence_min_quality_score(self) -> float:
+        """Minimum IntelligencePacket quality score to allow rule evaluation."""
+        from django.conf import settings
+
+        return float(getattr(settings, "INTELLIGENCE_MIN_QUALITY_SCORE", 0.60))
+
+    # ---------------------------------------------------------------------------
+    # Resilience
+    # ---------------------------------------------------------------------------
+
+    @property
+    def circuit_breaker_failure_threshold(self) -> int:
+        """Consecutive failures before a circuit breaker opens."""
+        from django.conf import settings
+
+        return int(getattr(settings, "CIRCUIT_BREAKER_FAILURE_THRESHOLD", 5))
+
+    @property
+    def circuit_breaker_recovery_timeout(self) -> int:
+        """Seconds a circuit breaker stays open before transitioning to half-open."""
+        from django.conf import settings
+
+        return int(getattr(settings, "CIRCUIT_BREAKER_RECOVERY_TIMEOUT", 60))
+
+    # ---------------------------------------------------------------------------
+    # Infrastructure
+    # ---------------------------------------------------------------------------
+
+    @property
+    def redis_url(self) -> str:
+        """Redis connection URL for direct client use outside the cache framework."""
+        from django.conf import settings
+
+        return getattr(settings, "REDIS_URL", "redis://redis:6379/0")
+
+    # ---------------------------------------------------------------------------
+    # Cache timeouts
+    # ---------------------------------------------------------------------------
+
+    @property
+    def cache_timeouts(self) -> dict[str, int]:
+        """
+        Standard cache timeout values in seconds, keyed by use-case name.
+
+        Use these constants rather than hardcoded integers to ensure
+        consistent cache behaviour across the codebase.
+        """
+        return {
+            "short": 60,
+            "medium": 300,
+            "long": 3600,
+            "indicators": 300,
+            "intelligence_packet": 120,
+            "news": 900,
+            "announcements": 1800,
+            "global_markets": 600,
+        }
+
+    # ---------------------------------------------------------------------------
+    # Celery queue names
+    # ---------------------------------------------------------------------------
+
+    @property
+    def celery_queue_names(self) -> dict[str, str]:
+        """
+        All named Celery queue identifiers, keyed by logical role.
+
+        Use ``from core.constants import QueueName`` for typed access to the
+        same values in task routing decorators.
+        """
+        from core.constants import QueueName
+
+        return {q.name.lower(): q.value for q in QueueName}
 
 
-# Module-level singleton — import and use directly
-config = TradeVisionConfig()
+# ---------------------------------------------------------------------------
+# Module-level singleton — import this, not the class
+# ---------------------------------------------------------------------------
+
+config: TradeVisionConfig = TradeVisionConfig()

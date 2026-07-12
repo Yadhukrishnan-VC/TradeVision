@@ -1,73 +1,126 @@
 """
-TradeVision AI — Django middleware.
+TradeVision AI — Request-scoped middleware.
 
-Provides two middleware classes:
+``CorrelationIDMiddleware`` must appear BEFORE ``RequestLoggingMiddleware``
+in ``settings.MIDDLEWARE`` so that the correlation ID is available to the
+logger when the request started event is emitted.
 
-1. ``CorrelationIDMiddleware`` — Generates or propagates a UUID4 correlation
-   ID for every request. If the incoming request contains an
-   ``X-Correlation-ID`` header, it is used; otherwise a new UUID is generated.
+Registration in ``settings/base.py``::
 
-2. ``RequestLoggingMiddleware`` — Logs request method, path, and status code
-   using the structured logger.
+    MIDDLEWARE = [
+        ...
+        "core.middleware.CorrelationIDMiddleware",
+        "core.middleware.RequestLoggingMiddleware",
+        ...
+    ]
 """
 
+import logging
 import time
-from typing import Callable
+import uuid
+from collections.abc import Callable
 
 from django.http import HttpRequest, HttpResponse
 
-from core.logging import get_logger, bind_context, clear_context
-from core.utils import generate_correlation_id, get_now
+from core.logging import bind_context, clear_context, get_logger
+from core.utils import get_now
 
 logger = get_logger(__name__)
 
-CORRELATION_HEADER = "X-Correlation-ID"
+CORRELATION_ID_HEADER: str = "X-Correlation-ID"
+REQUEST_ID_HEADER: str = "X-Request-ID"
 
 
 class CorrelationIDMiddleware:
     """
-    Generate or propagate a correlation ID for every request.
+    Attaches a Correlation ID to every inbound request.
 
-    If the incoming request has an ``X-Correlation-ID`` header, its value
-    is used. Otherwise, a new UUID4 is generated. The ID is bound to the
-    structlog context and set on the response header.
+    If the upstream caller (load balancer, API gateway, or client) supplies
+    an ``X-Correlation-ID`` header, that value is used. Otherwise a new
+    UUID4 is generated. The correlation ID is:
+    - Stored on ``request.correlation_id`` for access by views and services
+    - Bound into the structlog context so all log calls include it
+    - Echoed back in the ``X-Correlation-ID`` response header
+
+    Must be the first TradeVision-specific middleware in the stack.
     """
 
     def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]) -> None:
-        self.get_response = get_response
+        self._get_response = get_response
 
     def __call__(self, request: HttpRequest) -> HttpResponse:
-        correlation_id = request.headers.get(CORRELATION_HEADER) or generate_correlation_id()
+        """Process the request, attach correlation ID, and echo it in the response."""
+        correlation_id: str = (
+            request.headers.get(CORRELATION_ID_HEADER) or str(uuid.uuid4())
+        )
         request.correlation_id = correlation_id  # type: ignore[attr-defined]
         bind_context(correlation_id=correlation_id)
 
-        response = self.get_response(request)
-        response[CORRELATION_HEADER] = correlation_id
+        response: HttpResponse = self._get_response(request)
 
-        clear_context()
+        response[CORRELATION_ID_HEADER] = correlation_id
         return response
 
 
 class RequestLoggingMiddleware:
     """
-    Log request method, path, status code, and duration using structured logging.
+    Logs the start and completion of every HTTP request.
+
+    Emits structured ``request_started`` and ``request_completed`` (or
+    ``request_error``) log events with method, path, status code, and
+    wall-clock duration in milliseconds.
+
+    Must appear AFTER ``CorrelationIDMiddleware`` so that the correlation
+    ID is already bound when the ``request_started`` event is logged.
+
+    Clears the structlog context after each request to prevent context
+    leakage between requests on the same thread.
     """
 
     def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]) -> None:
-        self.get_response = get_response
+        self._get_response = get_response
 
     def __call__(self, request: HttpRequest) -> HttpResponse:
-        start = time.monotonic()
-        response = self.get_response(request)
-        duration_ms = (time.monotonic() - start) * 1000
+        """Log the request lifecycle and clear context on completion."""
+        start: float = time.monotonic()
 
         logger.info(
-            "http_request",
+            "request_started",
+            extra={
+                "method": request.method,
+                "path": request.path,
+                "query_string": request.META.get("QUERY_STRING", ""),
+                "correlation_id": getattr(request, "correlation_id", ""),
+                "remote_addr": request.META.get("REMOTE_ADDR", ""),
+            },
+        )
+
+        try:
+            response: HttpResponse = self._get_response(request)
+        except Exception as exc:
+            duration_ms: float = round((time.monotonic() - start) * 1000, 2)
+            logger.error(
+                "request_error",
+                exc_info=exc,
+                extra={
+                    "method": request.method,
+                    "path": request.path,
+                    "duration_ms": duration_ms,
+                    "exception_type": type(exc).__name__,
+                },
+            )
+            raise
+        finally:
+            clear_context()
+
+        duration_ms = round((time.monotonic() - start) * 1000, 2)
+        logger.info(
+            "request_completed",
             extra={
                 "method": request.method,
                 "path": request.path,
                 "status_code": response.status_code,
-                "duration_ms": round(duration_ms, 2),
+                "duration_ms": duration_ms,
             },
         )
         return response

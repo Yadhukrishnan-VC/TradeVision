@@ -133,7 +133,7 @@ class CircuitBreaker:
             # rather than silently blocking all traffic.
             logger.warning(
                 "circuit_breaker_redis_unavailable",
-                extra={"name": self._name},
+                extra={"breaker_name": self._name},
             )
             return CircuitState.CLOSED
 
@@ -172,7 +172,7 @@ class CircuitBreaker:
         if current_state == CircuitState.OPEN:
             logger.warning(
                 "circuit_breaker_rejected",
-                extra={"name": self._name, "state": current_state},
+                extra={"breaker_name": self._name, "state": current_state},
             )
             raise CircuitBreakerOpenError(self._name)
 
@@ -198,7 +198,7 @@ class CircuitBreaker:
         except redis_lib.RedisError:
             logger.warning(
                 "circuit_breaker_success_record_failed",
-                extra={"name": self._name},
+                extra={"breaker_name": self._name},
             )
         self._update_metric(CircuitState.CLOSED)
 
@@ -211,7 +211,7 @@ class CircuitBreaker:
         except redis_lib.RedisError:
             logger.warning(
                 "circuit_breaker_failure_record_failed",
-                extra={"name": self._name},
+                extra={"breaker_name": self._name},
             )
 
     def _open_circuit(self) -> None:
@@ -227,7 +227,7 @@ class CircuitBreaker:
         logger.error(
             "circuit_breaker_opened",
             extra={
-                "name": self._name,
+                "breaker_name": self._name,
                 "failure_threshold": self._failure_threshold,
                 "recovery_timeout_seconds": self._recovery_timeout,
             },
@@ -241,6 +241,14 @@ class CircuitBreaker:
     # ------------------------------------------------------------------
     # Manual controls (admin / testing)
     # ------------------------------------------------------------------
+
+    def record_failure(self) -> None:
+        """Public wrapper for recording a failure — exposed for admin and testing."""
+        self._record_failure()
+
+    def record_success(self) -> None:
+        """Public wrapper for recording a success — exposed for admin and testing."""
+        self._record_success()
 
     def reset(self) -> None:
         """
@@ -257,7 +265,7 @@ class CircuitBreaker:
         except redis_lib.RedisError:
             pass
         self._update_metric(CircuitState.CLOSED)
-        logger.info("circuit_breaker_reset", extra={"name": self._name})
+        logger.info("circuit_breaker_reset", extra={"breaker_name": self._name})
 
 
 # ---------------------------------------------------------------------------
