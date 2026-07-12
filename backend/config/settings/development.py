@@ -76,6 +76,11 @@ EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 CORS_ALLOW_ALL_ORIGINS = True
 
 # ---------------------------------------------------------------------------
+# Market data provider — use mock in development
+# ---------------------------------------------------------------------------
+MARKET_DATA_PROVIDER = "mock"
+
+# ---------------------------------------------------------------------------
 # Logging — verbose in development
 # ---------------------------------------------------------------------------
 LOG_LEVEL = "DEBUG"

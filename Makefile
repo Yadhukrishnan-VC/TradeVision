@@ -6,8 +6,8 @@
 .DEFAULT_GOAL := help
 
 # Compose file sets
-COMPOSE_DEV  := docker compose -f docker-compose.yml -f docker-compose.dev.yml
-COMPOSE_PROD := docker compose -f docker-compose.yml -f docker-compose.prod.yml
+COMPOSE_DEV  := cd infra/ && docker compose -f docker-compose.yml -f docker-compose.dev.yml
+COMPOSE_PROD := cd infra/ && docker compose -f docker-compose.yml -f docker-compose.prod.yml
 
 # Shorthand for running commands inside the backend container
 BACKEND := $(COMPOSE_DEV) exec backend

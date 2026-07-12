@@ -79,6 +79,8 @@ MIDDLEWARE: list[str] = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "core.middleware.CorrelationIDMiddleware",
+    "core.middleware.RequestLoggingMiddleware",
     "django_prometheus.middleware.PrometheusAfterMiddleware",
 ]
 
@@ -360,3 +362,8 @@ CIRCUIT_BREAKER_RECOVERY_TIMEOUT: int = config(
 # Redis direct URL — for use outside the Django cache framework
 # ---------------------------------------------------------------------------
 REDIS_URL: str = config("REDIS_URL", default="redis://redis:6379/0")
+
+# ---------------------------------------------------------------------------
+# Market data provider
+# ---------------------------------------------------------------------------
+MARKET_DATA_PROVIDER: str = config("MARKET_DATA_PROVIDER", default="mock")
