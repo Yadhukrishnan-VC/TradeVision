@@ -7,6 +7,51 @@
 
 ---
 
+## Development Status
+
+> Last updated: 2026-07-12
+
+| Phase | Status | Tests | Notes |
+|---|---|---|---|
+| 0 — Foundation | **COMPLETE** | 206 passing | All 23 source files + 17 test files implemented |
+| 1 — Market Data | NOT STARTED | — | Next phase |
+| 2 — Technical Analysis | NOT STARTED | — | — |
+| 3 — Intelligence Engine | NOT STARTED | — | — |
+| 4 — Rule Engine | NOT STARTED | — | — |
+| 5 — AI + Recommendations + Trader Memory | NOT STARTED | — | — |
+| 6 — Notifications + WebSocket | NOT STARTED | — | — |
+| 7 — News + Announcements + Global Markets | NOT STARTED | — | — |
+| 8 — Frontend Dashboard | NOT STARTED | — | — |
+| 9 — Portfolio + Options Chain | NOT STARTED | — | — |
+| 10 — Pattern Engine | NOT STARTED | — | — |
+| 11 — Backtesting + Calibration | NOT STARTED | — | — |
+| 12 — Hardening | NOT STARTED | — | — |
+
+### Phase 0 Deliverables (Completed)
+
+- Docker stack (PostgreSQL, Redis, Celery, Backend) — `infra/docker-compose.yml`
+- Django settings (base, development, production, testing) — `config/settings/`
+- Custom User model (UUID pk, email auth, roles) — `apps/accounts/models.py`
+- JWT authentication endpoints — `apps/accounts/urls.py`
+- Health check endpoints (liveness, readiness, db, cache, celery) — `apps/health/`
+- BaseModel (UUID, timestamps, soft-delete) — `core/models.py` + `apps/common/models.py`
+- Management commands (wait_for_db, wait_for_redis, system_check, seed_admin) — `apps/common/management/commands/`
+- AI provider interface + Gemini + 3 stubs — `core/ai/`
+- Market data provider interface + MockProvider — `core/market_data/`
+- Rule engine registry — `core/rules/rule_registry.py`
+- Circuit breaker (Redis-backed) — `core/resilience/circuit_breaker.py`
+- Market calendar (NSE) — `core/market_calendar.py`
+- Structured logging (structlog + JSON) — `core/logging.py`
+- Prometheus metrics definitions — `core/metrics.py`
+- Correlation ID middleware — `core/middleware.py`
+- Centralised config wrapper — `core/config.py`
+- Generic repository ABC — `core/repository.py`
+- BaseService + BaseTask — `core/services.py`, `core/tasks/base.py`
+- Structural protocols — `core/protocols.py`
+- Core test suite — 17 test files, 206 tests passing
+
+---
+
 ## Table of Contents
 
 1. [System Overview](#1-system-overview)

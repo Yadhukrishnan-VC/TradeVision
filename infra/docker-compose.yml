@@ -84,7 +84,7 @@ services:
   # ---------------------------------------------------------------------------
   backend:
     build:
-      context: .
+      context: ..
       dockerfile: infra/docker/backend/Dockerfile.dev
     env_file:
       - .env
@@ -114,7 +114,7 @@ services:
   # Handles: market_data · processing · intelligence · rule_engine queues
   celery-worker-market:
     build:
-      context: .
+      context: ..
       dockerfile: infra/docker/backend/Dockerfile.dev
     env_file:
       - .env
@@ -146,7 +146,7 @@ services:
   # Handles: ai queue — concurrency limited to honour API rate limits
   celery-worker-ai:
     build:
-      context: .
+      context: ..
       dockerfile: infra/docker/backend/Dockerfile.dev
     env_file:
       - .env
@@ -178,7 +178,7 @@ services:
   # Handles: notifications · analytics · default queues
   celery-worker-default:
     build:
-      context: .
+      context: ..
       dockerfile: infra/docker/backend/Dockerfile.dev
     env_file:
       - .env
@@ -210,7 +210,7 @@ services:
   # Single Beat instance — only one must run to avoid duplicate scheduled tasks
   celery-beat:
     build:
-      context: .
+      context: ..
       dockerfile: infra/docker/backend/Dockerfile.dev
     env_file:
       - .env
@@ -242,7 +242,7 @@ services:
   # ---------------------------------------------------------------------------
   frontend:
     build:
-      context: .
+      context: ..
       dockerfile: infra/docker/frontend/Dockerfile.dev
     networks:
       - edge
@@ -261,7 +261,7 @@ services:
   nginx:
     image: nginx:1.27-alpine
     volumes:
-      - ./infra/docker/nginx/nginx.dev.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx/nginx.dev.conf:/etc/nginx/nginx.conf:ro
       - static-files:/app/staticfiles:ro
       - media-files:/app/mediafiles:ro
     ports:
