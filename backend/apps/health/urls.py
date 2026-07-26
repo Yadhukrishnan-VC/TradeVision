@@ -8,6 +8,7 @@ Routes:
     GET /api/v1/health/db/          Database probe
     GET /api/v1/health/cache/       Redis cache probe
     GET /api/v1/health/celery/      Celery worker probe
+    GET /api/v1/health/eventbus/    EventBus (Redis Streams) probe
     GET /api/v1/health/system/      Aggregate probe (all checks)
 
 All endpoints are unauthenticated and not rate-throttled so that
@@ -26,5 +27,6 @@ urlpatterns = [
     path("db/", views.health_db, name="database"),
     path("cache/", views.health_cache, name="cache"),
     path("celery/", views.health_celery, name="celery"),
+    path("eventbus/", views.health_eventbus, name="eventbus"),
     path("system/", views.health_system, name="system"),
 ]

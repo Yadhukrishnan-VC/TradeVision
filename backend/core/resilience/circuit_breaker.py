@@ -19,6 +19,7 @@ State machine::
 Redis keys:
     circuit:{name}:open      — Exists with TTL when OPEN; expiry = HALF_OPEN
     circuit:{name}:failures  — Integer failure count; no TTL
+    circuit:{name}:probe     — Short-lived NX lock held by the probe consumer in HALF_OPEN
 """
 
 import logging
@@ -87,12 +88,14 @@ class CircuitBreaker:
         *,
         failure_threshold: int = 5,
         recovery_timeout: int = 60,
+        probe_lock_ttl: int = 30,
     ) -> None:
         """Initialise with injected Redis client and circuit configuration."""
         self._name = name
         self._redis = redis_client
         self._failure_threshold = failure_threshold
         self._recovery_timeout = recovery_timeout
+        self._probe_lock_ttl = probe_lock_ttl
 
     # ------------------------------------------------------------------
     # Redis key helpers
@@ -105,6 +108,10 @@ class CircuitBreaker:
     @property
     def _failures_key(self) -> str:
         return f"circuit:{self._name}:failures"
+
+    @property
+    def _probe_key(self) -> str:
+        return f"circuit:{self._name}:probe"
 
     # ------------------------------------------------------------------
     # State inspection
@@ -176,6 +183,18 @@ class CircuitBreaker:
             )
             raise CircuitBreakerOpenError(self._name)
 
+        if current_state == CircuitState.HALF_OPEN:
+            if not self._acquire_probe_lock():
+                logger.warning(
+                    "circuit_breaker_probe_rejected",
+                    extra={"breaker_name": self._name},
+                )
+                raise CircuitBreakerOpenError(self._name)
+            logger.info(
+                "circuit_breaker_probe_acquired",
+                extra={"breaker_name": self._name},
+            )
+
         try:
             result: T = func(*args, **kwargs)
             self._record_success()
@@ -194,6 +213,7 @@ class CircuitBreaker:
             pipe = self._redis.pipeline()
             pipe.delete(self._open_key)
             pipe.delete(self._failures_key)
+            pipe.delete(self._probe_key)
             pipe.execute()
         except redis_lib.RedisError:
             logger.warning(
@@ -214,10 +234,32 @@ class CircuitBreaker:
                 extra={"breaker_name": self._name},
             )
 
+    def _acquire_probe_lock(self) -> bool:
+        """
+        Attempt to acquire the HALF_OPEN probe lock.
+
+        Returns:
+            ``True`` if this caller is the designated probe (lock acquired),
+            ``False`` if another caller already holds the probe lock.
+        """
+        try:
+            return bool(
+                self._redis.set(self._probe_key, "1", nx=True, ex=self._probe_lock_ttl)
+            )
+        except redis_lib.RedisError:
+            logger.warning(
+                "circuit_breaker_probe_lock_failed",
+                extra={"breaker_name": self._name},
+            )
+            return True  # Fail open — let the call proceed if Redis is down
+
     def _open_circuit(self) -> None:
         """Transition to OPEN and set the recovery TTL."""
         try:
-            self._redis.set(self._open_key, "1", ex=self._recovery_timeout)
+            pipe = self._redis.pipeline()
+            pipe.set(self._open_key, "1", ex=self._recovery_timeout)
+            pipe.delete(self._probe_key)
+            pipe.execute()
         except redis_lib.RedisError:
             return
 
@@ -261,6 +303,7 @@ class CircuitBreaker:
             pipe = self._redis.pipeline()
             pipe.delete(self._open_key)
             pipe.delete(self._failures_key)
+            pipe.delete(self._probe_key)
             pipe.execute()
         except redis_lib.RedisError:
             pass

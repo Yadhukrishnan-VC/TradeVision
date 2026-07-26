@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from django.urls import reverse_lazy
+from decouple import config
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -13,7 +13,15 @@ DEBUG = False
 
 ALLOWED_HOSTS: list[str] = []
 
-INSTALLED_APPS = [
+# Custom user model — email-only auth, UUID pk, role-based RBAC.
+# This replaces Django's default auth.User and activates the model defined
+# in apps/accounts/models.py. Must be set before the first makemigrations run.
+AUTH_USER_MODEL: str = "accounts.User"
+
+# ---------------------------------------------------------------------------
+# Installed applications
+# ---------------------------------------------------------------------------
+DJANGO_APPS: list[str] = [
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -30,7 +38,26 @@ INSTALLED_APPS = [
     "apps.accounts",
 ]
 
-MIDDLEWARE = [
+# Populated progressively as app modules are scaffolded in Batches 4-8.
+# Each batch patches this list via str_replace without regenerating this file.
+# Remediation R1.a — every implemented app under apps/ with real models or views.
+# Order matters: common first (provides BaseModel used by other apps),
+# accounts second (provides AUTH_USER_MODEL), health last (no models).
+LOCAL_APPS: list[str] = [
+    "apps.common",
+    "apps.accounts",
+    "apps.health",
+]
+
+THIRD_PARTY_APPS = []
+
+INSTALLED_APPS: list[str] = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
+
+# ---------------------------------------------------------------------------
+# Middleware
+# ---------------------------------------------------------------------------
+MIDDLEWARE: list[str] = [
+    "django_prometheus.middleware.PrometheusBeforeMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -101,8 +128,6 @@ STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-
-AUTH_USER_MODEL = "accounts.User"
 
 REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": ("rest_framework.renderers.JSONRenderer",),
@@ -192,3 +217,71 @@ LOGGING = {
 FIELD_ENCRYPTION_KEY = os.environ.get("FIELD_ENCRYPTION_KEY", "")
 
 EVENT_BUS_IMPLEMENTATION = os.environ.get("EVENT_BUS_IMPLEMENTATION", "redis")
+# ---------------------------------------------------------------------------
+# Market calendar
+# ---------------------------------------------------------------------------
+MARKET_TIMEZONE: str = config("MARKET_TIMEZONE", default="Asia/Kolkata")
+MARKET_EXCHANGE: str = config("MARKET_EXCHANGE", default="NSE")
+
+# ---------------------------------------------------------------------------
+# Data quality thresholds (seconds)
+# ---------------------------------------------------------------------------
+TICK_FRESHNESS_THRESHOLD_SECONDS: int = config(
+    "TICK_FRESHNESS_THRESHOLD_SECONDS", default=120, cast=int
+)
+INDICATOR_FRESHNESS_THRESHOLD_SECONDS: int = config(
+    "INDICATOR_FRESHNESS_THRESHOLD_SECONDS", default=300, cast=int
+)
+INTELLIGENCE_MIN_QUALITY_SCORE: float = config(
+    "INTELLIGENCE_MIN_QUALITY_SCORE", default=0.60, cast=float
+)
+
+# ---------------------------------------------------------------------------
+# AI governance
+# ---------------------------------------------------------------------------
+AI_PROVIDER: str = config("AI_PROVIDER", default="gemini")
+AI_CONFIDENCE_FLOOR: float = config("AI_CONFIDENCE_FLOOR", default=0.55, cast=float)
+AI_DAILY_BUDGET_USD: float = config("AI_DAILY_BUDGET_USD", default=10.00, cast=float)
+AI_DEDUP_WINDOW_SECONDS: int = config("AI_DEDUP_WINDOW_SECONDS", default=300, cast=int)
+AI_MAX_TOKENS: int = config("AI_MAX_TOKENS", default=4096, cast=int)
+
+GEMINI_API_KEY: str = config("GEMINI_API_KEY", default="")
+GEMINI_MODEL: str = config("GEMINI_MODEL", default="gemini-1.5-pro")
+
+OPENAI_API_KEY: str = config("OPENAI_API_KEY", default="")
+OPENAI_MODEL: str = config("OPENAI_MODEL", default="gpt-4o")
+
+ANTHROPIC_API_KEY: str = config("ANTHROPIC_API_KEY", default="")
+ANTHROPIC_MODEL: str = config("ANTHROPIC_MODEL", default="claude-3-5-sonnet-20241022")
+
+OLLAMA_BASE_URL: str = config("OLLAMA_BASE_URL", default="http://localhost:11434")
+OLLAMA_MODEL: str = config("OLLAMA_MODEL", default="llama3.2")
+
+# ---------------------------------------------------------------------------
+# Circuit breaker defaults
+# ---------------------------------------------------------------------------
+CIRCUIT_BREAKER_FAILURE_THRESHOLD: int = config(
+    "CIRCUIT_BREAKER_FAILURE_THRESHOLD", default=5, cast=int
+)
+CIRCUIT_BREAKER_RECOVERY_TIMEOUT: int = config(
+    "CIRCUIT_BREAKER_RECOVERY_TIMEOUT", default=60, cast=int
+)
+
+# ---------------------------------------------------------------------------
+# Redis direct URL — for use outside the Django cache framework
+# ---------------------------------------------------------------------------
+REDIS_URL: str = config("REDIS_URL", default="redis://redis:6379/0")
+REDIS_MAX_CONNECTIONS: int = config("REDIS_MAX_CONNECTIONS", default=50, cast=int)
+
+# ---------------------------------------------------------------------------
+# EventBus — Redis Streams (AnalysisEvent transport)
+# ---------------------------------------------------------------------------
+EVENT_STREAM_MAXLEN: int = config("EVENT_STREAM_MAXLEN", default=10000, cast=int)
+EVENT_STREAM_CONSUMER_GROUP_PREFIX: str = config(
+    "EVENT_STREAM_CONSUMER_GROUP_PREFIX", default="tradevision"
+)
+
+# ---------------------------------------------------------------------------
+# Market data provider
+# ---------------------------------------------------------------------------
+MARKET_DATA_PROVIDER: str = config("MARKET_DATA_PROVIDER", default="mock")

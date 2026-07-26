@@ -155,3 +155,31 @@ CIRCUIT_BREAKER_TRIPS_TOTAL = Counter(
     "Total number of times a circuit breaker has opened",
     ["service"],
 )
+
+# ---------------------------------------------------------------------------
+# EventBus — Redis Streams
+# ---------------------------------------------------------------------------
+
+EVENT_STREAM_LENGTH = Gauge(
+    "tradevision_event_stream_length",
+    "Current number of entries in each EventBus stream",
+    ["stream"],
+)
+
+EVENT_STREAM_PENDING_TOTAL = Gauge(
+    "tradevision_event_stream_pending_total",
+    "Number of pending (unacknowledged) messages in each consumer group",
+    ["stream", "group"],
+)
+
+EVENT_PUBLISHED_TOTAL = Counter(
+    "tradevision_event_published_total",
+    "Total number of events published through the EventBus",
+    ["stream", "event_type"],
+)
+
+EVENT_CONSUMED_TOTAL = Counter(
+    "tradevision_event_consumed_total",
+    "Total number of events consumed and acknowledged through the EventBus",
+    ["stream", "group"],
+)
