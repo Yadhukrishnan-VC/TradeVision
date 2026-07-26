@@ -150,6 +150,51 @@ class TradeVisionConfig:
         return int(getattr(settings, "AI_DEDUP_WINDOW_SECONDS", 300))
 
     @property
+    def ai_provider_priority(self) -> list[str]:
+        """Ordered default provider priority, most-preferred first.
+
+        Read from a comma-separated env var ``AI_PROVIDER_PRIORITY``.
+        """
+        from django.conf import settings
+
+        raw = getattr(
+            settings, "AI_PROVIDER_PRIORITY", "claude,gemini,openai,deepseek,ollama"
+        )
+        return [p.strip() for p in raw.split(",")]
+
+    @property
+    def ai_provider_disabled(self) -> set[str]:
+        """Providers manually disabled regardless of circuit state (ops kill-switch).
+
+        Comma-separated env var ``AI_PROVIDER_DISABLED``, default empty.
+        """
+        from django.conf import settings
+
+        raw = getattr(settings, "AI_PROVIDER_DISABLED", "")
+        return {p.strip() for p in raw.split(",") if p.strip()}
+
+    @property
+    def ai_routing_fast_tier_threshold_ms(self) -> int:
+        """Latency budget in ms below which only ``FAST`` tier providers are eligible."""
+        from django.conf import settings
+
+        return int(getattr(settings, "AI_ROUTING_FAST_TIER_THRESHOLD_MS", 1500))
+
+    @property
+    def ai_cost_tier_ceilings(self) -> dict[str, str]:
+        """Static mapping from ``CostTier`` value to per-call USD ceiling (as string).
+
+        Used by ``ModelRouter`` to exclude high-cost providers when
+        ``RoutingRequest.cost_budget_usd`` is set.
+        """
+        return {
+            "FREE": "0.000",
+            "LOW": "0.005",
+            "MEDIUM": "0.015",
+            "HIGH": "0.050",
+        }
+
+    @property
     def ai_health_degraded_threshold_ms(self) -> float:
         """
         Latency threshold in milliseconds above which a provider's health

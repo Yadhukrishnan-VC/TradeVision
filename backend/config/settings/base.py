@@ -252,6 +252,13 @@ AI_CONFIDENCE_FLOOR: float = config("AI_CONFIDENCE_FLOOR", default=0.55, cast=fl
 AI_DAILY_BUDGET_USD: float = config("AI_DAILY_BUDGET_USD", default=10.00, cast=float)
 AI_DEDUP_WINDOW_SECONDS: int = config("AI_DEDUP_WINDOW_SECONDS", default=300, cast=int)
 AI_MAX_TOKENS: int = config("AI_MAX_TOKENS", default=4096, cast=int)
+AI_PROVIDER_PRIORITY: str = config(
+    "AI_PROVIDER_PRIORITY", default="claude,gemini,openai,deepseek,ollama"
+)
+AI_PROVIDER_DISABLED: str = config("AI_PROVIDER_DISABLED", default="")
+AI_ROUTING_FAST_TIER_THRESHOLD_MS: int = config(
+    "AI_ROUTING_FAST_TIER_THRESHOLD_MS", default=1500, cast=int
+)
 
 GEMINI_API_KEY: str = config("GEMINI_API_KEY", default="")
 GEMINI_MODEL: str = config("GEMINI_MODEL", default="gemini-1.5-pro")

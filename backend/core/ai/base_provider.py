@@ -18,7 +18,7 @@ from decimal import Decimal
 from typing import Any, ClassVar
 
 from core.ai.exceptions import AIProviderError
-from core.constants import RecommendationDirection, RecommendationTimeHorizon, RiskLevel
+from core.constants import CostTier, LatencyTier, RecommendationDirection, RecommendationTimeHorizon, RiskLevel
 
 logger = logging.getLogger(__name__)
 
@@ -170,6 +170,29 @@ class AIRecommendation:
 
 
 # ---------------------------------------------------------------------------
+# Provider capabilities
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class ProviderCapabilities:
+    """Static capability profile of an AI provider/model.
+
+    Defaults are conservative (JSON-only, no streaming/vision/function-calling).
+    Real values are maintained in ``model_router.PROVIDER_CAPABILITIES``.
+    """
+
+    supports_structured_json: bool = True
+    supports_streaming: bool = False
+    supports_vision: bool = False
+    supports_function_calling: bool = False
+    context_window_tokens: int = 8192
+    max_output_tokens: int = 4096
+    latency_tier: LatencyTier = LatencyTier.STANDARD
+    cost_tier: CostTier = CostTier.MEDIUM
+
+
+# ---------------------------------------------------------------------------
 # Abstract provider interface
 # ---------------------------------------------------------------------------
 
@@ -255,6 +278,19 @@ class BaseAIProvider(ABC):
         Implementations should close HTTP sessions, nullify client references,
         and perform any other cleanup required by the underlying SDK.
         """
+
+    def capabilities(self) -> ProviderCapabilities:
+        """
+        Return this provider's static capability profile.
+
+        Concrete providers may override to report their actual capabilities.
+        The default is conservative — subclasses that do not override are
+        assumed to support only JSON output with an 8K context window.
+
+        Returns:
+            ``ProviderCapabilities`` with conservative defaults.
+        """
+        return ProviderCapabilities()
 
     def __repr__(self) -> str:
         """Return an unambiguous developer representation."""

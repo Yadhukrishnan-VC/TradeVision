@@ -34,6 +34,7 @@ __all__ = [
     "AIRateLimitError",
     "AIResponseValidationError",
     "AIBudgetExhaustedError",
+    "NoAvailableProviderError",
 ]
 
 
@@ -61,6 +62,14 @@ class AITimeoutError(AIProviderError):
 
     Distinct from ``AIConnectionError`` — the connection was established but
     the provider did not return a response in the allowed window.
+    """
+
+
+class NoAvailableProviderError(AIProviderError):
+    """
+    Raised by ``ModelRouter.route()`` when every candidate provider is
+    excluded after applying all routing policy filters (capability,
+    circuit state, cost, latency, manual disable).
     """
 
 
