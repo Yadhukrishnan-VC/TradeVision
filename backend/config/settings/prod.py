@@ -1,0 +1,25 @@
+from __future__ import annotations
+
+import os
+
+from .base import *
+
+DEBUG = False
+
+ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "").split(",")
+
+SECRET_KEY = os.environ["DJANGO_SECRET_KEY"]
+
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+SECURE_SSL_REDIRECT = True
+SECURE_HSTS_SECONDS = 31536000
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+LOGGING["root"]["level"] = "WARNING"
+
+EVENT_BUS_IMPLEMENTATION = "redis"
+
+CELERY_TASK_ALWAYS_EAGER = False

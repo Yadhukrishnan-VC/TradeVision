@@ -1,62 +1,38 @@
-"""
-TradeVision AI — Celery application and queue configuration.
-
-Named queues map to dedicated worker pools, allowing independent scaling
-and prioritisation per workload type. See docker-compose.yml for the
-worker pool assignments.
-"""
+from __future__ import annotations
 
 import os
 
 from celery import Celery
-from kombu import Exchange, Queue
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.development")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.dev")
 
-# ---------------------------------------------------------------------------
-# Application
-# ---------------------------------------------------------------------------
 app = Celery("tradevision")
 
-# Read configuration from Django settings (CELERY_* namespace)
 app.config_from_object("django.conf:settings", namespace="CELERY")
 
-# Auto-discover tasks in all INSTALLED_APPS
 app.autodiscover_tasks()
 
-# ---------------------------------------------------------------------------
-# Named queues — one per logical workload domain
-# Each queue has a dedicated direct exchange to prevent cross-queue routing.
-# ---------------------------------------------------------------------------
-_QUEUE_NAMES: tuple[str, ...] = (
-    "market_data",    # tick ingestion, OHLCV polling
-    "processing",     # indicator computation, NLP, options analysis
-    "intelligence",   # IntelligencePacket assembly
-    "rule_engine",    # deterministic rule evaluation
-    "ai",             # AI provider calls (rate-limited worker pool)
-    "notifications",  # WebSocket push, email, push delivery
-    "analytics",      # backtesting, calibration, EOD aggregation
-    "default",        # miscellaneous background work
-)
+QUEUE_ROUTES: dict[str, str] = {
+    "apps.webhooks": "webhooks",
+    "apps.signals_engine": "signals",
+    "apps.analysis": "analysis",
+    "apps.ai_reasoning": "ai_reasoning",
+    "apps.decisions": "decisions",
+    "apps.execution_engine": "execution",
+    "apps.monitoring": "monitoring",
+    "apps.portfolio": "portfolio",
+    "apps.analytics": "analytics",
+    "apps.notifications": "notifications",
+    "apps.eventbus": "maintenance",
+    "apps.accounts": "maintenance",
+}
 
-app.conf.task_queues = [
-    Queue(
-        name=queue_name,
-        exchange=Exchange(queue_name, type="direct"),
-        routing_key=queue_name,
-        durable=True,
-    )
-    for queue_name in _QUEUE_NAMES
-]
 
-app.conf.task_default_queue = "default"
-app.conf.task_default_exchange = "default"
-app.conf.task_default_routing_key = "default"
+def route_task(name: str, args: list, kwargs: dict) -> dict[str, str] | None:
+    for prefix, queue in QUEUE_ROUTES.items():
+        if name.startswith(prefix):
+            return {"queue": queue}
+    return None
 
-# ---------------------------------------------------------------------------
-# Debug task — verifies Celery workers are alive during development
-# ---------------------------------------------------------------------------
-@app.task(bind=True, name="tradevision.debug_task")
-def debug_task(self) -> str:  # type: ignore[misc]
-    """Return worker identity — used in health checks and smoke tests."""
-    return f"Request: {self.request!r}"
+
+app.conf.task_create_missing_queues = True
