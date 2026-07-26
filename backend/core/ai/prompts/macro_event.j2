@@ -1,0 +1,19 @@
+VERSION: 1.0
+{% include "base.j2" %}
+EVENT SPECIFIC CONTEXT:
+Event: Macro Event
+Event Type: {{ event.macro_type }}
+Impact Scope: {{ event.impact_scope }}
+India VIX: {{ event.india_vix }}
+Global Cues:
+- Dow Futures: {{ event.dow_futures_pct }}%
+- SGX Nifty: {{ event.sgx_nifty_pct }}%
+- Crude Oil: {{ event.crude_oil_pct }}%
+- USD/INR: {{ event.usd_inr_change_pct }}%
+
+EMPHASIS:
+- Macro events affect the entire market, not individual symbols
+- Focus on risk management (EXIT/REDUCE may be appropriate)
+- Assess portfolio-level impact, not just single-symbol analysis
+- High VIX (>25) warrants defensive positioning
+- Consider time horizon: macro events may create buying opportunities at extremes

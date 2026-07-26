@@ -108,6 +108,18 @@ class TestAIProviderFactorySelection:
             provider = AIProviderFactory.get_provider()
             assert isinstance(provider, OllamaProvider)
 
+    def test_deepseek_provider_selected(self) -> None:
+        with patch("core.config.config") as mock_cfg:
+            mock_cfg.ai_provider = "deepseek"
+            mock_cfg.deepseek_api_key = "test-deepseek-key"
+            mock_cfg.deepseek_base_url = "https://api.deepseek.com"
+            mock_cfg.deepseek_model = "deepseek-chat"
+            with patch("core.ai.providers.deepseek_provider.httpx.Client") as mock_client:
+                mock_client.return_value = MagicMock()
+                from core.ai.providers.deepseek_provider import DeepSeekProvider
+                provider = AIProviderFactory.get_provider()
+                assert isinstance(provider, DeepSeekProvider)
+
     def test_unknown_provider_raises_ai_provider_error(self) -> None:
         with patch("core.config.config") as mock_cfg:
             mock_cfg.ai_provider = "nonexistent_provider_xyz"
@@ -137,3 +149,36 @@ class TestAIProviderFactorySelection:
     ) -> None:
         provider = AIProviderFactory.get_provider()
         assert provider.provider_name == "gemini"
+
+    def test_factory_creates_deepseek_provider_when_configured(self) -> None:
+        with patch("core.config.config") as mock_cfg:
+            mock_cfg.ai_provider = "deepseek"
+            mock_cfg.deepseek_api_key = "valid-key"
+            mock_cfg.deepseek_base_url = "https://api.deepseek.com"
+            mock_cfg.deepseek_model = "deepseek-chat"
+            with patch("core.ai.providers.deepseek_provider.httpx.Client") as mock_client:
+                mock_client.return_value = MagicMock()
+                provider = AIProviderFactory.get_provider()
+                assert provider.provider_name == "deepseek"
+
+    def test_factory_raises_authentication_error_when_deepseek_key_missing(self) -> None:
+        with patch("core.config.config") as mock_cfg:
+            mock_cfg.ai_provider = "deepseek"
+            mock_cfg.deepseek_api_key = ""
+            mock_cfg.deepseek_base_url = "https://api.deepseek.com"
+            mock_cfg.deepseek_model = "deepseek-chat"
+            with pytest.raises(AIAuthenticationError, match="DEEPSEEK_API_KEY"):
+                AIProviderFactory.get_provider()
+
+    def test_factory_reset_closes_deepseek_provider(self) -> None:
+        with patch("core.config.config") as mock_cfg:
+            mock_cfg.ai_provider = "deepseek"
+            mock_cfg.deepseek_api_key = "valid-key"
+            mock_cfg.deepseek_base_url = "https://api.deepseek.com"
+            mock_cfg.deepseek_model = "deepseek-chat"
+            with patch("core.ai.providers.deepseek_provider.httpx.Client") as mock_client:
+                mock_client_instance = MagicMock()
+                mock_client.return_value = mock_client_instance
+                provider = AIProviderFactory.get_provider()
+                AIProviderFactory.reset()
+                mock_client_instance.close.assert_called_once()

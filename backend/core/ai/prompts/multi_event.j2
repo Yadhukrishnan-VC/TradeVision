@@ -1,0 +1,22 @@
+VERSION: 1.0
+{% include "base.j2" %}
+EVENT SPECIFIC CONTEXT:
+Event: Multi-Event — multiple signals detected simultaneously
+Active Events:
+{% for sub_event in event.sub_events %}
+- {{ sub_event.type }}: {{ sub_event.details }}
+{% endfor %}
+
+EVENT PRIORITY ORDER:
+1. Corporate Announcements (if CRITICAL materiality)
+2. Earnings (if within 24 hours of release)
+3. Circuit Breaker events
+4. Institutional Activity
+5. Price Movement / Volume Spike
+6. Macro Events (market-wide context)
+
+EMPHASIS:
+- Multiple concurrent events require careful signal weighting
+- Higher-priority events should dominate the recommendation
+- Assess interaction effects (e.g., earnings + institutional activity)
+- Portfolio risk may need elevated attention with multiple signals

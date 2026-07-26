@@ -1171,6 +1171,8 @@ Production (live data, full security posture, same image)
 | ADR-011 | API versioning from Phase 1 | Retrofitting `/api/v1/` after clients exist breaks compatibility |
 | ADR-012 | Abstract market data provider | Same interface pattern as AI providers — swapping data vendors should be a config change |
 | ADR-013 | Event bus transport: Redis Streams (not Pub/Sub) | At-least-once delivery for AnalysisEvent; Pub/Sub retained for notifications fan-out (see ADR-013 doc for full trade-off table) |
+| ADR-014 | Intelligence Domain Architecture | Introduces IntelligencePacket (V2) as the single data payload for AI reasoning; decomposes the monolithic engine into six agents coordinated by the AI Brain |
+| ADR-015 | DeepSeek AI Provider | Adds DeepSeek as a first-class AI provider via OpenAI-compatible chat API; Phase 0 covers auth/health, Phase 4 adds inference |
 
 ---
 

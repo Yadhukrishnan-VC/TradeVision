@@ -1,0 +1,17 @@
+VERSION: 1.0
+{% include "base.j2" %}
+EVENT SPECIFIC CONTEXT:
+Event: Earnings
+Company: {{ event.symbol }}
+Quarter: {{ event.quarter }}
+Revenue vs Estimate: {{ event.revenue_vs_estimate }}%
+Profit vs Estimate: {{ event.profit_vs_estimate }}%
+Margins: {{ event.margins }}
+Forward Guidance: {{ event.guidance }}
+
+EMPHASIS:
+- Earnings results are the primary signal; technicals are secondary
+- Compare actuals vs market expectations
+- Check sector peers' earnings performance for read-through
+- Assess management commentary and forward guidance
+- Portfolio relevance: if held, evaluate whether to hold/add/reduce/exit

@@ -161,6 +161,7 @@ class AIProviderName(str, Enum):
     OPENAI = "openai"
     CLAUDE = "claude"
     OLLAMA = "ollama"
+    DEEPSEEK = "deepseek"
 
 
 # ---------------------------------------------------------------------------

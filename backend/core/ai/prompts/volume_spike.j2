@@ -1,0 +1,14 @@
+VERSION: 1.0
+{% include "base.j2" %}
+EVENT SPECIFIC CONTEXT:
+Event: Volume Spike
+Current Volume: {{ event.volume }}
+20-day Avg Volume: {{ event.avg_volume_20d }}
+Volume Ratio: {{ event.volume_ratio }}x
+Price Change on Spike: {{ event.change_pct }}%
+
+EMPHASIS:
+- Volume spike is the primary signal; evaluate price action context
+- Check news for catalyst (relevant headlines above)
+- Institutional activity may explain unusual volume
+- Determine if spike is accumulation or distribution

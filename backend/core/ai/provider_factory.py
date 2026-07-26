@@ -106,6 +106,7 @@ class AIProviderFactory:
             AIAuthenticationError: If provider credentials are missing or invalid.
         """
         from core.ai.providers.claude_provider import ClaudeProvider
+        from core.ai.providers.deepseek_provider import DeepSeekProvider
         from core.ai.providers.gemini_provider import GeminiProvider
         from core.ai.providers.ollama_provider import OllamaProvider
         from core.ai.providers.openai_provider import OpenAIProvider
@@ -118,6 +119,7 @@ class AIProviderFactory:
             "openai": OpenAIProvider,
             "claude": ClaudeProvider,
             "ollama": OllamaProvider,
+            "deepseek": DeepSeekProvider,
         }
 
         if provider_name not in provider_map:
@@ -141,6 +143,17 @@ class AIProviderFactory:
             instance: BaseAIProvider = GeminiProvider(
                 api_key=config.gemini_api_key,
                 model_name=config.gemini_model,
+            )
+        elif provider_name == "deepseek":
+            if not config.deepseek_api_key:
+                raise AIAuthenticationError(
+                    "DEEPSEEK_API_KEY is not set. "
+                    "Configure it in your .env file before starting the application."
+                )
+            instance = DeepSeekProvider(
+                api_key=config.deepseek_api_key,
+                base_url=config.deepseek_base_url,
+                model_name=config.deepseek_model,
             )
         elif provider_name == "openai":
             instance = OpenAIProvider()

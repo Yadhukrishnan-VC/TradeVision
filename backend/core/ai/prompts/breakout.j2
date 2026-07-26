@@ -1,0 +1,15 @@
+VERSION: 1.0
+{% include "base.j2" %}
+EVENT SPECIFIC CONTEXT:
+Event: Breakout
+Breakout Level: {{ event.breakout_level }}
+Current Price: {{ event.current_price }}
+Volume Ratio: {{ event.volume_ratio }}x
+Resistance Levels: {{ event.resistance_levels }}
+Previous Attempts: {{ event.previous_attempts }}
+
+EMPHASIS:
+- Confirm breakout is volume-supported (>1.5x average)
+- Check RSI for overbought risk (above 75 = caution)
+- Assess if multi-timeframe trends align with breakout direction
+- Previous resistance-turned-support is key for stop placement

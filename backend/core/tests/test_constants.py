@@ -195,8 +195,8 @@ class TestAIProviderName:
         """Gemini is the Phase 0 active provider."""
         assert AIProviderName.GEMINI.value == "gemini"
 
-    def test_all_four_providers_exist(self) -> None:
-        expected = {"gemini", "openai", "claude", "ollama"}
+    def test_all_five_providers_exist(self) -> None:
+        expected = {"gemini", "openai", "claude", "ollama", "deepseek"}
         actual = {m.value for m in AIProviderName}
         assert actual == expected, f"Provider mismatch: {actual} != {expected}"
 
