@@ -29,4 +29,10 @@ urlpatterns = [
     # Versioned API — app-level url confs are included here as each phase
     # introduces its endpoints. Example:
     #   path("api/v1/market-data/", include("apps.market_data.urls")),
+
+    # Dashboard API — Batch D1: Trading Core Dashboard
+    path("api/v1/dashboard/", include("apps.dashboard.interfaces.api.trading_core.urls")),
+
+    # Dashboard API — Batch D2: Analytics & Risk
+    path("api/v1/dashboard/", include("apps.dashboard.interfaces.api.analytics_risk.urls")),
 ]

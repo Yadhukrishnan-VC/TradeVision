@@ -32,10 +32,6 @@ DJANGO_APPS: list[str] = [
     "rest_framework",
     "django_celery_beat",
     "django_celery_results",
-    # Project apps
-    "apps.common",
-    "apps.eventbus",
-    "apps.accounts",
 ]
 
 # Populated progressively as app modules are scaffolded in Batches 4-8.
@@ -45,8 +41,11 @@ DJANGO_APPS: list[str] = [
 # accounts second (provides AUTH_USER_MODEL), health last (no models).
 LOCAL_APPS: list[str] = [
     "apps.common",
+    "apps.eventbus",
     "apps.accounts",
     "apps.health",
+    "channels",
+    "apps.dashboard",
 ]
 
 THIRD_PARTY_APPS = []
@@ -111,6 +110,15 @@ CACHES = {
         "BACKEND": "django.core.cache.backends.redis.RedisCache",
         "LOCATION": os.environ.get("REDIS_CACHE_URL", "redis://localhost:6379/3"),
     }
+}
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [os.environ.get("REDIS_CHANNELS_URL", "redis://localhost:6379/2")],
+        },
+    },
 }
 
 AUTH_PASSWORD_VALIDATORS = [
