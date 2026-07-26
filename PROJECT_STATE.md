@@ -540,7 +540,7 @@ Higher layers never import from lower layers. Services never import from views. 
 | Relational | PostgreSQL 16 | Users, portfolios, watchlists, rules, recommendations, audit logs |
 | Time-series | TimescaleDB (PG extension) | OHLCV bars, tick data, computed indicators, IntelligencePacket snapshots |
 | Cache | Redis 7 | Hot data, session state, rate limit counters, circuit breaker state |
-| Queue | Redis 7 | Celery broker, Channels layer, pub/sub |
+| Queue | Redis 7 | Celery broker, Channels layer, event bus (Streams), Pub/Sub (notifications) |
 
 ### 9.4 Critical Backend Additions (from Architecture Review)
 
@@ -774,7 +774,7 @@ tradevision/
 │   │   │   └── circuit_breaker.py
 │   │   ├── events/
 │   │   │   ├── event_types.py        # AnalysisEvent, IntelligencePacket dataclasses
-│   │   │   └── event_bus.py          # Redis pub/sub wrapper
+│   │   │   └── event_bus.py          # Redis Streams wrapper (AnalysisEvent transport, ADR-013)
 │   │   ├── rules/
 │   │   │   ├── base_rule.py
 │   │   │   └── rule_registry.py
@@ -1139,6 +1139,7 @@ Production (live data, full security posture, same image)
 |---|---|---|
 | **0 — Foundation** | Project skeleton, Docker, settings, base models, Celery, Channels, AI interface stub, market calendar, circuit breaker skeleton, logging | Running Docker stack, all apps registered, CI passing |
 | **1 — Market Data** | Ingestion, TimescaleDB, OHLCV storage, data provider interface, REST API | Tick data flowing for NIFTY 50 symbols |
+| | *Batch 1.2b — Zerodha Live Adapter:* Encrypted storage for user-supplied broker credentials (Fernet-based field, key sourced from environment, never hardcoded) | Broker credentials persisted securely |
 | **2 — Technical Analysis** | Indicator computation triggered by ingestion, TimescaleDB indicator tables, API | Indicators computed and queryable |
 | **3 — Intelligence Engine** | IntelligencePacket assembly, data quality scoring, freshness validation | IntelligencePacket built per symbol after each tick |
 | **4 — Rule Engine** | First 10 rules, freshness guard, rule registry, RuleExecution log | Rules firing AnalysisEvents on test data |
@@ -1169,6 +1170,7 @@ Production (live data, full security posture, same image)
 | ADR-010 | Soft delete for financial records | Auditability requires "what did this user have configured when this recommendation was made" |
 | ADR-011 | API versioning from Phase 1 | Retrofitting `/api/v1/` after clients exist breaks compatibility |
 | ADR-012 | Abstract market data provider | Same interface pattern as AI providers — swapping data vendors should be a config change |
+| ADR-013 | Event bus transport: Redis Streams (not Pub/Sub) | At-least-once delivery for AnalysisEvent; Pub/Sub retained for notifications fan-out (see ADR-013 doc for full trade-off table) |
 
 ---
 

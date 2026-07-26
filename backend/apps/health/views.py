@@ -212,6 +212,75 @@ def health_celery(request: HttpRequest) -> JsonResponse:
         return JsonResponse(response.to_dict(), status=503)
 
 
+def health_eventbus(request: HttpRequest) -> JsonResponse:
+    """
+    EventBus (Redis Streams) readiness probe.
+
+    Verifies Redis connectivity and that a basic publish/consume cycle
+    works through the EventBus. Uses a temporary stream and consumer
+    group, cleaned up after the check.
+    """
+    start = time.monotonic()
+    try:
+        from core.events.event_bus import EventBus
+        from core.events.event_types import EventType
+        from core.redis_client import get_redis_client
+
+        redis_client = get_redis_client()
+        redis_client.ping()
+
+        bus = EventBus(redis_client)
+
+        probe_stream = f"health:probe:{int(start)}"
+        probe_group = "health-check"
+
+        redis_client.xgroup_create(probe_stream, probe_group, mkstream=True)
+        entry_id = redis_client.xadd(
+            probe_stream, {"payload": '{"probe": true}'}, maxlen=10
+        )
+
+        results = redis_client.xreadgroup(
+            probe_group, "health-checker", {probe_stream: ">"},
+            count=1, block=500,
+        )
+        redis_client.xack(probe_stream, probe_group, entry_id)
+        redis_client.delete(probe_stream)
+
+        latency_ms = (time.monotonic() - start) * 1000
+
+        if not results:
+            raise ValueError("EventBus probe: no messages received from stream")
+
+        eventbus_status = ServiceHealthStatus(
+            status="healthy",
+            latency_ms=latency_ms,
+            detail={
+                "stream_length": redis_client.xlen(probe_stream) or 0,
+            },
+        )
+        response = HealthResponse(
+            status="healthy",
+            checks={"eventbus": eventbus_status},
+            version=_APP_VERSION,
+            uptime_seconds=_uptime_seconds(),
+        )
+        logger.debug("health_eventbus_ok", extra={"latency_ms": round(latency_ms, 2)})
+        return JsonResponse(response.to_dict(), status=200)
+
+    except Exception as exc:
+        logger.error("health_eventbus_fail", exc_info=exc)
+        eventbus_status = ServiceHealthStatus(
+            status="unhealthy",
+            message=str(exc),
+        )
+        response = HealthResponse(
+            status="unhealthy",
+            checks={"eventbus": eventbus_status},
+            version=_APP_VERSION,
+        )
+        return JsonResponse(response.to_dict(), status=503)
+
+
 def health_system(request: HttpRequest) -> JsonResponse:
     """
     Aggregate system health probe.
@@ -264,6 +333,25 @@ def health_system(request: HttpRequest) -> JsonResponse:
         )
         overall = "unhealthy"
         logger.error("health_system_cache_fail", exc_info=exc)
+
+    # --- EventBus (Redis Streams) ---
+    start = time.monotonic()
+    try:
+        from core.redis_client import get_redis_client
+
+        redis_client = get_redis_client()
+        redis_client.ping()
+        checks["eventbus"] = ServiceHealthStatus(
+            status="healthy",
+            latency_ms=(time.monotonic() - start) * 1000,
+        )
+    except Exception as exc:
+        checks["eventbus"] = ServiceHealthStatus(
+            status="unhealthy",
+            message=str(exc),
+        )
+        overall = "unhealthy"
+        logger.error("health_system_eventbus_fail", exc_info=exc)
 
     # --- Celery (non-critical) ---
     start = time.monotonic()

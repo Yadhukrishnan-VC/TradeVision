@@ -36,6 +36,11 @@ ASGI_APPLICATION: str = "config.asgi.application"
 # UUIDField primary key. BigAutoField is the fallback only for third-party apps.
 DEFAULT_AUTO_FIELD: str = "django.db.models.BigAutoField"
 
+# Custom user model — email-only auth, UUID pk, role-based RBAC.
+# This replaces Django's default auth.User and activates the model defined
+# in apps/accounts/models.py. Must be set before the first makemigrations run.
+AUTH_USER_MODEL: str = "accounts.User"
+
 # ---------------------------------------------------------------------------
 # Installed applications
 # ---------------------------------------------------------------------------
@@ -62,7 +67,14 @@ THIRD_PARTY_APPS: list[str] = [
 
 # Populated progressively as app modules are scaffolded in Batches 4-8.
 # Each batch patches this list via str_replace without regenerating this file.
-LOCAL_APPS: list[str] = []
+# Remediation R1.a — every implemented app under apps/ with real models or views.
+# Order matters: common first (provides BaseModel used by other apps),
+# accounts second (provides AUTH_USER_MODEL), health last (no models).
+LOCAL_APPS: list[str] = [
+    "apps.common",
+    "apps.accounts",
+    "apps.health",
+]
 
 INSTALLED_APPS: list[str] = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
@@ -362,6 +374,15 @@ CIRCUIT_BREAKER_RECOVERY_TIMEOUT: int = config(
 # Redis direct URL — for use outside the Django cache framework
 # ---------------------------------------------------------------------------
 REDIS_URL: str = config("REDIS_URL", default="redis://redis:6379/0")
+REDIS_MAX_CONNECTIONS: int = config("REDIS_MAX_CONNECTIONS", default=50, cast=int)
+
+# ---------------------------------------------------------------------------
+# EventBus — Redis Streams (AnalysisEvent transport)
+# ---------------------------------------------------------------------------
+EVENT_STREAM_MAXLEN: int = config("EVENT_STREAM_MAXLEN", default=10000, cast=int)
+EVENT_STREAM_CONSUMER_GROUP_PREFIX: str = config(
+    "EVENT_STREAM_CONSUMER_GROUP_PREFIX", default="tradevision"
+)
 
 # ---------------------------------------------------------------------------
 # Market data provider

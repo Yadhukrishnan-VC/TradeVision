@@ -33,4 +33,21 @@ All notable changes to TradeVision AI will be documented in this file.
 
 ---
 
-*Architecture v1.0 — Frozen.*
+## [Unreleased]
+
+### Fixed
+- Registered apps.common, apps.accounts, apps.health in INSTALLED_APPS (Issue 1)
+- Activated custom User model via AUTH_USER_MODEL (Issue 2)
+- Generated and verified initial database migrations for accounts (Issue 3)
+- Wired apps.accounts and apps.health URLconfs into the root router; removed placeholder inline health check (Issue 4)
+
+### Changed
+- Corrected PROJECT_STATE.md: removed false "Encryption utilities" completion claim from Phase 0; scheduled the real requirement under Batch 1.2b (Issue 5)
+- Centralized Redis client construction behind a connection-pooled factory (core/redis_client.py); EventBus now uses it (Issue 8)
+- Migrated AnalysisEvent transport from Redis Pub/Sub to Redis Streams with consumer groups, per ADR-013, for reliable at-least-once delivery. Notifications/WebSocket fan-out remains on Pub/Sub, unchanged. (Issue 6)
+- Added single-probe locking to CircuitBreaker's HALF_OPEN state to prevent concurrent trial calls across workers (Issue 7)
+
+### Added
+- docs/adr/ADR-013-event-bus-streams.md
+
+---
