@@ -11,7 +11,7 @@ from apps.eventbus.application.ports import EventBus
 from apps.eventbus.domain.events import DomainEvent
 
 SUBSCRIBED_EVENTS: dict[str, list[Callable[[DomainEvent], None]]] = {
-    "positions.PriceTick": [
+    "marketdata.PriceTick": [
         PnLSnapshotProjector().handle,
     ],
     "positions.PositionOpened": [

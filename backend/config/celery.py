@@ -25,6 +25,8 @@ QUEUE_ROUTES: dict[str, str] = {
     "apps.notifications": "notifications",
     "apps.eventbus": "maintenance",
     "apps.accounts": "maintenance",
+    "apps.market_data": "market_data",
+    "apps.ingestion": "webhooks",
 }
 
 
