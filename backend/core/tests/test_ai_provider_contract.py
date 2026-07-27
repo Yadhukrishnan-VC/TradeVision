@@ -154,6 +154,62 @@ class TestGeminiProviderContract:
 # ---------------------------------------------------------------------------
 
 
+class TestDeepSeekProviderContract:
+    """DeepSeekProvider must implement BaseAIProvider and expose Phase 0 behaviour."""
+
+    @pytest.fixture
+    def deepseek_provider(self):
+        with patch("core.ai.providers.deepseek_provider.httpx.Client") as mock_client:
+            mock_client.return_value = MagicMock()
+            from core.ai.providers.deepseek_provider import DeepSeekProvider
+            yield DeepSeekProvider(
+                api_key="test-key",
+                base_url="https://api.deepseek.com",
+                model_name="deepseek-chat",
+            )
+
+    def test_is_base_provider_subclass(self, deepseek_provider) -> None:
+        assert isinstance(deepseek_provider, BaseAIProvider)
+
+    def test_provider_name_is_deepseek(self, deepseek_provider) -> None:
+        assert deepseek_provider.provider_name == "deepseek"
+
+    def test_validate_connection_returns_bool(self, deepseek_provider) -> None:
+        deepseek_provider._client.get.return_value = MagicMock(
+            status_code=200, json=lambda: {"data": [{"id": "deepseek-chat"}]}
+        )
+        result = deepseek_provider.validate_connection()
+        assert isinstance(result, bool)
+
+    def test_health_check_has_required_keys(self, deepseek_provider) -> None:
+        deepseek_provider._client.get.return_value = MagicMock(
+            status_code=200, json=lambda: {"data": [{"id": "deepseek-chat"}]}
+        )
+        status = deepseek_provider.health_check()
+        assert "status" in status
+        assert "provider" in status
+        assert "latency_ms" in status
+
+    def test_health_check_provider_is_deepseek(self, deepseek_provider) -> None:
+        deepseek_provider._client.get.return_value = MagicMock(
+            status_code=200, json=lambda: {"data": [{"id": "deepseek-chat"}]}
+        )
+        status = deepseek_provider.health_check()
+        assert status["provider"] == "deepseek"
+
+    def test_complete_raises_not_implemented_in_phase_0(self, deepseek_provider) -> None:
+        request = _make_request()
+        with pytest.raises(NotImplementedError):
+            deepseek_provider.complete(request)
+
+    def test_close_sets_client_to_none(self, deepseek_provider) -> None:
+        deepseek_provider.close()
+        assert deepseek_provider._client is None
+
+    def test_repr_contains_provider_name(self, deepseek_provider) -> None:
+        assert "deepseek" in repr(deepseek_provider)
+
+
 class TestStubProviders:
     """OpenAI, Claude, and Ollama providers must be typed stubs raising NotImplementedError."""
 

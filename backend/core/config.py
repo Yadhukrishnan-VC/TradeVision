@@ -100,6 +100,27 @@ class TradeVisionConfig:
 
         return getattr(settings, "OLLAMA_MODEL", "llama3.2")
 
+    @property
+    def deepseek_api_key(self) -> str:
+        """DeepSeek API key."""
+        from django.conf import settings
+
+        return getattr(settings, "DEEPSEEK_API_KEY", "")
+
+    @property
+    def deepseek_model(self) -> str:
+        """DeepSeek model identifier (e.g. ``deepseek-chat``)."""
+        from django.conf import settings
+
+        return getattr(settings, "DEEPSEEK_MODEL", "deepseek-chat")
+
+    @property
+    def deepseek_base_url(self) -> str:
+        """Base URL for the DeepSeek API."""
+        from django.conf import settings
+
+        return getattr(settings, "DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+
     # ---------------------------------------------------------------------------
     # AI governance
     # ---------------------------------------------------------------------------
@@ -134,6 +155,16 @@ class TradeVisionConfig:
         from django.conf import settings
 
         return int(getattr(settings, "AI_MAX_TOKENS", 4096))
+
+    @property
+    def ai_health_degraded_threshold_ms(self) -> float:
+        """
+        Latency threshold in milliseconds above which a provider's health
+        status is reported as ``"degraded"`` instead of ``"healthy"``.
+        """
+        from django.conf import settings
+
+        return float(getattr(settings, "AI_HEALTH_DEGRADED_THRESHOLD_MS", 2000.0))
 
     # ---------------------------------------------------------------------------
     # Market data provider

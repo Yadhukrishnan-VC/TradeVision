@@ -265,6 +265,10 @@ ANTHROPIC_MODEL: str = config("ANTHROPIC_MODEL", default="claude-3-5-sonnet-2024
 OLLAMA_BASE_URL: str = config("OLLAMA_BASE_URL", default="http://localhost:11434")
 OLLAMA_MODEL: str = config("OLLAMA_MODEL", default="llama3.2")
 
+DEEPSEEK_API_KEY: str = config("DEEPSEEK_API_KEY", default="")
+DEEPSEEK_MODEL: str = config("DEEPSEEK_MODEL", default="deepseek-chat")
+DEEPSEEK_BASE_URL: str = config("DEEPSEEK_BASE_URL", default="https://api.deepseek.com")
+
 # ---------------------------------------------------------------------------
 # Circuit breaker defaults
 # ---------------------------------------------------------------------------
