@@ -1,0 +1,14 @@
+VERSION: 1.0
+{% include "base.j2" %}
+EVENT SPECIFIC CONTEXT:
+Event: Price Movement
+Change: {{ event.change_pct }}%
+Current Price: {{ event.current_price }}
+Volume Ratio: {{ event.volume_ratio }}x 20-day average
+Circuit Status: {{ event.circuit_status }}
+
+EMPHASIS:
+- Focus on Pine Script indicator values for momentum assessment
+- Compare current move to recent price action context
+- Check if move is supported by volume
+- Assess multi-timeframe alignment for trend confirmation

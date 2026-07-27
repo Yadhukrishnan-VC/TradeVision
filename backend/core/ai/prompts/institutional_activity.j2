@@ -1,0 +1,14 @@
+VERSION: 1.0
+{% include "base.j2" %}
+EVENT SPECIFIC CONTEXT:
+Event: Institutional Activity
+FII Net Flow: {{ event.fii_net_flow_cr }} Cr
+DII Net Flow: {{ event.dii_net_flow_cr }} Cr
+Bulk Deals: {{ event.bulk_deals }}
+Block Deals: {{ event.block_deals }}
+
+EMPHASIS:
+- FII/DII activity provides context, not standalone signals
+- Bulk/block deals at premium/discount to market price indicate conviction
+- Correlate institutional activity with price action and volume
+- Sustained institutional buying/selling across multiple sessions is significant

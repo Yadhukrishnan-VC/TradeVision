@@ -1,0 +1,15 @@
+VERSION: 1.0
+{% include "base.j2" %}
+EVENT SPECIFIC CONTEXT:
+Event: Corporate Announcement
+Type: {{ event.announcement_type }}
+Title: {{ event.title }}
+Materiality: {{ event.materiality }}
+Details: {{ event.details }}
+
+EMPHASIS:
+- Announcement materiality determines urgency of response
+- CRITICAL announcements may warrant EXIT signal regardless of technicals
+- Check if announcement changes the fundamental thesis
+- Portfolio relevance: assess impact on existing positions
+- Cross-reference with recent news for full picture
