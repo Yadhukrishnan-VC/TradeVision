@@ -1174,6 +1174,7 @@ Production (live data, full security posture, same image)
 | ADR-014 | Intelligence Packet V2 — Portfolio, Risk, and Regime Context Blocks | Defines MARKET_REGIME, PORTFOLIO_STATE, and RISK_STATE context blocks injected into every AI prompt; regime detection is deterministic, portfolio/risk data is user-scoped and masked when empty |
 | ADR-015 | DeepSeek AI Provider | Adds DeepSeek as a first-class AI provider via OpenAI-compatible chat API; Phase 0 covers auth/health, Phase 4 adds inference |
 | ADR-016 | Prompt Manager and Signal Schema | Structured Jinja2 prompt templates with versioning; PromptManager service; IntelligenceResponseSchema for AI output validation |
+| ADR-017 | Strategy Registry | Deterministic event-to-strategy matching via TradingStrategy model with symbol/sector filters, per-strategy preferred_provider hook into ModelRouter, and configurable confidence/risk thresholds |
 | ADR-018 | Intelligence Domain Architecture | Clean Architecture layering for AI reasoning; IntelligenceSignal enum (BUY/SELL/WAIT/EXIT/REDUCE); domain boundaries between Trading Core and Intelligence domain |
 | ADR-019 | Model Router | Deterministic AI provider selection via 9-step routing policy; reuses CircuitBreakerFactory, no dependency on complete() |
 
