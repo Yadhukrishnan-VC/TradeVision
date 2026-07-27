@@ -51,3 +51,26 @@ All notable changes to TradeVision AI will be documented in this file.
 - docs/adr/ADR-013-event-bus-streams.md
 
 ---
+
+## [0.2.0] — 2026-07-27
+
+### Batch B — AI/Intelligence Domain Enhancement
+
+**Added:**
+- B.0: Registered all AI/Intelligence apps (ai_engine, intelligence, recommendations, strategy_registry) in INSTALLED_APPS
+- B.0: Initial migrations for all 4 apps (PromptVersion, ConfidenceEvaluation, PineOutput, RecommendationExplanation, TradingStrategy)
+- B.1: Model Router enhancements — decision_trace on RoutingDecision, preferred_provider evaluated before capability/health batch filters, get_provider_capabilities() for config hot-reload
+- B.2: Prompt Manager DB-backed persistence — PromptVersion model, activate_version/rollback/get_history methods, kill-switch guarded
+- B.3: Strategy Registry (new app) — TradingStrategy model with symbol/sector filters, preferred_provider hints, confidence/risk thresholds; StrategyMatcher.match(); match_packet Celery task
+- B.4: Confidence Engine V2 — ConfidenceEvaluation model, ConfidenceEngine.evaluate() with data-quality penalties and strategy threshold checks, evaluate_and_persist() for audit trail
+- B.5: Recommendation Explanation — RecommendationExplanation model, ExplanationComposer.compose()/compose_fallback(), compose_explanation Celery task
+- Kill-switch settings (all default False): STRATEGY_REGISTRY_ENABLED, PROMPT_VERSIONING_PERSISTENCE_ENABLED, CONFIDENCE_ENGINE_V2_ENABLED, MODEL_ROUTER_PREFERRED_PROVIDER_ENABLED
+- Celery task routes for all new tasks on ai_reasoning queue
+- TaskName enum entries for MATCH_STRATEGY, EVALUATE_CONFIDENCE, COMPOSE_EXPLANATION
+- Draft ADRs: ADR-020 through ADR-025
+
+**Changed:**
+- Expanded development status in PROJECT_STATE.md to reflect partial Phase 3 and Phase 5 completion
+- core/config.py: added 4 new kill-switch config properties
+
+---

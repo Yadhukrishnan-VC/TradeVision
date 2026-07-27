@@ -9,16 +9,16 @@
 
 ## Development Status
 
-> Last updated: 2026-07-12
+> Last updated: 2026-07-27
 
 | Phase | Status | Tests | Notes |
 |---|---|---|---|
 | 0 — Foundation | **COMPLETE** | 206 passing | All 23 source files + 17 test files implemented |
 | 1 — Market Data | NOT STARTED | — | Next phase |
 | 2 — Technical Analysis | NOT STARTED | — | — |
-| 3 — Intelligence Engine | NOT STARTED | — | — |
+| 3 — Intelligence Engine | **PARTIAL** (B.0 registered) | — | IntelligencePacket assembly, data quality scoring, freshness validation; apps.intelligence registered, PineOutput model migrated |
 | 4 — Rule Engine | NOT STARTED | — | — |
-| 5 — AI + Recommendations + Trader Memory | NOT STARTED | — | — |
+| 5 — AI + Recommendations + Trader Memory | **PARTIAL** (Batch A+B delivered) | — | Gemini/DeepSeek wired, prompt templates, Model Router, Prompt Manager (DB-persisted), Strategy Registry, Confidence Engine V2, Recommendation Explanation |
 | 6 — Notifications + WebSocket | NOT STARTED | — | — |
 | 7 — News + Announcements + Global Markets | NOT STARTED | — | — |
 | 8 — Frontend Dashboard | NOT STARTED | — | — |
@@ -227,8 +227,9 @@ The platform helps a trader think like an experienced professional — not blind
 | **Market Intelligence Engine** | `intelligence` | **Aggregation** | **Assembles all processed signals into IntelligencePacket per symbol** |
 | **Pattern Engine** | `pattern_engine` | **Similarity** | **Historical day matching, similarity scoring, analogue retrieval** |
 | Rule Engine | `rule_engine` | Detection | Deterministic event detection against IntelligencePacket |
-| AI Engine | `ai_engine` | Reasoning | Provider-agnostic AI orchestration, prompt management |
-| Recommendation Engine | `recommendations` | Output | Recommendation lifecycle, confidence scoring, delivery |
+| AI Engine | `ai_engine` | Reasoning | Provider-agnostic AI orchestration, prompt management, versioned prompt governance, confidence evaluation |
+| Strategy Registry | `strategy_registry` | Matching | Deterministic event-to-strategy matching via TradingStrategy model with symbol/sector filters, preferred_provider hints, configurable thresholds |
+| Recommendation Engine | `recommendations` | Output | Recommendation lifecycle, explanation composition, delivery |
 | **Trader Memory** | `trader_memory` | **Intelligence Store** | **Full recommendation history with context, outcome, calibration** |
 | Risk Analysis | `risk_analysis` | Assessment | Volatility, position sizing, scenario analysis, veto flags |
 | Backtesting | `backtesting` | Evaluation | Historical signal replay, accuracy tracking |
@@ -741,6 +742,7 @@ tradevision/
 │   │   ├── rule_engine/
 │   │   ├── ai_engine/
 │   │   ├── recommendations/
+│   │   ├── strategy_registry/        # Strategy Registry (B.3)
 │   │   ├── trader_memory/            # Trader Memory
 │   │   ├── risk_analysis/
 │   │   ├── backtesting/
@@ -1122,7 +1124,7 @@ Production (live data, full security posture, same image)
 |---|---|
 | Confidence floor | Below threshold → stored, not delivered. Threshold configurable in settings. |
 | Mandatory disclaimer | Non-removable text on every delivered recommendation. Stored in settings, not hardcoded. |
-| Prompt versioning | Every prompt change version-tagged. Trader Memory records which version generated each recommendation. |
+| Prompt versioning | Every prompt change version-tagged. DB-backed persistence with activate/rollback governance (B.2). Trader Memory records which version generated each recommendation. |
 | Cost budget | Hard daily limit enforced in Redis before every call. Admin alert at 80%. |
 | Output drift monitoring | Nightly distribution check. Admin alert on significant shift. |
 | Data quality gate | `IntelligencePacket.data_quality.quality_score` < threshold → `DATA_INSUFFICIENT` flag attached. |
@@ -1143,7 +1145,7 @@ Production (live data, full security posture, same image)
 | **2 — Technical Analysis** | Indicator computation triggered by ingestion, TimescaleDB indicator tables, API | Indicators computed and queryable |
 | **3 — Intelligence Engine** | IntelligencePacket assembly, data quality scoring, freshness validation | IntelligencePacket built per symbol after each tick |
 | **4 — Rule Engine** | First 10 rules, freshness guard, rule registry, RuleExecution log | Rules firing AnalysisEvents on test data |
-| **5 — AI + Recommendations + Trader Memory** | Gemini wired, prompt templates, response validation, recommendation lifecycle, Trader Memory | End-to-end: rule fires → AI reasons → recommendation stored |
+| **5 — AI + Recommendations + Trader Memory** | Gemini + DeepSeek wired, prompt templates (DB-versioned), Model Router, Strategy Registry, Confidence Engine V2, recommendation lifecycle, explanation composition | End-to-end: rule fires → AI reasons → recommendation stored with explanation |
 | **6 — Notifications + WebSocket** | Django Channels, WebSocket consumers, notification delivery, user preferences | Recommendations pushed to frontend in real-time |
 | **7 — News + Announcements + Global Markets** | NLP, filing feeds, global indices, FII data, IntelligencePacket enriched | Full context packet reaching AI |
 | **8 — Frontend Dashboard** | React app, all pages, TradingView charts, WebSocket integration | Usable web interface end-to-end |
@@ -1177,6 +1179,12 @@ Production (live data, full security posture, same image)
 | ADR-017 | Strategy Registry | Deterministic event-to-strategy matching via TradingStrategy model with symbol/sector filters, per-strategy preferred_provider hook into ModelRouter, and configurable confidence/risk thresholds |
 | ADR-018 | Intelligence Domain Architecture | Clean Architecture layering for AI reasoning; IntelligenceSignal enum (BUY/SELL/WAIT/EXIT/REDUCE); domain boundaries between Trading Core and Intelligence domain |
 | ADR-019 | Model Router | Deterministic AI provider selection via 9-step routing policy; reuses CircuitBreakerFactory, no dependency on complete() |
+| ADR-020 | Model Router — Provider-Preference Enhancement | preferred_provider hint inserted before capability/health batch filters; decision_trace for observability; config hot-reload for cost/latency tiers |
+| ADR-021 | Persisted Prompt Versioning & Rollback | DB-backed PromptVersion model; activate_version/rollback/get_history governance; kill-switch guarded |
+| ADR-022 | Strategy Registry (implementation) | Supersedes doc-only ADR-017 with TradingStrategy model, StrategyMatcher, event-driven matching pipeline |
+| ADR-023 | Confidence Engine V2 | Deterministic confidence adjustment from raw LLM output; data-quality penalties, strategy threshold checks, audit trail |
+| ADR-024 | Recommendation Explanation Boundary | ExplanationComposer consumes validated LLM trade_explanation/risk_explanation; appends confidence adjustment and strategy context |
+| ADR-025 | AI/Intelligence App Registration & Migrations | apps.ai_engine, apps.intelligence, apps.recommendations, apps.strategy_registry registered in INSTALLED_APPS with initial migrations |
 
 ---
 

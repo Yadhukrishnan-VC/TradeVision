@@ -1,6 +1,6 @@
 # TradeVision AI — Development Roadmap
 
-> Last updated: 2026-07-12
+> Last updated: 2026-07-27
 
 ---
 
@@ -11,9 +11,9 @@
 | **0 — Foundation** | Project skeleton, Docker, settings, base models, Celery, Channels, AI interface stub, market calendar, circuit breaker skeleton, logging | **COMPLETE** | 206 passing |
 | **1 — Market Data** | Ingestion, TimescaleDB, OHLCV storage, data provider interface, REST API | NOT STARTED | — |
 | **2 — Technical Analysis** | Indicator computation triggered by ingestion, TimescaleDB indicator tables, API | NOT STARTED | — |
-| **3 — Intelligence Engine** | IntelligencePacket assembly, data quality scoring, freshness validation | NOT STARTED | — |
+| **3 — Intelligence Engine** | IntelligencePacket assembly, data quality scoring, freshness validation | **PARTIAL** (B.0 registered, PineOutput model migrated) | — |
 | **4 — Rule Engine** | First 10 rules, freshness guard, rule registry, RuleExecution log | NOT STARTED | — |
-| **5 — AI + Recommendations + Trader Memory** | Gemini wired, prompt templates, response validation, recommendation lifecycle, Trader Memory | NOT STARTED | — |
+| **5 — AI + Recommendations + Trader Memory** | Gemini + DeepSeek wired, prompt templates (DB-versioned), Model Router, Strategy Registry, Confidence Engine V2, recommendation lifecycle, explanation composition | **PARTIAL** (Batch A+B delivered) | — |
 | **6 — Notifications + WebSocket** | Django Channels, WebSocket consumers, notification delivery, user preferences | NOT STARTED | — |
 | **7 — News + Announcements + Global Markets** | NLP, filing feeds, global indices, FII data, IntelligencePacket enriched | NOT STARTED | — |
 | **8 — Frontend Dashboard** | React app, all pages, TradingView charts, WebSocket integration | NOT STARTED | — |
