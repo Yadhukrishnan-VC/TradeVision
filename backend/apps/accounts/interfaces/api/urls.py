@@ -6,7 +6,9 @@ from apps.accounts.interfaces.api.views import APIKeyViewSet, LoginView, MeView,
 
 urlpatterns = [
     path("login/", LoginView.as_view(), name="auth-login"),
+    path("token/", LoginView.as_view(), name="token-obtain"),
     path("refresh/", TokenRefreshView.as_view(), name="auth-refresh"),
+    path("token/refresh/", TokenRefreshView.as_view(), name="token-refresh"),
     path("me/", MeView.as_view(), name="auth-me"),
     path("api-keys/", APIKeyViewSet.as_view(), name="auth-api-keys-list"),
     path("api-keys/<uuid:pk>/", APIKeyViewSet.as_view(), name="auth-api-keys-detail"),

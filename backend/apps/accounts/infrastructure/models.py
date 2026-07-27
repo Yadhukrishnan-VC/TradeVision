@@ -10,6 +10,7 @@ from apps.common.infrastructure.model_mixins import TimestampedModel
 
 
 class User(AbstractUser):
+    username = models.CharField(max_length=150, unique=True, default="", blank=True)
     role = models.CharField(
         max_length=16,
         choices=[(r.value, r.name) for r in Role],

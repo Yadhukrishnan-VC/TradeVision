@@ -29,7 +29,7 @@ class TestTokenBucketRateLimiter:
         assert limiter.acquire() is True
 
     def test_exhausted_bucket_returns_false(self, mock_redis: MagicMock) -> None:
-        mock_redis.get.return_value = 0.0
+        mock_redis.get.return_value = "0.0"
         limiter = TokenBucketRateLimiter(
             name="test",
             max_tokens=10,
@@ -39,6 +39,8 @@ class TestTokenBucketRateLimiter:
         assert limiter.acquire() is False
 
     def test_reset(self, mock_redis: MagicMock) -> None:
+        mock_pipe = MagicMock()
+        mock_redis.pipeline.return_value = mock_pipe
         limiter = TokenBucketRateLimiter(
             name="test",
             max_tokens=10,
@@ -46,10 +48,16 @@ class TestTokenBucketRateLimiter:
             redis_client=mock_redis,
         )
         limiter.reset()
-        mock_redis.set.assert_called()
+        mock_pipe.set.assert_called()
 
 
 class TestCircuitAwareRateLimiter:
+    @pytest.fixture
+    def mock_redis(self) -> MagicMock:
+        mock = MagicMock()
+        mock.get.return_value = None
+        return mock
+
     @pytest.fixture
     def mock_breaker_factory(self) -> MagicMock:
         factory = MagicMock(spec=CircuitBreakerFactory)
@@ -58,12 +66,13 @@ class TestCircuitAwareRateLimiter:
         factory.get_or_create.return_value = mock_breaker
         return factory
 
-    def test_successful_call(self, mock_breaker_factory: MagicMock) -> None:
+    def test_successful_call(self, mock_breaker_factory: MagicMock, mock_redis: MagicMock) -> None:
         limiter = CircuitAwareRateLimiter(
             name="test",
             breaker_factory=mock_breaker_factory,
             max_tokens=10,
             refill_rate=10.0,
+            redis_client=mock_redis,
         )
         result = limiter.call(lambda: "success")
         assert result == "success"

@@ -101,12 +101,14 @@ class CircuitAwareRateLimiter:
         breaker_factory: CircuitBreakerFactory,
         max_tokens: int = 10,
         refill_rate: float = 1.0,
+        redis_client: Any = None,
     ) -> None:
         self._breaker = breaker_factory.get_or_create(name)
         self._limiter = TokenBucketRateLimiter(
             name=name,
             max_tokens=max_tokens,
             refill_rate=refill_rate,
+            redis_client=redis_client,
         )
         self._name = name
 

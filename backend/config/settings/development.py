@@ -19,26 +19,31 @@ DEBUG = True
 # In development, accept any host so Docker service names work
 ALLOWED_HOSTS = ["*"]
 
-# ---------------------------------------------------------------------------
-# Additional dev-only apps
-# ---------------------------------------------------------------------------
+import importlib.util
+
+DEV_APPS = []
+if importlib.util.find_spec("debug_toolbar"):
+    DEV_APPS.append("debug_toolbar")
+if importlib.util.find_spec("django_extensions"):
+    DEV_APPS.append("django_extensions")
+
 INSTALLED_APPS = [
     *INSTALLED_APPS,  # type: ignore[name-defined]  # noqa: F405
-    "debug_toolbar",
-    "django_extensions",
+    *DEV_APPS,
 ]
 
 # ---------------------------------------------------------------------------
 # Debug Toolbar middleware — inserted before CommonMiddleware
 # ---------------------------------------------------------------------------
-_common_idx = MIDDLEWARE.index(  # type: ignore[name-defined]  # noqa: F405
-    "django.middleware.common.CommonMiddleware"
-)
-MIDDLEWARE = [  # noqa: F405
-    *MIDDLEWARE[:_common_idx],  # type: ignore[name-defined]
-    "debug_toolbar.middleware.DebugToolbarMiddleware",
-    *MIDDLEWARE[_common_idx:],  # type: ignore[name-defined]
-]
+if "debug_toolbar" in INSTALLED_APPS:
+    _common_idx = MIDDLEWARE.index(  # type: ignore[name-defined]  # noqa: F405
+        "django.middleware.common.CommonMiddleware"
+    )
+    MIDDLEWARE = [  # noqa: F405
+        *MIDDLEWARE[:_common_idx],  # type: ignore[name-defined]
+        "debug_toolbar.middleware.DebugToolbarMiddleware",
+        *MIDDLEWARE[_common_idx:],  # type: ignore[name-defined]
+    ]
 
 INTERNAL_IPS = ["127.0.0.1", "::1"]
 
@@ -92,7 +97,7 @@ LOGGING = {  # type: ignore[name-defined]  # noqa: F405
         "level": "DEBUG",
     },
     "loggers": {
-        **LOGGING["loggers"],  # type: ignore[name-defined]
+        **LOGGING.get("loggers", {}),  # type: ignore[name-defined]
         "django.db.backends": {
             "handlers": ["console"],
             "level": "DEBUG",

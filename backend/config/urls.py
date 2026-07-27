@@ -20,7 +20,6 @@ urlpatterns = [
 
     # Authentication and user profile
     path("api/v1/auth/", include("apps.accounts.interfaces.api.urls")),
-    path("api/v1/auth/", include("apps.accounts.urls")),
 
     # Health and observability — unauthenticated, not throttled
     path("api/v1/health/", include("apps.health.urls")),
