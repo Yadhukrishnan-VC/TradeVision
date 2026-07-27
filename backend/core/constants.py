@@ -165,6 +165,40 @@ class AIProviderName(str, Enum):
 
 
 # ---------------------------------------------------------------------------
+# Model routing
+# ---------------------------------------------------------------------------
+
+
+class LatencyTier(str, Enum):
+    """Latency classification for AI providers — used in model routing."""
+
+    FAST = "FAST"
+    """Sub-second typical response time (e.g. DeepSeek)."""
+
+    STANDARD = "STANDARD"
+    """1–3 second typical response time (e.g. Gemini, Claude, GPT)."""
+
+    SLOW = "SLOW"
+    """>3 second typical response time (e.g. local Ollama)."""
+
+
+class CostTier(str, Enum):
+    """Cost classification for AI providers — used in budget-aware routing."""
+
+    FREE = "FREE"
+    """Zero cost (e.g. local Ollama)."""
+
+    LOW = "LOW"
+    """<$0.01 per call (e.g. DeepSeek)."""
+
+    MEDIUM = "MEDIUM"
+    """$0.01–$0.03 per call (e.g. Gemini, GPT)."""
+
+    HIGH = "HIGH"
+    """>$0.03 per call (e.g. Claude)."""
+
+
+# ---------------------------------------------------------------------------
 # Celery task names
 # ---------------------------------------------------------------------------
 
