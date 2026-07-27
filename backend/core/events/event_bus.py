@@ -98,6 +98,19 @@ class EventChannel:
     ANALYSIS_EVENT_PREFIX: str = "analysis_event"
     FEED_STATUS_PREFIX: str = "feed_status"
     SYSTEM_PREFIX: str = "system"
+    INTELLIGENCE_PREFIX: str = "intelligence"
+
+    INTELLIGENCE_PACKET_READY: str = f"{INTELLIGENCE_PREFIX}:packet_ready"
+    """Base packet published by IntelligenceService.build_packet()."""
+
+    INTELLIGENCE_PACKET_ENRICHED: str = f"{INTELLIGENCE_PREFIX}:enriched"
+    """Enriched packet published by PortfolioRiskContextBuilder."""
+
+    POSITION_SNAPSHOT: str = f"{INTELLIGENCE_PREFIX}:position_snapshot"
+    """Per-symbol position snapshot published by Portfolio service."""
+
+    RISK_SNAPSHOT: str = f"{INTELLIGENCE_PREFIX}:risk_snapshot"
+    """Portfolio-level risk snapshot published by Risk service."""
 
     @staticmethod
     def for_event_type(event_type: EventType) -> str:
@@ -384,6 +397,87 @@ class EventBus:
                 extra={"error": str(exc)},
             )
             raise EventBusError("Event bus subscription failed") from exc
+
+    def subscribe_stream(
+        self,
+        stream: str,
+        consumer_group: str,
+        consumer_name: str,
+    ) -> Generator[StreamMessage, None, None]:
+        """Subscribe to an arbitrary Redis stream via a consumer group.
+
+        This is a blocking generator intended for intelligence-pipeline
+        streams (``intelligence:packet_ready``, ``intelligence:enriched``,
+        etc.) that are not analysis events.
+
+        Args:
+            stream:         The stream key to subscribe to.
+            consumer_group: Consumer group name.
+            consumer_name:  Unique consumer name within the group.
+
+        Yields:
+            ``StreamMessage(stream, entry_id, data)`` named tuples.
+
+        Example::
+
+            bus = EventBus.from_settings()
+            for msg in bus.subscribe_stream(
+                EventChannel.INTELLIGENCE_PACKET_READY,
+                consumer_group="intelligence-enrichment",
+                consumer_name="worker-1",
+            ):
+                handler.handle(msg)
+                bus.ack_event(msg.stream, "intelligence-enrichment", msg.entry_id)
+        """
+        from django.conf import settings
+
+        group = f"{settings.EVENT_STREAM_CONSUMER_GROUP_PREFIX}:{consumer_group}"
+
+        try:
+            self._redis.xgroup_create(stream, group, mkstream=True)
+        except redis_lib.ResponseError as exc:
+            if "BUSYGROUP" not in str(exc):
+                raise
+
+        logger.info(
+            "event_bus_stream_subscribed",
+            extra={"stream": stream, "group": group, "consumer": consumer_name},
+        )
+
+        try:
+            while True:
+                results = self._redis.xreadgroup(
+                    group,
+                    consumer_name,
+                    {stream: ">"},
+                    block=5000,
+                    count=10,
+                )
+                if results:
+                    for stream_key, messages in results:
+                        for entry_id, raw_data in messages:
+                            try:
+                                payload_raw = raw_data.get("payload", "{}")
+                                data = json.loads(payload_raw)
+                            except json.JSONDecodeError:
+                                logger.warning(
+                                    "event_bus_malformed_message",
+                                    extra={"raw": str(payload_raw)[:200]},
+                                )
+                                continue
+                            yield StreamMessage(
+                                stream=stream_key,
+                                entry_id=entry_id,
+                                data=data,
+                            )
+        except redis_lib.RedisError as exc:
+            logger.error(
+                "event_bus_stream_subscription_error",
+                extra={"stream": stream, "error": str(exc)},
+            )
+            raise EventBusError(
+                f"Failed to subscribe to stream '{stream}'"
+            ) from exc
 
     # ------------------------------------------------------------------
     # Acknowledgment

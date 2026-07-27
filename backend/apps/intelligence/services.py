@@ -10,6 +10,8 @@ The service performs deterministic enrichment only — no AI calls.
 
 from __future__ import annotations
 
+import dataclasses
+import json
 import logging
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -25,6 +27,7 @@ from apps.intelligence.domain.market_regime import (
     detect_mtf_alignment,
     detect_regime,
 )
+from core.events.event_bus import EventBus, EventChannel
 from core.events.event_types import IntelligencePacket
 
 logger = logging.getLogger(__name__)
@@ -76,8 +79,50 @@ class RiskState:
     var_95_pct: float = 0.0
 
 
+class IntelligenceService:
+    """Publishes the base IntelligencePacket for enrichment and downstream consumption.
+
+    ``build_packet()`` publishes to ``EventChannel.INTELLIGENCE_PACKET_READY``.
+    Portfolio/risk enrichment is handled asynchronously by
+    ``PortfolioRiskContextBuilder``, which consumes the ready event and
+    republishes to ``EventChannel.INTELLIGENCE_PACKET_ENRICHED``.
+    """
+
+    def __init__(self, event_bus: EventBus | None = None) -> None:
+        self._bus = event_bus
+
+    def build_packet(self, packet: IntelligencePacket) -> str:
+        """Publish a base IntelligencePacket to the enrichment pipeline.
+
+        Args:
+            packet: Fully assembled base packet (must include regime, pine
+                    outputs, news, sector context, and data quality).
+
+        Returns:
+            The EventBus stream entry ID.
+
+        Raises:
+            EventBusError: If publication fails.
+        """
+        bus = self._bus or EventBus.from_settings()
+        payload = dataclasses.asdict(packet)
+        from core.events.event_bus import _EventEncoder
+
+        return bus.publish_raw(
+            EventChannel.INTELLIGENCE_PACKET_READY,
+            {"packet": json.loads(json.dumps(payload, cls=_EventEncoder))},
+        )
+
+
 class MarketContextService:
-    """Builds the SignalContext from the IntelligencePacket and enrichments."""
+    """Builds the SignalContext from the IntelligencePacket and enrichments.
+
+    Portfolio/risk enrichment was previously handled via direct-call
+    ``enrich_with_portfolio()`` / ``enrich_with_risk()`` stubs (both removed).
+    Enrichment now flows through the event pipeline:
+    ``INTELLIGENCE_PACKET_READY`` → ``PortfolioRiskContextBuilder`` →
+    ``INTELLIGENCE_PACKET_ENRICHED``.
+    """
 
     def build_signal_context(
         self,
@@ -169,22 +214,6 @@ class MarketContextService:
             event_data=event_data,
             data_quality_note="; ".join(dq_notes) if dq_notes else "All sources fresh and available.",
         )
-
-    def enrich_with_portfolio(
-        self,
-        context: SignalContext,
-        portfolio_state: PortfolioState | None,
-    ) -> SignalContext:
-        """Attach portfolio state (no-op if None)."""
-        return context
-
-    def enrich_with_risk(
-        self,
-        context: SignalContext,
-        risk_state: RiskState | None,
-    ) -> SignalContext:
-        """Attach risk state (no-op if None)."""
-        return context
 
     def _get_pine_outputs(
         self, symbol: str, timeframes: list[str]

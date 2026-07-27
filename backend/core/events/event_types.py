@@ -300,6 +300,65 @@ class IntelligencePacket:
 
 
 # ---------------------------------------------------------------------------
+# Intelligence pipeline event payloads
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class PositionSnapshot:
+    """Point-in-time position snapshot for a symbol (published by Portfolio service)."""
+
+    symbol: str
+    timestamp: datetime
+    has_position: bool
+    quantity: int = 0
+    entry_price: Decimal | None = None
+    current_price: Decimal | None = None
+    unrealized_pnl_pct: Decimal | None = None
+    days_in_position: int = 0
+    stop_loss: Decimal | None = None
+    target_price: Decimal | None = None
+
+    def __post_init__(self) -> None:
+        if self.timestamp.tzinfo is None:
+            raise ValueError("PositionSnapshot.timestamp must be timezone-aware")
+
+
+@dataclass(frozen=True)
+class RiskStateSnapshot:
+    """Point-in-time risk metrics snapshot (published by Risk service)."""
+
+    timestamp: datetime
+    portfolio_drawdown_pct: Decimal | None = None
+    portfolio_beta: Decimal | None = None
+    concentration_risk: str = "LOW"
+    var_95_pct: Decimal | None = None
+    india_vix: Decimal | None = None
+
+    def __post_init__(self) -> None:
+        if self.timestamp.tzinfo is None:
+            raise ValueError("RiskStateSnapshot.timestamp must be timezone-aware")
+
+
+# ---------------------------------------------------------------------------
+# Enriched intelligence packet
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class EnrichedIntelligencePacket:
+    """IntelligencePacket with portfolio and risk context attached.
+
+    Produced by PortfolioRiskContextBuilder and consumed by the AI orchestrator /
+    PromptManager via the ``intelligence:enriched`` EventBus stream.
+    """
+
+    packet: IntelligencePacket
+    portfolio_context: PositionSnapshot | None = None
+    risk_context: RiskStateSnapshot | None = None
+
+
+# ---------------------------------------------------------------------------
 # AnalysisEvent — the trigger object that flows from Rule Engine to AI
 # ---------------------------------------------------------------------------
 
