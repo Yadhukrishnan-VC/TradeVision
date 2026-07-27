@@ -18,8 +18,6 @@ logger = logging.getLogger(__name__)
 
 
 class _DomainEventEncoder(json.JSONEncoder):
-    """Custom JSON encoder for DomainEvent fields."""
-
     def default(self, o: Any) -> str:
         if isinstance(o, datetime):
             return o.isoformat()
@@ -29,16 +27,9 @@ class _DomainEventEncoder(json.JSONEncoder):
 
 
 class RedisStreamsEventBus(EventBus):
-    """Production event bus backed by Redis Streams.
-
-    Events are first persisted to the Postgres StoredEvent table
-    inside the caller's transaction, then mirrored to a Redis Stream
-    for live dispatch. If the Redis mirror fails, a safety-net beat
-    task retries the mirror asynchronously.
-    """
-
     def __init__(self) -> None:
         self._handlers: dict[str, list[tuple[str, str]]] = {}
+        self._wildcard_handlers: list[tuple[str, str]] = []
         self._redis: redis_asyncio.Redis | None = None
 
     def _get_redis(self) -> redis_asyncio.Redis:
@@ -50,18 +41,6 @@ class RedisStreamsEventBus(EventBus):
         return self._redis
 
     def publish(self, event: DomainEvent) -> None:
-        """Persist the event to the event store and mirror to Redis Stream.
-
-        Must be called from within a ``transaction.atomic()`` block
-        or via ``on_commit``.
-
-        Args:
-            event: The domain event to publish.
-
-        Raises:
-            EventPublishError: If the Redis mirror fails. The Postgres
-                write is unaffected (logged at ERROR level).
-        """
         stored = StoredEvent(
             event_id=event.event_id,
             event_type=event.event_type,
@@ -103,7 +82,7 @@ class RedisStreamsEventBus(EventBus):
                 "Failed to mirror event to Redis stream",
                 extra={
                     "event_id": str(event.event_id),
-                    "event_type": event.event_type,
+                    "event_type": str(event.event_type),
                     "error": str(exc),
                 },
             )
@@ -115,22 +94,21 @@ class RedisStreamsEventBus(EventBus):
         *,
         consumer_group: str,
     ) -> None:
-        """Register a handler for the given event type.
+        handler_path = f"{handler.__module__}.{handler.__name__}" if callable(handler) else str(handler)
 
-        For Redis Streams, this creates (idempotently) the consumer
-        group on the corresponding stream.
+        if event_type == "*":
+            self._wildcard_handlers.append((handler_path, consumer_group))
+            for et in self._handlers:
+                self._ensure_consumer_group(et, consumer_group)
+            return
 
-        Args:
-            event_type: The event type string to subscribe to.
-            handler: The handler reference (dotted path string or
-                callable).
-            consumer_group: The consumer group name.
-        """
         if event_type not in self._handlers:
             self._handlers[event_type] = []
-        handler_path = f"{handler.__module__}.{handler.__name__}" if callable(handler) else str(handler)
         self._handlers[event_type].append((handler_path, consumer_group))
 
+        self._ensure_consumer_group(event_type, consumer_group)
+
+    def _ensure_consumer_group(self, event_type: str, consumer_group: str) -> None:
         try:
             import asyncio
             stream_key = f"events:{event_type}"
@@ -157,3 +135,7 @@ class RedisStreamsEventBus(EventBus):
     @property
     def handlers(self) -> dict[str, list[tuple[str, str]]]:
         return dict(self._handlers)
+
+    @property
+    def wildcard_handlers(self) -> list[tuple[str, str]]:
+        return list(self._wildcard_handlers)

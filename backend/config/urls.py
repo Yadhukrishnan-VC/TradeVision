@@ -35,4 +35,10 @@ urlpatterns = [
 
     # Dashboard API — Batch D2: Analytics & Risk
     path("api/v1/dashboard/", include("apps.dashboard.interfaces.api.analytics_risk.urls")),
+
+    # Journal API — Batch 1: Trade Journal
+    path("api/v1/journal/", include("apps.journal.interfaces.api.urls")),
+
+    # Audit Log API — Batch 1: Compliance Audit Trail
+    path("api/v1/audit/", include("apps.audit_log.urls")),
 ]

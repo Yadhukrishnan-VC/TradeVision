@@ -141,6 +141,47 @@ def _create_dead_letter(
     )
 
 
+def _poll_and_dispatch(
+    r: redis_asyncio.Redis,
+    stream_key: str,
+    handler_path: str,
+    consumer_group: str,
+) -> None:
+    import asyncio
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            results = loop.run_until_complete(
+                r.xreadgroup(
+                    consumer_group,
+                    f"consumer-{consumer_group}",
+                    {stream_key: ">"},
+                    count=10,
+                    block=1000,
+                )
+            )
+        finally:
+            loop.close()
+
+        if not results:
+            return
+
+        for stream_name, entries in results:
+            for entry_id, data in entries:
+                dispatch_event_to_handler.delay(
+                    event_dict=data,
+                    handler_path=handler_path,
+                    consumer_group=consumer_group,
+                )
+                _ack_event(r, stream_name, consumer_group, entry_id)
+    except Exception:
+        logger.exception(
+            "Error polling stream",
+            extra={"stream": stream_key, "consumer_group": consumer_group},
+        )
+
+
 @shared_task(soft_time_limit=10, time_limit=15)
 def poll_event_streams() -> None:
     """Celery beat task that polls Redis Streams for new events.
@@ -160,38 +201,11 @@ def poll_event_streams() -> None:
     for event_type, handler_list in bus._handlers.items():
         stream_key = f"events:{event_type}"
         for handler_path, consumer_group in handler_list:
-            try:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                try:
-                    results = loop.run_until_complete(
-                        r.xreadgroup(
-                            consumer_group,
-                            f"consumer-{consumer_group}",
-                            {stream_key: ">"},
-                            count=10,
-                            block=1000,
-                        )
-                    )
-                finally:
-                    loop.close()
+            _poll_and_dispatch(r, stream_key, handler_path, consumer_group)
 
-                if not results:
-                    continue
-
-                for stream_name, entries in results:
-                    for entry_id, data in entries:
-                        dispatch_event_to_handler.delay(
-                            event_dict=data,
-                            handler_path=handler_path,
-                            consumer_group=consumer_group,
-                        )
-                        _ack_event(r, stream_name, consumer_group, entry_id)
-            except Exception:
-                logger.exception(
-                    "Error polling stream",
-                    extra={"stream": stream_key, "consumer_group": consumer_group},
-                )
+        wildcard_groups = getattr(bus, "wildcard_handlers", [])
+        for handler_path, consumer_group in wildcard_groups:
+            _poll_and_dispatch(r, stream_key, handler_path, consumer_group)
 
 
 def _ack_event(r: redis_asyncio.Redis, stream: str, group: str, entry_id: str) -> None:

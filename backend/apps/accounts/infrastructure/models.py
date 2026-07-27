@@ -10,13 +10,6 @@ from apps.common.infrastructure.model_mixins import TimestampedModel
 
 
 class User(AbstractUser):
-    """Custom user model with role-based access control.
-
-    Extends Django's AbstractUser with a role field for fine-grained
-    authorization. The role determines which endpoints and operations
-    the user may access.
-    """
-
     role = models.CharField(
         max_length=16,
         choices=[(r.value, r.name) for r in Role],
@@ -34,16 +27,6 @@ class User(AbstractUser):
 
 
 class APIKey(TimestampedModel):
-    """Scoped API key for programmatic access.
-
-    Only the SHA-256 hash of the key is persisted. The raw key is
-    returned to the owner exactly once at creation time and cannot
-    be retrieved afterwards.
-
-    Revocation is one-directional: once ``revoked_at`` is set, the
-    key cannot be un-revoked.
-    """
-
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(
         User,
@@ -62,3 +45,23 @@ class APIKey(TimestampedModel):
 
     def __str__(self) -> str:
         return f"APIKey({self.id}) for {self.user.username}"
+
+
+class Account(TimestampedModel):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=255)
+    owner = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="accounts",
+    )
+    is_default = models.BooleanField(default=False)
+
+    class Meta:
+        db_table = "accounts_account"
+        indexes = [
+            models.Index(fields=["owner", "is_default"]),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.name} ({'default' if self.is_default else 'non-default'})"

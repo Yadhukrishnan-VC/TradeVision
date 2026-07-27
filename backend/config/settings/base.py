@@ -46,6 +46,9 @@ LOCAL_APPS: list[str] = [
     "apps.health",
     "channels",
     "apps.dashboard",
+    "apps.audit_log",
+    "apps.journal",
+    "apps.replay",
 ]
 
 THIRD_PARTY_APPS = []
@@ -179,6 +182,7 @@ CELERY_TASK_ROUTES = {
     "apps.eventbus.infrastructure.tasks.poll_event_streams": {"queue": "maintenance"},
     "apps.eventbus.infrastructure.tasks.replay_unpublished_events": {"queue": "maintenance"},
     "apps.accounts.infrastructure.tasks.purge_expired_tokens": {"queue": "maintenance"},
+    "apps.journal.infrastructure.tasks.finalize_stale_entries": {"queue": "analytics"},
 }
 
 CELERY_TASK_QUEUES = [
