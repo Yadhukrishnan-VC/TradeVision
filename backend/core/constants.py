@@ -232,6 +232,10 @@ class TaskName(str, Enum):
     DISPATCH_NOTIFICATION = "tradevision.notifications.dispatch"
     SEND_EMAIL = "tradevision.notifications.send_email"
 
+    MATCH_STRATEGY = "tradevision.strategy_registry.match_packet"
+    EVALUATE_CONFIDENCE = "tradevision.ai_engine.evaluate_confidence"
+    COMPOSE_EXPLANATION = "tradevision.recommendations.compose_explanation"
+
     TRACK_RECOMMENDATION_OUTCOME = "tradevision.backtesting.track_outcome"
     RUN_CALIBRATION = "tradevision.backtesting.calibrate"
 

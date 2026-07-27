@@ -1,18 +1,3 @@
-"""
-TradeVision AI — PromptManager service.
-
-Loads, versions, and renders Jinja2 prompt templates. Templates are stored
-in ``core/ai/prompts/`` and loaded at import time.
-
-Usage::
-
-    from apps.ai_engine.prompt_manager.service import PromptManager
-
-    pm = PromptManager()
-    template = pm.get_template("price_movement")
-    prompt = pm.render(template, signal_context=ctx, portfolio_state=ps)
-"""
-
 from __future__ import annotations
 
 import hashlib
@@ -21,12 +6,13 @@ import re
 from pathlib import Path
 from typing import Any
 
+from django.conf import settings
+from django.utils import timezone
 from jinja2 import Environment, FileSystemLoader, Template
 
 logger = logging.getLogger(__name__)
 
 TEMPLATE_DIR: Path = Path(__file__).resolve().parent.parent.parent.parent / "core" / "ai" / "prompts"
-"""Path to the Jinja2 template directory."""
 
 TEMPLATE_NAMES: dict[str, str] = {
     "price_movement": "price_movement.j2",
@@ -41,12 +27,9 @@ TEMPLATE_NAMES: dict[str, str] = {
     "macro_event": "macro_event.j2",
     "multi_event": "multi_event.j2",
 }
-"""Maps EventType values to template filenames."""
 
 
 class PromptManager:
-    """Manages prompt template lifecycle: loading, versioning, rendering."""
-
     def __init__(self) -> None:
         self._env: Environment = Environment(
             loader=FileSystemLoader(str(TEMPLATE_DIR)),
@@ -57,7 +40,6 @@ class PromptManager:
         self._load_templates()
 
     def _load_templates(self) -> None:
-        """Load all templates and compute their versions."""
         for event_type, filename in TEMPLATE_NAMES.items():
             try:
                 template = self._env.get_template(filename)
@@ -73,6 +55,7 @@ class PromptManager:
                         "version": version,
                     },
                 )
+                self._ensure_persisted_version(event_type, source, version)
             except Exception as exc:
                 logger.error(
                     "prompt_template_load_failed",
@@ -80,14 +63,45 @@ class PromptManager:
                 )
 
     def _compute_version(self, source: str) -> str:
-        """Compute template version from content hash or VERSION comment."""
         version_match = re.search(r"VERSION:\s*([\w.]+)", source)
         if version_match:
             return version_match.group(1)
         return hashlib.sha256(source.encode()).hexdigest()[:12]
 
+    def _ensure_persisted_version(self, event_type: str, source: str, version: str) -> None:
+        if not getattr(settings, "PROMPT_VERSIONING_PERSISTENCE_ENABLED", False):
+            return
+        from apps.ai_engine.models import PromptVersion
+
+        PromptVersion.objects.get_or_create(
+            event_type=event_type,
+            version_hash=version,
+            defaults={
+                "source_snapshot": source,
+                "is_active": not PromptVersion.objects.filter(
+                    event_type=event_type, is_active=True
+                ).exists(),
+            },
+        )
+        logger.debug(
+            "prompt_version_persisted",
+            extra={"event_type": event_type, "version": version},
+        )
+
+    def _get_active_version(self, event_type: str) -> str | None:
+        if not getattr(settings, "PROMPT_VERSIONING_PERSISTENCE_ENABLED", False):
+            return None
+        from apps.ai_engine.models import PromptVersion
+
+        try:
+            active = PromptVersion.objects.filter(
+                event_type=event_type, is_active=True
+            ).latest("activated_at")
+            return active.version_hash
+        except PromptVersion.DoesNotExist:
+            return None
+
     def get_template(self, event_type: str) -> Template | None:
-        """Return the Jinja2 template for the given event type."""
         return self._templates.get(event_type)
 
     def render(
@@ -99,24 +113,10 @@ class PromptManager:
         trading_history: list[dict[str, Any]] | None = None,
         **kwargs: Any,
     ) -> str:
-        """Render a prompt template with the given context.
+        active_version = self._get_active_version(event_type)
+        if active_version and active_version in self._versions.values():
+            pass
 
-        Args:
-            event_type: The event type key (e.g. ``"price_movement"``).
-            signal_context: Dict with keys: pine_output, market_regime,
-                multi_timeframe_alignment, news_headlines, sector_context,
-                event_* fields.
-            portfolio_state: Serialized portfolio state string.
-            risk_state: Serialized risk state string.
-            trading_history: List of recent trader memory records.
-            **kwargs: Additional template variables.
-
-        Returns:
-            Rendered prompt string.
-
-        Raises:
-            ValueError: If the template for ``event_type`` is not found.
-        """
         template = self.get_template(event_type)
         if template is None:
             raise ValueError(
@@ -142,9 +142,84 @@ class PromptManager:
         return template.render(**context)
 
     def get_version(self, event_type: str) -> str:
-        """Return the version string for the given template."""
+        active_version = self._get_active_version(event_type)
+        if active_version:
+            return active_version
         return self._versions.get(event_type, "unknown")
 
     def list_versions(self) -> dict[str, str]:
-        """Return a dict of all template versions keyed by event type."""
         return dict(self._versions)
+
+    def activate_version(self, event_type: str, version: str) -> None:
+        from apps.ai_engine.models import PromptVersion
+
+        PromptVersion.objects.filter(event_type=event_type, is_active=True).update(
+            is_active=False
+        )
+
+        updated = PromptVersion.objects.filter(
+            event_type=event_type, version_hash=version
+        ).update(is_active=True, activated_at=timezone.now())
+
+        if updated == 0:
+            raise ValueError(
+                f"No PromptVersion found for event_type='{event_type}', "
+                f"version='{version}'"
+            )
+
+        logger.info(
+            "prompt_version_activated",
+            extra={"event_type": event_type, "version": version},
+        )
+
+    def rollback(self, event_type: str) -> str:
+        from apps.ai_engine.models import PromptVersion
+
+        versions = list(
+            PromptVersion.objects.filter(event_type=event_type).order_by("-activated_at")
+        )
+
+        if len(versions) < 2:
+            raise ValueError(
+                f"Cannot rollback event_type='{event_type}': "
+                f"need at least 2 versions, found {len(versions)}"
+            )
+
+        current = versions[0]
+        previous = versions[1]
+
+        PromptVersion.objects.filter(event_type=event_type, is_active=True).update(
+            is_active=False
+        )
+        PromptVersion.objects.filter(
+            event_type=event_type, id=previous.id
+        ).update(is_active=True, activated_at=timezone.now())
+
+        logger.info(
+            "prompt_version_rollback",
+            extra={
+                "event_type": event_type,
+                "from_version": current.version_hash,
+                "to_version": previous.version_hash,
+            },
+        )
+
+        return previous.version_hash
+
+    def get_history(self, event_type: str) -> list[dict[str, Any]]:
+        from apps.ai_engine.models import PromptVersion
+
+        qs = PromptVersion.objects.filter(event_type=event_type).order_by(
+            "-activated_at", "-created_at"
+        )
+        return [
+            {
+                "id": str(pv.id),
+                "event_type": pv.event_type,
+                "version_hash": pv.version_hash,
+                "is_active": pv.is_active,
+                "activated_at": pv.activated_at.isoformat() if pv.activated_at else None,
+                "created_at": pv.created_at.isoformat() if pv.created_at else None,
+            }
+            for pv in qs
+        ]

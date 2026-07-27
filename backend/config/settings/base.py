@@ -49,6 +49,11 @@ LOCAL_APPS: list[str] = [
     "apps.audit_log",
     "apps.journal",
     "apps.replay",
+    # B.0 — AI/Intelligence apps
+    "apps.ai_engine",
+    "apps.intelligence",
+    "apps.recommendations",
+    "apps.strategy_registry",
 ]
 
 THIRD_PARTY_APPS = []
@@ -183,6 +188,12 @@ CELERY_TASK_ROUTES = {
     "apps.eventbus.infrastructure.tasks.replay_unpublished_events": {"queue": "maintenance"},
     "apps.accounts.infrastructure.tasks.purge_expired_tokens": {"queue": "maintenance"},
     "apps.journal.infrastructure.tasks.finalize_stale_entries": {"queue": "analytics"},
+    # B.3 — Strategy Registry
+    "tradevision.strategy_registry.match_packet": {"queue": "ai_reasoning"},
+    # B.4 — Confidence Engine
+    "tradevision.ai_engine.evaluate_confidence": {"queue": "ai_reasoning"},
+    # B.5 — Recommendation Explanation
+    "tradevision.recommendations.compose_explanation": {"queue": "ai_reasoning"},
 }
 
 CELERY_TASK_QUEUES = [
@@ -279,6 +290,18 @@ OLLAMA_MODEL: str = config("OLLAMA_MODEL", default="llama3.2")
 DEEPSEEK_API_KEY: str = config("DEEPSEEK_API_KEY", default="")
 DEEPSEEK_MODEL: str = config("DEEPSEEK_MODEL", default="deepseek-chat")
 DEEPSEEK_BASE_URL: str = config("DEEPSEEK_BASE_URL", default="https://api.deepseek.com")
+
+# ---------------------------------------------------------------------------
+# Batch B kill switches — all default False until verified
+# ---------------------------------------------------------------------------
+STRATEGY_REGISTRY_ENABLED: bool = config("STRATEGY_REGISTRY_ENABLED", default=False, cast=bool)
+PROMPT_VERSIONING_PERSISTENCE_ENABLED: bool = config(
+    "PROMPT_VERSIONING_PERSISTENCE_ENABLED", default=False, cast=bool
+)
+CONFIDENCE_ENGINE_V2_ENABLED: bool = config("CONFIDENCE_ENGINE_V2_ENABLED", default=False, cast=bool)
+MODEL_ROUTER_PREFERRED_PROVIDER_ENABLED: bool = config(
+    "MODEL_ROUTER_PREFERRED_PROVIDER_ENABLED", default=False, cast=bool
+)
 
 # ---------------------------------------------------------------------------
 # Circuit breaker defaults

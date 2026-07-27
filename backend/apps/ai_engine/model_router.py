@@ -1,21 +1,3 @@
-"""
-TradeVision AI — Model Router.
-
-Deterministic AI provider selection. See ADR-019.
-
-Single responsibility: given a reasoning request's requirements,
-deterministically select which provider and model should serve it,
-and produce an ordered fallback chain.
-
-ModelRouter never:
-  - Renders or constructs prompts (that's PromptManager, ADR-016)
-  - Reads or writes Trader Memory
-  - Matches or evaluates strategies (it only consumes a strategy's
-    preferred_provider hint)
-  - Computes confidence scores
-  - Calls any provider's complete(), validate_connection(), or health_check()
-"""
-
 from __future__ import annotations
 
 import logging
@@ -32,10 +14,6 @@ from core.resilience.circuit_breaker import CircuitBreakerFactory, CircuitState
 
 logger = logging.getLogger(__name__)
 
-
-# ---------------------------------------------------------------------------
-# Static provider capability table
-# ---------------------------------------------------------------------------
 
 PROVIDER_CAPABILITIES: dict[AIProviderName, ProviderCapabilities] = {
     AIProviderName.CLAUDE: ProviderCapabilities(
@@ -89,27 +67,10 @@ PROVIDER_CAPABILITIES: dict[AIProviderName, ProviderCapabilities] = {
         cost_tier=CostTier.FREE,
     ),
 }
-"""Static capability profiles for every supported AI provider.
-
-These are known, fixed properties of each model — not queried live.
-Placeholder values are acceptable for providers not yet in active use,
-but every provider must be present in this table.
-"""
-
-
-# ---------------------------------------------------------------------------
-# Request / Response dataclasses
-# ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
 class RoutingCapabilityRequirements:
-    """Required capabilities for a routing request.
-
-    All fields default to ``False`` except ``requires_structured_json``
-    which is ``True`` by default (the AI Brain always outputs JSON).
-    """
-
     requires_structured_json: bool = True
     requires_streaming: bool = False
     requires_vision: bool = False
@@ -118,12 +79,6 @@ class RoutingCapabilityRequirements:
 
 @dataclass(frozen=True)
 class RoutingRequest:
-    """Input to ``ModelRouter.route()``.
-
-    Callers extract only what routing needs from the IntelligencePacket —
-    never pass the full packet to the router.
-    """
-
     event_type: EventType
     required_capabilities: RoutingCapabilityRequirements = field(
         default_factory=RoutingCapabilityRequirements
@@ -137,8 +92,6 @@ class RoutingRequest:
 
 @dataclass(frozen=True)
 class RoutingMetadata:
-    """Diagnostic metadata attached to each ``RoutingDecision``."""
-
     candidates_considered: tuple[AIProviderName, ...] = ()
     excluded: dict[str, str] = field(default_factory=dict)
     circuit_states: dict[str, str] = field(default_factory=dict)
@@ -146,68 +99,27 @@ class RoutingMetadata:
 
 @dataclass(frozen=True)
 class RoutingDecision:
-    """Output of ``ModelRouter.route()``.
-
-    Contains the selected provider, its model name, a human-readable
-    rationale, an ordered fallback chain, and diagnostic metadata.
-    """
-
     selected_provider: AIProviderName
     selected_model: str
     rationale: str
     fallback_chain: tuple[AIProviderName, ...] = ()
     routing_metadata: RoutingMetadata = field(default_factory=RoutingMetadata)
-
-
-# ---------------------------------------------------------------------------
-# Model Router
-# ---------------------------------------------------------------------------
+    decision_trace: tuple[str, ...] = ()
 
 
 class ModelRouter:
-    """Deterministic AI provider selection.
-
-    Does not call any provider. Reads circuit state from Redis (via the
-    injected ``CircuitBreakerFactory``) and static capability/priority
-    configuration only.
-
-    Args:
-        circuit_breaker_factory: Shared ``CircuitBreakerFactory`` instance
-            (injected, never instantiated ad hoc inside ModelRouter).
-    """
-
     def __init__(self, circuit_breaker_factory: CircuitBreakerFactory) -> None:
         self._cb_factory = circuit_breaker_factory
 
-    # ------------------------------------------------------------------
-    # Public API
-    # ------------------------------------------------------------------
+    def get_provider_capabilities(self) -> dict[AIProviderName, ProviderCapabilities]:
+        return PROVIDER_CAPABILITIES
 
     def route(self, request: RoutingRequest) -> RoutingDecision:
-        """Apply the 9-step routing policy (ADR-019 §5).
-
-        Steps:
-            1. User override — highest precedence.
-            2. Capability filter — exclude providers missing requirements.
-            3. Health filter — exclude OPEN circuits.
-            4. Strategy preference — use ``preferred_provider`` if healthy.
-            5. Cost filter — exclude providers above budget.
-            6. Latency filter — prefer FAST tier when budget is tight.
-            7. Default priority order — rank by ``AI_PROVIDER_PRIORITY``.
-            8. Selection — first remaining candidate.
-            9. No candidates — raise ``NoAvailableProviderError``.
-
-        Returns:
-            A ``RoutingDecision`` with the selected provider and fallback chain.
-
-        Raises:
-            NoAvailableProviderError: If every candidate is excluded.
-        """
         all_providers: list[AIProviderName] = list(AIProviderName)
         excluded: dict[str, str] = {}
         circuit_states: dict[str, str] = {}
+        trace: list[str] = []
 
-        # Step 1: User override
         override = request.user_override_provider
         if override is not None:
             override_state = self._circuit_state(override)
@@ -225,6 +137,7 @@ class ModelRouter:
                     circuit_states,
                     request,
                 )
+                trace.append(f"Step 1: User override {provider.value}")
                 return RoutingDecision(
                     selected_provider=provider,
                     selected_model=provider.value,
@@ -235,17 +148,71 @@ class ModelRouter:
                         excluded=excluded,
                         circuit_states=circuit_states,
                     ),
+                    decision_trace=tuple(trace),
                 )
             excluded[override.value] = f"circuit is {override_state.value}"
+            trace.append(f"Step 1: User override {override.value} excluded (circuit OPEN)")
 
-        # Step 2: Capability filter
+        preferred = request.preferred_provider
+        if preferred is not None:
+            caps_map = self.get_provider_capabilities()
+            preferred_caps = caps_map.get(preferred, ProviderCapabilities())
+            cap_reason = self._capability_filter_reason(preferred, preferred_caps, request)
+            circuit_state = self._circuit_state(preferred)
+            circuit_states[preferred.value] = circuit_state.value
+
+            if cap_reason:
+                excluded[preferred.value] = cap_reason
+                trace.append(
+                    f"Step 1a: Preferred {preferred.value} excluded (capability: {cap_reason})"
+                )
+            elif circuit_state == CircuitState.OPEN:
+                excluded[preferred.value] = "circuit breaker is OPEN"
+                trace.append(
+                    f"Step 1a: Preferred {preferred.value} excluded (circuit OPEN)"
+                )
+            elif preferred.value in config.ai_provider_disabled:
+                excluded[preferred.value] = "manually disabled via AI_PROVIDER_DISABLED"
+                trace.append(
+                    f"Step 1a: Preferred {preferred.value} excluded (manually disabled)"
+                )
+            else:
+                fallback_excluded = self._compute_route_exclusions(
+                    all_providers, circuit_states, request
+                )
+                fallback = self._build_fallback(
+                    preferred,
+                    all_providers,
+                    fallback_excluded,
+                    circuit_states,
+                    request,
+                )
+                trace.append(
+                    f"Step 1a: Preferred {preferred.value} passes capability/circuit checks"
+                )
+                return RoutingDecision(
+                    selected_provider=preferred,
+                    selected_model=preferred.value,
+                    rationale=f"Strategy preference: {preferred.value}",
+                    fallback_chain=fallback,
+                    routing_metadata=RoutingMetadata(
+                        candidates_considered=tuple(all_providers),
+                        excluded=excluded,
+                        circuit_states=circuit_states,
+                    ),
+                    decision_trace=tuple(trace),
+                )
+
+        caps_map = self.get_provider_capabilities()
         for prov in all_providers:
-            caps = PROVIDER_CAPABILITIES.get(prov, ProviderCapabilities())
+            caps = caps_map.get(prov, ProviderCapabilities())
             reason = self._capability_filter_reason(prov, caps, request)
             if reason:
                 excluded[prov.value] = reason
+        trace.append(
+            f"Step 2: Capability filter — {len([k for k in excluded if 'does not support' in excluded[k] or 'context window' in excluded[k]])} excluded"
+        )
 
-        # Step 3: Health filter (circuit state + manual disable)
         disabled = config.ai_provider_disabled
         for prov in all_providers:
             if prov.value in excluded:
@@ -257,41 +224,29 @@ class ModelRouter:
             circuit_states[prov.value] = state.value
             if state == CircuitState.OPEN:
                 excluded[prov.value] = "circuit breaker is OPEN"
+        trace.append(
+            f"Step 3: Health filter — {len([k for k in excluded if 'circuit' in excluded[k] or 'disabled' in excluded[k]])} excluded"
+        )
 
-        # Step 4: Strategy preference
-        preferred = request.preferred_provider
-        if preferred is not None and preferred.value not in excluded:
-            fallback = self._build_fallback(
-                preferred, all_providers, excluded, circuit_states, request
-            )
-            return RoutingDecision(
-                selected_provider=preferred,
-                selected_model=preferred.value,
-                rationale=f"Strategy preference: {preferred.value}",
-                fallback_chain=fallback,
-                routing_metadata=RoutingMetadata(
-                    candidates_considered=tuple(all_providers),
-                    excluded=excluded,
-                    circuit_states=circuit_states,
-                ),
-            )
-
-        # Step 5: Cost filter
         cost_budget = request.cost_budget_usd
         if cost_budget is not None:
             ceilings = config.ai_cost_tier_ceilings
             for prov in all_providers:
                 if prov.value in excluded:
                     continue
-                caps = PROVIDER_CAPABILITIES.get(prov, ProviderCapabilities())
+                caps = caps_map.get(prov, ProviderCapabilities())
                 ceiling_str = ceilings.get(caps.cost_tier.value, "0.000")
                 if Decimal(ceiling_str) > cost_budget:
                     excluded[prov.value] = (
                         f"cost tier {caps.cost_tier.value} exceeds "
                         f"budget ${cost_budget:.3f}"
                     )
+            trace.append(
+                f"Step 4: Cost filter — {len([k for k in excluded if 'cost' in excluded[k]])} excluded"
+            )
+        else:
+            trace.append("Step 4: Cost filter — skipped (no budget set)")
 
-        # Step 6: Latency filter
         budget_ms = request.latency_budget_ms
         tight_latency = (
             budget_ms is not None
@@ -301,14 +256,18 @@ class ModelRouter:
             for prov in all_providers:
                 if prov.value in excluded:
                     continue
-                caps = PROVIDER_CAPABILITIES.get(prov, ProviderCapabilities())
+                caps = caps_map.get(prov, ProviderCapabilities())
                 if caps.latency_tier != LatencyTier.FAST:
                     excluded[prov.value] = (
                         f"latency tier {caps.latency_tier.value} does not meet "
                         f"tight budget of {budget_ms}ms"
                     )
+            trace.append(
+                f"Step 5: Latency filter — {len([k for k in excluded if 'latency' in excluded[k]])} excluded"
+            )
+        else:
+            trace.append("Step 5: Latency filter — skipped (no tight budget)")
 
-        # Step 7-8: Default priority order + selection
         priority = config.ai_provider_priority
         candidates = [p for p in priority if p not in excluded]
         valid_candidates: list[AIProviderName] = []
@@ -318,8 +277,13 @@ class ModelRouter:
             except ValueError:
                 continue
 
+        trace.append(
+            f"Step 6: Priority order — {len(valid_candidates)} candidate(s) after filtering: "
+            f"{[v.value for v in valid_candidates]}"
+        )
+
         if not valid_candidates:
-            # Step 9: No candidates
+            trace.append("Step 7: No candidates available — raising NoAvailableProviderError")
             metadata = RoutingMetadata(
                 candidates_considered=tuple(all_providers),
                 excluded=excluded,
@@ -333,6 +297,7 @@ class ModelRouter:
 
         selected = valid_candidates[0]
         remaining = valid_candidates[1:]
+        trace.append(f"Step 8: Selected {selected.value}, fallback chain: {[r.value for r in remaining]}")
 
         return RoutingDecision(
             selected_provider=selected,
@@ -344,6 +309,7 @@ class ModelRouter:
                 excluded=excluded,
                 circuit_states=circuit_states,
             ),
+            decision_trace=tuple(trace),
         )
 
     def next_in_chain(
@@ -351,27 +317,13 @@ class ModelRouter:
         decision: RoutingDecision,
         failed_provider: AIProviderName,
     ) -> AIProviderName | None:
-        """Return the next provider after ``failed_provider``.
-
-        If ``failed_provider`` is the ``decision.selected_provider``,
-        the first entry in ``fallback_chain`` is returned.
-        If ``failed_provider`` is itself in ``fallback_chain``, the
-        *following* entry is returned.
-        Returns ``None`` when the chain is exhausted.
-
-        Pure function — does not re-run routing or touch circuit state.
-        The caller is responsible for reporting the failure to the circuit
-        breaker via the existing ``CircuitBreaker.record_failure()``.
-        """
         chain = decision.fallback_chain
         if not chain:
             return None
 
-        # The selected provider failed — return the first fallback
         if failed_provider == decision.selected_provider:
             return chain[0]
 
-        # A fallback provider failed — return the next one in chain
         if failed_provider in chain:
             idx = chain.index(failed_provider)
             next_idx = idx + 1
@@ -380,12 +332,7 @@ class ModelRouter:
 
         return None
 
-    # ------------------------------------------------------------------
-    # Private helpers
-    # ------------------------------------------------------------------
-
     def _circuit_state(self, provider: AIProviderName) -> CircuitState:
-        """Read the current circuit state for a provider."""
         breaker = self._cb_factory.get_or_create(f"ai-provider-{provider.value}")
         return breaker.state
 
@@ -395,7 +342,6 @@ class ModelRouter:
         caps: ProviderCapabilities,
         request: RoutingRequest,
     ) -> str | None:
-        """Return an exclusion reason if ``provider`` lacks required capabilities."""
         req = request.required_capabilities
 
         if req.requires_structured_json and not caps.supports_structured_json:
@@ -421,22 +367,15 @@ class ModelRouter:
         circuit_states: dict[str, str],
         request: RoutingRequest,
     ) -> dict[str, str]:
-        """Apply capability, health, cost, and latency filters.
-
-        Returns an exclusion dict with reasons for every provider that
-        does not qualify.  Used by the override path to build a fallback
-        chain from the *real* candidate set.
-        """
         result: dict[str, str] = {}
+        caps_map = self.get_provider_capabilities()
 
-        # Capability filter
         for prov in all_providers:
-            caps = PROVIDER_CAPABILITIES.get(prov, ProviderCapabilities())
+            caps = caps_map.get(prov, ProviderCapabilities())
             reason = self._capability_filter_reason(prov, caps, request)
             if reason:
                 result[prov.value] = reason
 
-        # Health filter (circuit state + manual disable)
         disabled = config.ai_provider_disabled
         for prov in all_providers:
             if prov.value in result:
@@ -450,14 +389,13 @@ class ModelRouter:
             if state == CircuitState.OPEN:
                 result[prov.value] = "circuit breaker is OPEN"
 
-        # Cost filter
         cost_budget = request.cost_budget_usd
         if cost_budget is not None:
             ceilings = config.ai_cost_tier_ceilings
             for prov in all_providers:
                 if prov.value in result:
                     continue
-                caps = PROVIDER_CAPABILITIES.get(prov, ProviderCapabilities())
+                caps = caps_map.get(prov, ProviderCapabilities())
                 ceiling_str = ceilings.get(caps.cost_tier.value, "0.000")
                 if Decimal(ceiling_str) > cost_budget:
                     result[prov.value] = (
@@ -465,7 +403,6 @@ class ModelRouter:
                         f"budget ${cost_budget:.3f}"
                     )
 
-        # Latency filter
         budget_ms = request.latency_budget_ms
         tight_latency = (
             budget_ms is not None
@@ -475,7 +412,7 @@ class ModelRouter:
             for prov in all_providers:
                 if prov.value in result:
                     continue
-                caps = PROVIDER_CAPABILITIES.get(prov, ProviderCapabilities())
+                caps = caps_map.get(prov, ProviderCapabilities())
                 if caps.latency_tier != LatencyTier.FAST:
                     result[prov.value] = (
                         f"latency tier {caps.latency_tier.value} does not meet "
@@ -489,7 +426,6 @@ class ModelRouter:
         selected: AIProviderName,
         all_providers: list[AIProviderName],
     ) -> dict[str, str]:
-        """Build an exclusion dict labelling all providers except the selected one."""
         result: dict[str, str] = {}
         for prov in all_providers:
             if prov != selected:
@@ -504,7 +440,6 @@ class ModelRouter:
         circuit_states: dict[str, str],
         request: RoutingRequest,
     ) -> tuple[AIProviderName, ...]:
-        """Build a fallback chain from remaining non-excluded providers in priority order."""
         priority = config.ai_provider_priority
         remaining: list[AIProviderName] = []
         for name in priority:

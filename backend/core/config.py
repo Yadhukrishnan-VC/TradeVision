@@ -373,6 +373,38 @@ class TradeVisionConfig:
         }
 
     # ---------------------------------------------------------------------------
+    # Batch B kill switches
+    # ---------------------------------------------------------------------------
+
+    @property
+    def strategy_registry_enabled(self) -> bool:
+        """Kill switch for Strategy Registry (B.3)."""
+        from django.conf import settings
+
+        return bool(getattr(settings, "STRATEGY_REGISTRY_ENABLED", False))
+
+    @property
+    def prompt_versioning_persistence_enabled(self) -> bool:
+        """Kill switch for DB-backed prompt versioning (B.2)."""
+        from django.conf import settings
+
+        return bool(getattr(settings, "PROMPT_VERSIONING_PERSISTENCE_ENABLED", False))
+
+    @property
+    def confidence_engine_v2_enabled(self) -> bool:
+        """Kill switch for Confidence Engine V2 (B.4)."""
+        from django.conf import settings
+
+        return bool(getattr(settings, "CONFIDENCE_ENGINE_V2_ENABLED", False))
+
+    @property
+    def model_router_preferred_provider_enabled(self) -> bool:
+        """Kill switch for preferred provider hint in Model Router (B.1)."""
+        from django.conf import settings
+
+        return bool(getattr(settings, "MODEL_ROUTER_PREFERRED_PROVIDER_ENABLED", False))
+
+    # ---------------------------------------------------------------------------
     # Celery queue names
     # ---------------------------------------------------------------------------
 
