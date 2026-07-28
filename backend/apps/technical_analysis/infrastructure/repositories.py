@@ -1,0 +1,78 @@
+from __future__ import annotations
+
+import logging
+from typing import Any
+
+from apps.technical_analysis.domain.entities import TASnapshot
+from apps.technical_analysis.domain.value_objects import PineMetadata
+from apps.technical_analysis.infrastructure.models import TASnapshot as TASnapshotModel
+
+logger = logging.getLogger(__name__)
+
+
+class TASnapshotRepository:
+    """Repository for ``TASnapshot`` domain entities backed by the ORM model."""
+
+    def save(self, snapshot: TASnapshot) -> TASnapshot:
+        """Persist a new technical analysis snapshot.
+
+        Args:
+            snapshot: The domain entity to persist.
+
+        Returns:
+            The persisted domain entity.
+        """
+        obj = TASnapshotModel.objects.create(
+            id=snapshot.id,
+            symbol=snapshot.symbol,
+            exchange=snapshot.exchange,
+            timeframe=snapshot.timeframe,
+            pine_id=snapshot.pine_metadata.pine_id,
+            pine_version=snapshot.pine_metadata.pine_version,
+            pine_timestamp=snapshot.pine_metadata.pine_timestamp,
+            indicators=snapshot.indicators,
+            raw_payload=snapshot.raw_payload,
+            snapshot_timestamp=snapshot.snapshot_timestamp,
+        )
+        return self._to_domain(obj)
+
+    def find_by_symbol(
+        self,
+        symbol: str,
+        limit: int = 100,
+    ) -> list[TASnapshot]:
+        """Return the most recent snapshots for a given symbol."""
+        qs = TASnapshotModel.objects.filter(
+            symbol__iexact=symbol,
+        ).order_by("-snapshot_timestamp")[:limit]
+        return [self._to_domain(obj) for obj in qs]
+
+    def find_by_id(self, snapshot_id: str) -> TASnapshot | None:
+        """Look up a snapshot by its UUID."""
+        try:
+            obj = TASnapshotModel.objects.get(pk=snapshot_id)
+            return self._to_domain(obj)
+        except TASnapshotModel.DoesNotExist:
+            return None
+
+    def count_by_symbol(self, symbol: str) -> int:
+        """Return the number of snapshots for a given symbol."""
+        return TASnapshotModel.objects.filter(symbol__iexact=symbol).count()
+
+    @staticmethod
+    def _to_domain(obj: TASnapshotModel) -> TASnapshot:
+        return TASnapshot(
+            id=obj.id,
+            symbol=obj.symbol,
+            exchange=obj.exchange,
+            timeframe=obj.timeframe,
+            indicators=obj.indicators,
+            pine_metadata=PineMetadata(
+                pine_id=obj.pine_id,
+                pine_version=obj.pine_version,
+                pine_timestamp=obj.pine_timestamp,
+            ),
+            raw_payload=obj.raw_payload,
+            snapshot_timestamp=obj.snapshot_timestamp,
+            received_at=obj.received_at,
+        )

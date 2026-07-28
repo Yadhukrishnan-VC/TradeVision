@@ -58,6 +58,8 @@ LOCAL_APPS: list[str] = [
     "apps.trader_memory",
     # Batch 2 — Signals Engine
     "apps.signals_engine",
+    # Batch 3 — Technical Analysis
+    "apps.technical_analysis",
 ]
 
 THIRD_PARTY_APPS = []
