@@ -46,6 +46,22 @@ class TradingViewTechnicalAnalysisWebhookView(GenericAPIView):
     permission_classes: list[Any] = []
     authentication_classes: list[Any] = []
 
+    # Constructed once per process, not per request
+    _repository: TASnapshotRepository | None = None
+    _event_bus: Any = None
+
+    @classmethod
+    def _get_repository(cls) -> TASnapshotRepository:
+        if cls._repository is None:
+            cls._repository = TASnapshotRepository()
+        return cls._repository
+
+    @classmethod
+    def _get_event_bus(cls) -> Any:
+        if cls._event_bus is None:
+            cls._event_bus = get_event_bus()
+        return cls._event_bus
+
     def post(self, request: Request, token: str) -> Response:
         expected_token = getattr(settings, "TRADINGVIEW_TA_WEBHOOK_TOKEN", "")
         if not expected_token:
@@ -89,11 +105,9 @@ class TradingViewTechnicalAnalysisWebhookView(GenericAPIView):
             hex=IdempotencyKey.generate(correlation_source).value[:32],
         )
 
-        repository = TASnapshotRepository()
-        event_bus = get_event_bus()
         service = TechnicalAnalysisIngestionService(
-            repository=repository,
-            event_bus=event_bus,
+            repository=self._get_repository(),
+            event_bus=self._get_event_bus(),
         )
 
         try:
