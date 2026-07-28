@@ -10,13 +10,9 @@ from apps.eventbus.domain.events import DomainEvent
 from apps.rule_engine.infrastructure.tasks import evaluate_packet
 
 
-SUBSCRIBED_EVENTS: dict[str, list[Callable[[DomainEvent], None]]] = {}
-
-
-def handle_enriched_packet(data: dict) -> None:
-    from apps.rule_engine.infrastructure.tasks import evaluate_packet
-
-    enriched = _deserialize_enriched_packet(data)
+def handle_enriched_packet(event: DomainEvent) -> None:
+    data = event.payload
+    enriched = _deserialize_enriched_packet(data.get("packet_data", data))
     analysis_event_id = data.get("analysis_event_id")
     evaluate_packet.delay(
         enriched=_serialize_for_task(enriched),
@@ -110,6 +106,11 @@ def _serialize_for_task(enriched: EnrichedIntelligencePacket) -> dict:
     from dataclasses import asdict
     from core.events.event_bus import _EventEncoder
     return json.loads(json.dumps(asdict(enriched), cls=_EventEncoder))
+
+
+SUBSCRIBED_EVENTS: dict[str, list[Callable[[DomainEvent], None]]] = {
+    "intelligence.PacketEnriched": [handle_enriched_packet],
+}
 
 
 def register_handlers(event_bus: EventBus) -> None:

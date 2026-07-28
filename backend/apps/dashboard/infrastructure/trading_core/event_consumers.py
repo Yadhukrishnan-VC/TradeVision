@@ -62,6 +62,15 @@ SUBSCRIBED_EVENTS: dict[str, list[Callable[[DomainEvent], None]]] = {
     "analytics.PnLSnapshotUpdated": [
         PortfolioSummaryProjectionService().handle,
     ],
+    "rule_engine.RuleFired": [
+        PortfolioSummaryProjectionService().handle,
+    ],
+    "ai_engine.RecommendationIssued": [
+        PortfolioSummaryProjectionService().handle,
+    ],
+    "recommendations.RecommendationCreated": [
+        PortfolioSummaryProjectionService().handle,
+    ],
 }
 
 

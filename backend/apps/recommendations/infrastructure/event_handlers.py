@@ -7,19 +7,28 @@ from apps.eventbus.domain.events import DomainEvent
 from apps.recommendations.infrastructure.tasks import create_recommendation
 
 
-def _handle_rule_fired(event: DomainEvent) -> None:
+def _handle_recommendation_issued(event: DomainEvent) -> None:
     payload = event.payload
     create_recommendation.delay(
         symbol=payload["symbol"],
-        rule_id=payload["rule_id"],
+        direction=payload.get("direction", "WATCH"),
+        confidence_score=str(payload.get("confidence_score", "0.70")),
+        strategy_id=payload.get("strategy_id"),
+        confidence_evaluation_id=payload.get("confidence_evaluation_id"),
         analysis_event_id=payload.get("analysis_event_id"),
-        trigger_data=payload.get("trigger_data", {}),
+        reason=payload.get("reasoning", ""),
+        risk_level=payload.get("risk_level", "MEDIUM"),
+        risk_explanation=payload.get("risk_explanation", ""),
+        key_factors=payload.get("key_factors", []),
+        time_horizon=payload.get("time_horizon", "SHORT"),
+        provider=payload.get("provider", "fallback"),
+        validated_response=payload.get("validated_response", {}),
         correlation_id=str(event.correlation_id),
     )
 
 
 SUBSCRIBED_EVENTS: dict[str, list[Callable[[DomainEvent], None]]] = {
-    "rule_engine.RuleFired": [_handle_rule_fired],
+    "ai_engine.RecommendationIssued": [_handle_recommendation_issued],
 }
 
 

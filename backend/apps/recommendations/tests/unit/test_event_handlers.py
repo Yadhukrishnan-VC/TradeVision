@@ -8,63 +8,89 @@ import pytest
 from apps.eventbus.domain.events import DomainEvent
 from apps.recommendations.infrastructure.event_handlers import (
     SUBSCRIBED_EVENTS,
-    _handle_rule_fired,
+    _handle_recommendation_issued,
     register_handlers,
 )
 
 
 class TestEventHandlers:
-    def test_subscribed_events_contains_rule_fired(self) -> None:
-        assert "rule_engine.RuleFired" in SUBSCRIBED_EVENTS
+    def test_subscribed_events_contains_recommendation_issued(self) -> None:
+        assert "ai_engine.RecommendationIssued" in SUBSCRIBED_EVENTS
 
-    def test_rule_fired_has_one_handler(self) -> None:
-        handlers = SUBSCRIBED_EVENTS["rule_engine.RuleFired"]
+    def test_recommendation_issued_has_one_handler(self) -> None:
+        handlers = SUBSCRIBED_EVENTS["ai_engine.RecommendationIssued"]
         assert len(handlers) == 1
-        assert handlers[0] is _handle_rule_fired
+        assert handlers[0] is _handle_recommendation_issued
 
     @patch("apps.recommendations.infrastructure.event_handlers.create_recommendation")
-    def test_handle_rule_fired_dispatches_task(self, mock_create_recommendation) -> None:
+    def test_handle_recommendation_issued_dispatches_task(self, mock_create_recommendation) -> None:
         cid = uuid.uuid4()
         event = DomainEvent.create(
-            event_type="rule_engine.RuleFired",
+            event_type="ai_engine.RecommendationIssued",
             payload={
                 "symbol": "RELIANCE",
-                "rule_id": "rule-123",
-                "analysis_event_id": "evt-456",
-                "trigger_data": {"change_pct": "2.5"},
+                "direction": "BUY",
+                "confidence_score": "0.85",
+                "strategy_id": "strat-123",
+                "confidence_evaluation_id": "eval-456",
+                "analysis_event_id": "evt-789",
+                "reasoning": "Strong bullish signal",
+                "risk_level": "LOW",
+                "risk_explanation": "Low risk profile",
+                "key_factors": [],
+                "time_horizon": "SHORT",
+                "provider": "deepseek",
+                "validated_response": {"recommendation_id": "", "trade_explanation": "test", "risk_explanation": "test"},
             },
             correlation_id=cid,
         )
 
-        _handle_rule_fired(event)
+        _handle_recommendation_issued(event)
 
         mock_create_recommendation.delay.assert_called_once_with(
             symbol="RELIANCE",
-            rule_id="rule-123",
-            analysis_event_id="evt-456",
-            trigger_data={"change_pct": "2.5"},
+            direction="BUY",
+            confidence_score="0.85",
+            strategy_id="strat-123",
+            confidence_evaluation_id="eval-456",
+            analysis_event_id="evt-789",
+            reason="Strong bullish signal",
+            risk_level="LOW",
+            risk_explanation="Low risk profile",
+            key_factors=[],
+            time_horizon="SHORT",
+            provider="deepseek",
+            validated_response={"recommendation_id": "", "trade_explanation": "test", "risk_explanation": "test"},
             correlation_id=str(event.correlation_id),
         )
 
     @patch("apps.recommendations.infrastructure.event_handlers.create_recommendation")
-    def test_handle_rule_fired_without_optional_fields(self, mock_create_recommendation) -> None:
+    def test_handle_recommendation_issued_without_optional_fields(self, mock_create_recommendation) -> None:
         cid = uuid.uuid4()
         event = DomainEvent.create(
-            event_type="rule_engine.RuleFired",
+            event_type="ai_engine.RecommendationIssued",
             payload={
                 "symbol": "TCS",
-                "rule_id": "rule-456",
             },
             correlation_id=cid,
         )
 
-        _handle_rule_fired(event)
+        _handle_recommendation_issued(event)
 
         mock_create_recommendation.delay.assert_called_once_with(
             symbol="TCS",
-            rule_id="rule-456",
+            direction="WATCH",
+            confidence_score="0.70",
+            strategy_id=None,
+            confidence_evaluation_id=None,
             analysis_event_id=None,
-            trigger_data={},
+            reason="",
+            risk_level="MEDIUM",
+            risk_explanation="",
+            key_factors=[],
+            time_horizon="SHORT",
+            provider="fallback",
+            validated_response={},
             correlation_id=str(event.correlation_id),
         )
 
@@ -74,8 +100,8 @@ class TestEventHandlers:
         register_handlers(bus)
 
         bus.subscribe.assert_called_once_with(
-            event_type="rule_engine.RuleFired",
-            handler=_handle_rule_fired,
+            event_type="ai_engine.RecommendationIssued",
+            handler=_handle_recommendation_issued,
             consumer_group="recommendations",
         )
 
@@ -86,5 +112,5 @@ class TestEventHandlers:
 
         bus.subscribe.assert_called_once()
         call_args = bus.subscribe.call_args
-        assert call_args[1]["event_type"] == "rule_engine.RuleFired"
+        assert call_args[1]["event_type"] == "ai_engine.RecommendationIssued"
         assert call_args[1]["consumer_group"] == "recommendations"

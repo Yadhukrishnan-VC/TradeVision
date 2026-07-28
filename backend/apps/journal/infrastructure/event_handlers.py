@@ -20,6 +20,10 @@ SUBSCRIBED_EVENTS: dict[str, list[Callable[[DomainEvent], None]]] = {
     "positions.PositionClosed": [JournalAssemblyService().handle],
     "risk.AlertRaised": [JournalAssemblyService().handle],
     "risk.AlertResolved": [JournalAssemblyService().handle],
+    "rule_engine.RuleFired": [JournalAssemblyService().handle],
+    "ai_engine.RecommendationIssued": [JournalAssemblyService().handle],
+    "recommendations.RecommendationCreated": [JournalAssemblyService().handle],
+    "recommendations.RecommendationStatusChanged": [JournalAssemblyService().handle],
 }
 
 

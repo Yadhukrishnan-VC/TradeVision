@@ -23,34 +23,50 @@ logger = logging.getLogger(__name__)
 def create_recommendation(
     self,
     symbol: str,
-    rule_id: str,
+    direction: str = "WATCH",
+    confidence_score: str = "0.70",
+    strategy_id: str | None = None,
+    confidence_evaluation_id: str | None = None,
     analysis_event_id: str | None = None,
-    trigger_data: dict | None = None,
+    reason: str = "",
+    risk_level: str = "MEDIUM",
+    risk_explanation: str = "",
+    key_factors: list | None = None,
+    time_horizon: str = "SHORT",
+    provider: str = "fallback",
+    validated_response: dict | None = None,
     correlation_id: str = "",
 ) -> dict:
     from apps.recommendations.application.recommendation_command_service import RecommendationCommandService
 
-    direction = _derive_direction(trigger_data or {})
-    confidence_score = _derive_confidence(trigger_data or {})
+    score = Decimal(str(confidence_score))
 
     service = RecommendationCommandService()
     aggregate = service.create_from_ai_response(
         symbol=symbol,
         direction=direction,
-        confidence_score=confidence_score,
+        confidence_score=score,
         analysis_event_id=uuid.UUID(analysis_event_id) if analysis_event_id else None,
+        strategy_id=uuid.UUID(strategy_id) if strategy_id else None,
+        confidence_evaluation_id=uuid.UUID(confidence_evaluation_id) if confidence_evaluation_id else None,
     )
 
-    validated_response = {
+    response_payload = validated_response or {
         "recommendation_id": str(aggregate.id),
-        "trade_explanation": f"Rule {rule_id} triggered for {symbol}",
-        "risk_explanation": "Standard risk assessment required",
+        "trade_explanation": reason or f"AI recommendation for {symbol}",
+        "risk_explanation": risk_explanation or "Standard risk assessment required",
     }
+    response_payload["recommendation_id"] = str(aggregate.id)
 
     compose_explanation.delay(
-        validated_response=validated_response,
-        confidence_result=None,
-        strategy_id=None,
+        validated_response=response_payload,
+        confidence_result={
+            "raw_confidence": float(score),
+            "adjusted_confidence": float(score),
+            "threshold_met": True,
+            "adjustment_reasons": [],
+        },
+        strategy_id=strategy_id,
     )
 
     return {
@@ -59,27 +75,3 @@ def create_recommendation(
         "direction": direction,
         "status": aggregate.status,
     }
-
-
-def _derive_direction(trigger_data: dict) -> str:
-    from core.ai.signals import IntelligenceSignal, map_signal_to_recommendation
-    from core.constants import RecommendationDirection
-
-    change_pct_str = trigger_data.get("change_pct", "0")
-    try:
-        change_pct = float(change_pct_str)
-    except (ValueError, TypeError):
-        change_pct = 0.0
-
-    if change_pct > 0:
-        signal = IntelligenceSignal.BUY
-    elif change_pct < 0:
-        signal = IntelligenceSignal.SELL
-    else:
-        signal = IntelligenceSignal.WAIT
-
-    return map_signal_to_recommendation(signal)
-
-
-def _derive_confidence(trigger_data: dict) -> Decimal:
-    return Decimal("0.70")
