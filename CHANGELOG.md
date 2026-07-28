@@ -50,6 +50,26 @@ All notable changes to TradeVision AI will be documented in this file.
 ### Added
 - docs/adr/ADR-013-event-bus-streams.md
 
+### Quality
+- QUALITY-1: Used autouse fixtures for override_settings in test_api.py to eliminate per-test with blocks
+- QUALITY-2: Narrowed exception type from generic Exception to InvalidTechnicalAnalysisPayloadError in test_services.py
+
+---
+
+## [0.3.0] — 2026-07-28
+
+### Technical Analysis — Bug fixes, Performance & Quality
+
+**Fixed:**
+- BUG-1: Removed duplicate @property definitions in core/config.py (5 duplicated properties deleted)
+- BUG-2: Added missing get_redis_client() import and passed it to CircuitBreakerFactory in apps/ai_engine/tasks.py
+- BUG-3: Changed duplicate `if` to `elif` in normalise() to prevent time field leaking as raw indicator; added test
+- BUG-4: Moved indicator_count SerializerMethodField before Meta class; made read_only_fields an explicit list
+
+**Changed:**
+- PERF-1: Added .only() with exact field list and symbol.upper() in TASnapshotRepository.find_by_symbol() to reduce DB query overhead
+- PERF-2: Cached TASnapshotRepository and EventBus at class level in TradingViewTechnicalAnalysisWebhookView to avoid per-request construction
+
 ---
 
 ## [0.2.0] — 2026-07-27
