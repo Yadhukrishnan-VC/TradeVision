@@ -75,6 +75,7 @@ def route_and_render(
     from core.config import config
     from core.constants import AIProviderName
     from core.events.event_types import EventType
+    from core.redis_client import get_redis_client
     from core.resilience.circuit_breaker import CircuitBreakerFactory
 
     from apps.ai_engine.model_router import (
@@ -105,7 +106,7 @@ def route_and_render(
         ),
     )
 
-    cb_factory = CircuitBreakerFactory()
+    cb_factory = CircuitBreakerFactory(get_redis_client())
     router = ModelRouter(cb_factory)
 
     try:
