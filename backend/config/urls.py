@@ -40,4 +40,13 @@ urlpatterns = [
 
     # Audit Log API — Batch 1: Compliance Audit Trail
     path("api/v1/audit/", include("apps.audit_log.urls")),
+
+    # Rule Engine API
+    path("api/v1/rule-engine/", include("apps.rule_engine.interfaces.api.urls")),
+
+    # Recommendations API
+    path("api/v1/recommendations/", include("apps.recommendations.interfaces.api.urls")),
+
+    # Trader Memory API
+    path("api/v1/trader-memory/", include("apps.trader_memory.interfaces.api.urls")),
 ]

@@ -1,0 +1,122 @@
+from __future__ import annotations
+
+import json
+import uuid
+from collections.abc import Callable
+
+from core.events.event_types import EnrichedIntelligencePacket
+from apps.eventbus.application.ports import EventBus
+from apps.eventbus.domain.events import DomainEvent
+from apps.rule_engine.infrastructure.tasks import evaluate_packet
+
+
+SUBSCRIBED_EVENTS: dict[str, list[Callable[[DomainEvent], None]]] = {}
+
+
+def handle_enriched_packet(data: dict) -> None:
+    from apps.rule_engine.infrastructure.tasks import evaluate_packet
+
+    enriched = _deserialize_enriched_packet(data)
+    analysis_event_id = data.get("analysis_event_id")
+    evaluate_packet.delay(
+        enriched=_serialize_for_task(enriched),
+        analysis_event_id=str(analysis_event_id) if analysis_event_id else None,
+    )
+
+
+def _deserialize_enriched_packet(data: dict) -> EnrichedIntelligencePacket:
+    from dataclasses import field
+    from datetime import datetime
+    from decimal import Decimal
+    from typing import Any
+
+    from core.events.event_types import (
+        BreadthContext,
+        DataQuality,
+        IntelligencePacket,
+        NewsContext,
+        PriceContext,
+        TechnicalContext,
+    )
+
+    packet_data = data.get("packet", data)
+    price = packet_data.get("price_context", {})
+    tech = packet_data.get("technical_context", {})
+    breadth = packet_data.get("breadth_context", {})
+    news = packet_data.get("news_context", {})
+    dq = packet_data.get("data_quality", {})
+
+    def to_decimal(v: Any) -> Decimal:
+        return Decimal(str(v)) if v is not None else Decimal("0")
+
+    def safe_str(v: Any, default: str = "") -> str:
+        return str(v) if v is not None else default
+
+    price_ctx = PriceContext(
+        current_price=to_decimal(price.get("current_price")),
+        open_price=to_decimal(price.get("open_price")),
+        high=to_decimal(price.get("high")),
+        low=to_decimal(price.get("low")),
+        prev_close=to_decimal(price.get("prev_close")),
+        change_pct=to_decimal(price.get("change_pct")),
+        volume=int(price.get("volume", 0)),
+        avg_volume_20d=int(price.get("avg_volume_20d", 0)),
+        circuit_status=type("CS", (), {"value": safe_str(price.get("circuit_status"), "NORMAL")})(),
+    )
+
+    tech_ctx = TechnicalContext(
+        rsi_14=to_decimal(tech.get("rsi_14")) if tech.get("rsi_14") is not None else None,
+        macd=to_decimal(tech.get("macd")) if tech.get("macd") is not None else None,
+        macd_signal=to_decimal(tech.get("macd_signal")) if tech.get("macd_signal") is not None else None,
+        bb_upper=to_decimal(tech.get("bb_upper")) if tech.get("bb_upper") is not None else None,
+        bb_lower=to_decimal(tech.get("bb_lower")) if tech.get("bb_lower") is not None else None,
+        ema_20=to_decimal(tech.get("ema_20")) if tech.get("ema_20") is not None else None,
+        ema_50=to_decimal(tech.get("ema_50")) if tech.get("ema_50") is not None else None,
+        ema_200=to_decimal(tech.get("ema_200")) if tech.get("ema_200") is not None else None,
+        vwap=to_decimal(tech.get("vwap")) if tech.get("vwap") is not None else None,
+    )
+
+    breadth_ctx = BreadthContext(
+        sector_index_change_pct=to_decimal(breadth.get("sector_index_change_pct")),
+        sector_advance_decline=to_decimal(breadth.get("sector_advance_decline")),
+        nifty_change_pct=to_decimal(breadth.get("nifty_change_pct")),
+        sensex_change_pct=to_decimal(breadth.get("sensex_change_pct")),
+    )
+
+    news_ctx = NewsContext()
+
+    dq_ctx = DataQuality(
+        quality_score=float(dq.get("quality_score", 1.0)),
+    )
+
+    ts_str = packet_data.get("timestamp", "")
+    ts = datetime.fromisoformat(ts_str) if ts_str else datetime.now()
+
+    pkt = IntelligencePacket(
+        symbol=packet_data.get("symbol", ""),
+        timestamp=ts,
+        freshness_validated=packet_data.get("freshness_validated", True),
+        price_context=price_ctx,
+        technical_context=tech_ctx,
+        breadth_context=breadth_ctx,
+        news_context=news_ctx,
+        data_quality=dq_ctx,
+    )
+
+    return EnrichedIntelligencePacket(packet=pkt)
+
+
+def _serialize_for_task(enriched: EnrichedIntelligencePacket) -> dict:
+    from dataclasses import asdict
+    from core.events.event_bus import _EventEncoder
+    return json.loads(json.dumps(asdict(enriched), cls=_EventEncoder))
+
+
+def register_handlers(event_bus: EventBus) -> None:
+    for event_type, handlers in SUBSCRIBED_EVENTS.items():
+        for handler in handlers:
+            event_bus.subscribe(
+                event_type=event_type,
+                handler=handler,
+                consumer_group="rule_engine",
+            )

@@ -54,6 +54,8 @@ LOCAL_APPS: list[str] = [
     "apps.intelligence",
     "apps.recommendations",
     "apps.strategy_registry",
+    "apps.rule_engine",
+    "apps.trader_memory",
 ]
 
 THIRD_PARTY_APPS = []
@@ -194,6 +196,14 @@ CELERY_TASK_ROUTES = {
     "tradevision.ai_engine.evaluate_confidence": {"queue": "ai_reasoning"},
     # B.5 — Recommendation Explanation
     "tradevision.recommendations.compose_explanation": {"queue": "ai_reasoning"},
+    # Rule Engine
+    "tradevision.rule_engine.evaluate_packet": {"queue": "rule_engine"},
+    "tradevision.rule_engine.publish_rule_firing": {"queue": "rule_engine"},
+    # Recommendations
+    "tradevision.recommendations.create_recommendation": {"queue": "ai_reasoning"},
+    # Trader Memory
+    "tradevision.trader_memory.record_memory_entry": {"queue": "analytics"},
+    "tradevision.trader_memory.rebuild_projection": {"queue": "analytics"},
 }
 
 CELERY_TASK_QUEUES = [
