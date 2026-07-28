@@ -56,6 +56,8 @@ LOCAL_APPS: list[str] = [
     "apps.strategy_registry",
     "apps.rule_engine",
     "apps.trader_memory",
+    # Batch 2 — Signals Engine
+    "apps.signals_engine",
 ]
 
 THIRD_PARTY_APPS = []

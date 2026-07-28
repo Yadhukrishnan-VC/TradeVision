@@ -49,4 +49,7 @@ urlpatterns = [
 
     # Trader Memory API
     path("api/v1/trader-memory/", include("apps.trader_memory.interfaces.api.urls")),
+
+    # Signals Engine API — Batch 2
+    path("api/v1/signals/", include("apps.signals_engine.interfaces.api.urls")),
 ]

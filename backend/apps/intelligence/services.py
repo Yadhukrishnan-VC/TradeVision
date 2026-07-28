@@ -13,6 +13,7 @@ from __future__ import annotations
 import dataclasses
 import json
 import logging
+import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
@@ -34,6 +35,15 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
+class SignalContextRef:
+    """Lightweight reference to a Trading Core signal that triggered context assembly."""
+
+    signal_id: uuid.UUID
+    direction: str
+    confidence_hint: float
+
+
+@dataclass(frozen=True)
 class SignalContext:
     """Complete signal context assembled for the AI Brain.
 
@@ -52,6 +62,7 @@ class SignalContext:
     sector_context: str = ""
     event_data: dict[str, Any] = field(default_factory=dict)
     data_quality_note: str = ""
+    trading_signal: SignalContextRef | None = None
 
 
 @dataclass(frozen=True)
@@ -129,6 +140,7 @@ class MarketContextService:
         symbol: str,
         packet: IntelligencePacket,
         timeframes: list[str] | None = None,
+        trading_signal: SignalContextRef | None = None,
     ) -> SignalContext:
         """Build the base SignalContext from an IntelligencePacket.
 
@@ -213,6 +225,7 @@ class MarketContextService:
             sector_context=sector_context,
             event_data=event_data,
             data_quality_note="; ".join(dq_notes) if dq_notes else "All sources fresh and available.",
+            trading_signal=trading_signal,
         )
 
     def _get_pine_outputs(
@@ -221,14 +234,22 @@ class MarketContextService:
         """Query Pine Script outputs from the database.
 
         Returns a dict keyed by timeframe, each containing the latest
-        indicator values for that timeframe.
-
-        This is intentionally a stub for Phase 0 — populated in Phase 2
-        when the Pine ingestion pipeline is active.
+        indicator values for that timeframe.  Populated by signals_engine;
+        no longer a stub.
         """
+        from apps.intelligence.models import PineOutput
+
+        rows = PineOutput.objects.filter(
+            symbol=symbol,
+            timeframe__in=timeframes,
+            indicator_name="pine_composite",
+        )
         outputs: dict[str, dict[str, Any]] = {}
+        for row in rows:
+            outputs[row.timeframe] = dict(row.values) if row.values else {}
         for tf in timeframes:
-            outputs[tf] = {}
+            if tf not in outputs:
+                outputs[tf] = {}
         return outputs
 
     def _detect_regime(
