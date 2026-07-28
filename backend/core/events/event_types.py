@@ -89,11 +89,11 @@ class PriceContext:
     open_price: Decimal
     high: Decimal
     low: Decimal
-    prev_close: Decimal
-    change_pct: Decimal
     volume: int
     avg_volume_20d: int
     circuit_status: CircuitStatus
+    prev_close: Decimal | None = None
+    change_pct: Decimal | None = None
 
 
 @dataclass(frozen=True)

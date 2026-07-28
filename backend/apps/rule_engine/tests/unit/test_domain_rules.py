@@ -137,6 +137,29 @@ class TestPriceMovementRule:
         assert result is not None
         assert "3.50% price movement" in result.description
 
+    def test_does_not_fire_on_none_change_pct(self) -> None:
+        rule = PriceMovementRule()
+        packet = _make_packet(change_pct=None)
+
+        result = rule.evaluate(packet)
+
+        assert result is None
+
+    def test_triggers_with_real_values(self) -> None:
+        rule = PriceMovementRule()
+        packet = _make_packet(
+            change_pct=Decimal("4.75"),
+            current_price=Decimal("5250.00"),
+        )
+
+        result = rule.evaluate(packet)
+
+        assert result is not None
+        assert result.rule_id == "price_movement_v1"
+        assert result.trigger_data["change_pct"] == "4.75"
+        assert result.trigger_data["current_price"] == "5250.00"
+        assert result.description == "+4.75% price movement"
+
 
 class TestVolumeSpikeRule:
     def test_fires_on_volume_above_threshold(self) -> None:

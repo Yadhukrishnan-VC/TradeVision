@@ -94,6 +94,31 @@ class TestOrchestratorIntegration:
                 assert published_event.payload["provider"] == "deepseek"
                 assert published_event.payload["direction"] == "BUY"
 
+    def test_fallback_reasoning_contains_production_wording(self) -> None:
+        with (
+            patch("apps.ai_engine.infrastructure.ai_reasoning_orchestrator.AIProviderFactory.get_provider") as mock_factory,
+            patch("apps.ai_engine.infrastructure.ai_reasoning_orchestrator.ModelRouter") as mock_router_cls,
+        ):
+            mock_provider = MagicMock()
+            mock_provider.complete.side_effect = AIConnectionError("Simulated connection error")
+            mock_factory.return_value = mock_provider
+
+            mock_router = MagicMock()
+            mock_decision = MagicMock()
+            mock_decision.selected_provider.value = "deepseek"
+            mock_router.route.return_value = mock_decision
+            mock_router_cls.return_value = mock_router
+
+            orchestrator = AIReasoningOrchestrator()
+            result = orchestrator._call_ai("test prompt", "RELIANCE", uuid.uuid4())
+
+            assert result is not None
+            assert result.provider == "fallback"
+            import json
+            parsed = json.loads(result.raw_text)
+            assert "AI provider unavailable" in parsed["reasoning"]
+            assert "AI provider not yet implemented" not in parsed["reasoning"]
+
     def test_call_ai_returns_fallback_when_provider_raises_connection_error(self) -> None:
         with (
             patch("apps.ai_engine.infrastructure.ai_reasoning_orchestrator.AIProviderFactory.get_provider") as mock_factory,

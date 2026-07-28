@@ -10,6 +10,8 @@ from apps.eventbus.domain.events import DomainEvent
 from apps.eventbus.infrastructure.event_bus_factory import get_event_bus
 from apps.intelligence.models import PineOutput
 from apps.intelligence.services import IntelligenceService
+from apps.technical_analysis.application.services import CANONICAL_FIELD_MAP
+from apps.technical_analysis.infrastructure.repositories import TASnapshotRepository
 from core.events.event_types import (
     BreadthContext,
     CircuitStatus,
@@ -119,33 +121,77 @@ def _to_decimal(value: Any) -> Decimal:
         return Decimal("0")
 
 
+def _optional_decimal(value: Any) -> Decimal | None:
+    if value is None:
+        return None
+    try:
+        return Decimal(str(value))
+    except (ValueError, TypeError, ArithmeticError):
+        return None
+
+
+def _get_prev_close(symbol: str, price_data: dict[str, Any]) -> Decimal | None:
+    prev_close_raw = price_data.get("prev_close")
+    if prev_close_raw is not None:
+        try:
+            return Decimal(str(prev_close_raw))
+        except (ValueError, TypeError, ArithmeticError):
+            return None
+
+    try:
+        repo = TASnapshotRepository()
+        snapshots = repo.find_by_symbol(symbol, limit=2)
+        if len(snapshots) >= 2:
+            prev = snapshots[1]
+            for raw_key, raw_value in prev.raw_payload.items():
+                canonical = CANONICAL_FIELD_MAP.get(str(raw_key).lower().strip(), str(raw_key).lower().strip())
+                if canonical == "close":
+                    return Decimal(str(raw_value))
+    except Exception:
+        pass
+    return None
+
+
 def _build_packet(payload: dict[str, Any], occurred_at: datetime) -> IntelligencePacket:
     symbol = payload.get("symbol", "UNKNOWN")
     indicators: dict[str, Any] = payload.get("indicators", {})
     price_data: dict[str, Any] = payload.get("price", {})
 
+    current_price = _to_decimal(price_data.get("close"))
+
+    change_pct_raw = price_data.get("change_pct")
+    if change_pct_raw is not None:
+        change_pct = _to_decimal(change_pct_raw)
+        prev_close = _get_prev_close(symbol, price_data)
+    else:
+        prev_close = _get_prev_close(symbol, price_data)
+        if prev_close is not None and prev_close != Decimal("0"):
+            change_pct = ((current_price - prev_close) / prev_close) * Decimal("100")
+        else:
+            change_pct = None
+
     price_ctx = PriceContext(
-        current_price=_to_decimal(price_data.get("close")),
+        current_price=current_price,
         open_price=_to_decimal(price_data.get("open")),
         high=_to_decimal(price_data.get("high")),
         low=_to_decimal(price_data.get("low")),
-        prev_close=_to_decimal(price_data.get("prev_close")),
-        change_pct=_to_decimal(price_data.get("change_pct")),
+        prev_close=prev_close,
+        change_pct=change_pct,
         volume=int(price_data.get("volume", 0)),
         avg_volume_20d=0,
         circuit_status=CircuitStatus.NORMAL,
     )
 
     tech_ctx = TechnicalContext(
-        rsi_14=_to_decimal(indicators.get("rsi_14")),
-        macd=_to_decimal(indicators.get("macd")),
-        macd_signal=_to_decimal(indicators.get("macd_signal")),
-        bb_upper=_to_decimal(indicators.get("bb_upper")),
-        bb_lower=_to_decimal(indicators.get("bb_lower")),
-        ema_20=_to_decimal(indicators.get("ema_20")),
-        ema_50=_to_decimal(indicators.get("ema_50")),
-        ema_200=_to_decimal(indicators.get("ema_200")),
-        vwap=_to_decimal(indicators.get("vwap")),
+        rsi_14=_optional_decimal(indicators.get("rsi_14")),
+        macd=_optional_decimal(indicators.get("macd")),
+        macd_signal=_optional_decimal(indicators.get("macd_signal")),
+        bb_upper=_optional_decimal(indicators.get("bb_upper")),
+        bb_lower=_optional_decimal(indicators.get("bb_lower")),
+        ema_20=_optional_decimal(indicators.get("ema_20")),
+        ema_50=_optional_decimal(indicators.get("ema_50")),
+        ema_200=_optional_decimal(indicators.get("ema_200")),
+        vwap=_optional_decimal(indicators.get("vwap")),
     )
 
     breadth_ctx = BreadthContext(

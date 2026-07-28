@@ -236,7 +236,7 @@ class AIReasoningOrchestrator:
             raw_text=json.dumps({
                 "direction": "WATCH",
                 "confidence_score": 0.70,
-                "reasoning": "Rule-based fallback: AI provider not yet implemented.",
+                "reasoning": "Rule-based fallback: AI provider unavailable.",
                 "risk_level": "MEDIUM",
                 "risk_explanation": "Standard risk assessment based on rule engine trigger.",
                 "key_factors": ["Rule engine triggered for " + symbol],

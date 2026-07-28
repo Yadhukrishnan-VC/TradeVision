@@ -24,6 +24,8 @@ class PriceMovementRule(BaseRule):
         return RuleSeverity.HIGH
 
     def evaluate(self, packet: IntelligencePacket) -> RuleResult | None:
+        if packet.price_context.change_pct is None:
+            return None
         threshold = Decimal("2.0")
         change = abs(packet.price_context.change_pct)
         if change >= threshold:

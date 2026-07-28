@@ -190,7 +190,7 @@ class MarketContextService:
 
         event_data = {
             "current_price": float(packet.price_context.current_price),
-            "change_pct": float(packet.price_context.change_pct),
+            "change_pct": float(packet.price_context.change_pct) if packet.price_context.change_pct is not None else 0.0,
             "volume": packet.price_context.volume,
             "volume_ratio": (
                 packet.price_context.volume / packet.price_context.avg_volume_20d
@@ -201,7 +201,7 @@ class MarketContextService:
             "open": float(packet.price_context.open_price),
             "high": float(packet.price_context.high),
             "low": float(packet.price_context.low),
-            "prev_close": float(packet.price_context.prev_close),
+            "prev_close": float(packet.price_context.prev_close) if packet.price_context.prev_close is not None else 0.0,
         }
 
         logger.info(

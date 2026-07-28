@@ -254,7 +254,7 @@ class TechnicalAnalysisIngestionService:
         for raw_key, raw_value in snapshot.raw_payload.items():
             key_lower = str(raw_key).lower().strip()
             canonical = CANONICAL_FIELD_MAP.get(key_lower, key_lower)
-            if canonical in ("close", "high", "low", "open", "volume", "prev_close"):
+            if canonical in ("close", "high", "low", "open", "volume", "prev_close", "change_pct"):
                 price_data[canonical] = str(raw_value)
 
         event = DomainEvent.create(
