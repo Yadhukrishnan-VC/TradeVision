@@ -42,9 +42,22 @@ class TASnapshotRepository:
         limit: int = 100,
     ) -> list[TASnapshot]:
         """Return the most recent snapshots for a given symbol."""
-        qs = TASnapshotModel.objects.filter(
-            symbol__iexact=symbol,
-        ).order_by("-snapshot_timestamp")[:limit]
+        qs = (
+            TASnapshotModel.objects.filter(symbol=symbol.upper())
+            .only(
+                "id",
+                "symbol",
+                "exchange",
+                "timeframe",
+                "pine_id",
+                "pine_version",
+                "pine_timestamp",
+                "indicators",
+                "snapshot_timestamp",
+                "received_at",
+            )
+            .order_by("-snapshot_timestamp")[:limit]
+        )
         return [self._to_domain(obj) for obj in qs]
 
     def find_by_id(self, snapshot_id: str) -> TASnapshot | None:
@@ -57,7 +70,7 @@ class TASnapshotRepository:
 
     def count_by_symbol(self, symbol: str) -> int:
         """Return the number of snapshots for a given symbol."""
-        return TASnapshotModel.objects.filter(symbol__iexact=symbol).count()
+        return TASnapshotModel.objects.filter(symbol=symbol.upper()).count()
 
     @staticmethod
     def _to_domain(obj: TASnapshotModel) -> TASnapshot:
