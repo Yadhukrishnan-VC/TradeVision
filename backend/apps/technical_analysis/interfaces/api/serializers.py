@@ -23,6 +23,8 @@ class TASnapshotSerializer(serializers.ModelSerializer):
     Used by admin and debug endpoints.
     """
 
+    indicator_count = serializers.SerializerMethodField()
+
     class Meta:
         model = TASnapshot
         fields = [
@@ -36,9 +38,17 @@ class TASnapshotSerializer(serializers.ModelSerializer):
             "snapshot_timestamp",
             "received_at",
         ]
-        read_only_fields = fields
-
-    indicator_count = serializers.SerializerMethodField()
+        read_only_fields = [
+            "id",
+            "symbol",
+            "exchange",
+            "timeframe",
+            "pine_id",
+            "pine_version",
+            "indicator_count",
+            "snapshot_timestamp",
+            "received_at",
+        ]
 
     @staticmethod
     def get_indicator_count(obj: TASnapshot) -> int:
