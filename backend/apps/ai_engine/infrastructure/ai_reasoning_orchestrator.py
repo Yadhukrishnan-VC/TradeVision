@@ -17,7 +17,15 @@ from apps.eventbus.domain.events import DomainEvent
 from apps.eventbus.infrastructure.event_bus_factory import get_event_bus
 from apps.strategy_registry.services import StrategyMatcher
 from core.ai.base_provider import AIRecommendation, AIRequest, AIRawResponse
-from core.ai.exceptions import AIResponseValidationError
+from core.ai.exceptions import (
+    AIAuthenticationError,
+    AIConnectionError,
+    AIProviderError,
+    AIQuotaExceededError,
+    AIRateLimitError,
+    AIResponseValidationError,
+    AITimeoutError,
+)
 from core.ai.provider_factory import AIProviderFactory
 from core.ai.signals import IntelligenceSignal, map_signal_to_recommendation
 from core.ai.validator import AIResponseValidator
@@ -193,20 +201,25 @@ class AIReasoningOrchestrator:
                 timestamp=datetime.now(timezone.utc),
             )
 
-            provider = AIProviderFactory.get_provider()
+            provider = AIProviderFactory.get_provider(decision.selected_provider.value)
             raw_response = provider.complete(request)
             return raw_response
 
-        except NotImplementedError:
+        except (AIAuthenticationError, AIProviderError, AIConnectionError,
+                AITimeoutError, AIRateLimitError, AIQuotaExceededError) as exc:
             logger.warning(
-                "ai_complete_not_implemented_using_fallback",
-                extra={"symbol": symbol},
+                "ai_provider_error_using_fallback",
+                extra={
+                    "symbol": symbol,
+                    "error_type": type(exc).__name__,
+                    "error": str(exc),
+                },
             )
             return self._fallback_response(request if 'request' in dir() else None, correlation_id, symbol)
 
         except Exception as exc:
             logger.exception(
-                "ai_call_failed",
+                "ai_call_unexpected_error",
                 extra={"symbol": symbol, "error": str(exc)},
             )
             return None

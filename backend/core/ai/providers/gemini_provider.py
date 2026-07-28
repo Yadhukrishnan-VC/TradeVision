@@ -1,22 +1,11 @@
 """
 TradeVision AI — Gemini AI provider.
-
-Phase 0 scope:
-    ✓ SDK initialisation and authentication
-    ✓ validate_connection() — verifies API key via list_models()
-    ✓ health_check()        — returns latency and model availability
-    ✓ close()               — releases client reference
-    ✗ complete()            — raises NotImplementedError (implemented in Phase 4)
-
-Phase 4 will add:
-    - complete() with full prompt submission
-    - Token counting and cost estimation
-    - Retry logic with exponential backoff
-    - Rate limit tracking via Redis
 """
 
 import logging
 import time
+from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Any, ClassVar
 
 from core.ai.base_provider import AIRawResponse, AIRequest, BaseAIProvider
@@ -24,6 +13,8 @@ from core.ai.exceptions import (
     AIAuthenticationError,
     AIConnectionError,
     AIProviderError,
+    AIRateLimitError,
+    AITimeoutError,
 )
 
 logger = logging.getLogger(__name__)
@@ -154,17 +145,145 @@ class GeminiProvider(BaseAIProvider):
         """
         Submit a prompt to Gemini and return the raw response.
 
-        Not implemented in Phase 0. Will be fully implemented in Phase 4
-        alongside the ContextBuilder, ResponseParser, budget enforcement,
-        deduplication, and retry logic.
+        Calls the Gemini generate content API with retry logic for
+        transient failures. Raises on authentication errors, quota
+        exhaustion, and unrecoverable provider errors.
+
+        Args:
+            request: A fully populated ``AIRequest`` with a rendered prompt.
+
+        Returns:
+            ``AIRawResponse`` containing the raw LLM text and token metadata.
 
         Raises:
-            NotImplementedError: Always, in Phase 0.
+            AIAuthenticationError:   If the API key is rejected.
+            AIRateLimitError:        If the provider rate limits the request.
+            AIConnectionError:       If the API is unreachable.
+            AITimeoutError:          If the request times out.
+            AIProviderError:         On any other provider-side error.
         """
-        raise NotImplementedError(
-            "GeminiProvider.complete() is not implemented in Phase 0. "
-            "It will be implemented in Phase 4 alongside the ContextBuilder "
-            "and ResponseParser. Set AI_PROVIDER=gemini and run Phase 4."
+        if self._client is None:
+            raise AIProviderError("Gemini client is not initialised.")
+
+        max_retries: int = 3
+        last_exception: Exception | None = None
+
+        for attempt in range(max_retries + 1):
+            try:
+                start: float = time.monotonic()
+
+                response = self._client.generate_content(
+                    request.prompt,
+                    generation_config=self._genai.types.GenerationConfig(
+                        max_output_tokens=request.max_tokens,
+                        temperature=0.1,
+                    ),
+                )
+
+                latency_ms: float = (time.monotonic() - start) * 1000
+
+                raw_text: str = response.text if response.text else ""
+
+                try:
+                    prompt_tokens: int = response.usage_metadata.prompt_token_count
+                    completion_tokens: int = response.usage_metadata.candidates_token_count
+                except (AttributeError, ValueError):
+                    prompt_tokens = 0
+                    completion_tokens = 0
+
+                return AIRawResponse(
+                    request_id=request.id,
+                    provider=self.provider_name,
+                    raw_text=raw_text,
+                    input_tokens=prompt_tokens,
+                    output_tokens=completion_tokens,
+                    latency_ms=latency_ms,
+                    estimated_cost_usd=Decimal("0.000"),
+                    timestamp=datetime.now(timezone.utc),
+                )
+
+            except Exception as exc:
+                exc_str: str = str(exc)
+
+                if "429" in exc_str or "RESOURCE_EXHAUSTED" in exc_str:
+                    if attempt < max_retries:
+                        wait: float = 2.0 * (2 ** attempt)
+                        logger.warning(
+                            "gemini_rate_limited_retrying",
+                            extra={
+                                "attempt": attempt + 1,
+                                "max_retries": max_retries,
+                                "wait_seconds": wait,
+                                "error": exc_str[:200],
+                            },
+                        )
+                        time.sleep(wait)
+                        continue
+                    raise AIRateLimitError(
+                        f"Gemini rate limited after {max_retries + 1} attempts: {exc_str[:200]}"
+                    ) from exc
+
+                if "API_KEY" in exc_str.upper() or "INVALID_ARGUMENT" in exc_str:
+                    raise AIAuthenticationError(
+                        f"Gemini API authentication failed: {exc_str[:200]}"
+                    ) from exc
+
+                if "timeout" in exc_str.lower() or "deadline" in exc_str.lower():
+                    if attempt < max_retries:
+                        wait = 2.0 * (2 ** attempt)
+                        logger.warning(
+                            "gemini_timeout_retrying",
+                            extra={
+                                "attempt": attempt + 1,
+                                "max_retries": max_retries,
+                                "wait_seconds": wait,
+                                "error": exc_str[:200],
+                            },
+                        )
+                        time.sleep(wait)
+                        continue
+                    raise AITimeoutError(
+                        f"Gemini request timed out after {max_retries + 1} attempts: {exc_str[:200]}"
+                    ) from exc
+
+                if "unreachable" in exc_str.lower() or "connection" in exc_str.lower():
+                    if attempt < max_retries:
+                        wait = 2.0 * (2 ** attempt)
+                        logger.warning(
+                            "gemini_connection_retrying",
+                            extra={
+                                "attempt": attempt + 1,
+                                "max_retries": max_retries,
+                                "wait_seconds": wait,
+                                "error": exc_str[:200],
+                            },
+                        )
+                        time.sleep(wait)
+                        continue
+                    raise AIConnectionError(
+                        f"Gemini API unreachable after {max_retries + 1} attempts: {exc_str[:200]}"
+                    ) from exc
+
+                if attempt < max_retries:
+                    wait = 2.0 * (2 ** attempt)
+                    logger.warning(
+                        "gemini_retrying",
+                        extra={
+                            "attempt": attempt + 1,
+                            "max_retries": max_retries,
+                            "wait_seconds": wait,
+                            "error": exc_str[:200],
+                        },
+                    )
+                    time.sleep(wait)
+                    continue
+
+                raise AIProviderError(
+                    f"Gemini request failed after {max_retries + 1} attempts: {exc_str[:200]}"
+                ) from exc
+
+        raise AIProviderError(
+            f"Gemini request failed after {max_retries + 1} attempts."
         )
 
     def close(self) -> None:

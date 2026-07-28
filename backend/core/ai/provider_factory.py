@@ -44,21 +44,29 @@ class AIProviderFactory:
     _lock: ClassVar[threading.Lock] = threading.Lock()
 
     @classmethod
-    def get_provider(cls) -> BaseAIProvider:
+    def get_provider(cls, provider_name: str | None = None) -> BaseAIProvider:
         """
-        Return the active AI provider singleton.
+        Return an AI provider instance.
 
-        Creates the provider on first call using the configuration in
-        ``TradeVisionConfig``. Thread-safe via double-checked locking.
+        When ``provider_name`` is given, creates a fresh provider instance
+        matching that name (bypassing the singleton).  When omitted, returns
+        the configured default singleton (thread-safe, double-checked locking).
+
+        Args:
+            provider_name: Optional explicit provider to instantiate.
+                           Must match a key in the provider map
+                           (e.g. ``"deepseek"``, ``"gemini"``).
 
         Returns:
-            The configured ``BaseAIProvider`` instance.
+            A ``BaseAIProvider`` instance for the requested provider.
 
         Raises:
-            AIProviderError:       If the configured provider name is unknown.
-            AIAuthenticationError: If the provider cannot authenticate with
-                                   the supplied credentials.
+            AIProviderError:       If the provider name is unknown.
+            AIAuthenticationError: If provider credentials are missing or invalid.
         """
+        if provider_name is not None:
+            return cls._create_provider(provider_name)
+
         if cls._instance is None:
             with cls._lock:
                 if cls._instance is None:
@@ -91,12 +99,18 @@ class AIProviderFactory:
             logger.debug("ai_provider_factory_reset")
 
     @classmethod
-    def _create_provider(cls) -> BaseAIProvider:
+    def _create_provider(cls, provider_name: str | None = None) -> BaseAIProvider:
         """
-        Instantiate and return the correct provider for the current configuration.
+        Instantiate and return the correct provider.
+
+        When ``provider_name`` is given, that provider is created.  When
+        omitted, the configured default from ``TradeVisionConfig`` is used.
 
         Imports are deferred to this method to avoid circular imports at
         module load time.
+
+        Args:
+            provider_name: Optional explicit provider name.
 
         Returns:
             A freshly instantiated ``BaseAIProvider``.
@@ -112,7 +126,10 @@ class AIProviderFactory:
         from core.ai.providers.openai_provider import OpenAIProvider
         from core.config import config
 
-        provider_name: str = config.ai_provider.lower()
+        if provider_name is None:
+            provider_name = config.ai_provider.lower()
+
+        provider_name = provider_name.lower()
 
         provider_map: dict[str, type[BaseAIProvider]] = {
             "gemini": GeminiProvider,

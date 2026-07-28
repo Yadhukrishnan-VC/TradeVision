@@ -35,6 +35,32 @@ All notable changes to TradeVision AI will be documented in this file.
 
 ## [Unreleased]
 
+### Batch AI-1 — Real AI Reasoning Pipeline (2026-07-28)
+
+**Changed:**
+- TechnicalAnalysisCompleted now publishes real indicator values and price data instead of key names only
+- IntelligencePacket builder (`_build_packet`) reads actual indicator/price values from the event payload — no more `Decimal("0")` placeholders
+- PineOutput saver writes real indicator values instead of `0.0`
+- `_call_ai()` now passes `ModelRouter` routing decision (`decision.selected_provider`) to `AIProviderFactory.get_provider()` — provider selection respects the router
+- Fallback executes only after real provider failure (connection error, timeout, auth error, rate limit) — never during normal operation
+
+**Added:**
+- `DeepSeekProvider.complete()` — POST to `/v1/chat/completions` with retry logic (3 attempts, exponential backoff) for transient failures; raises typed `AIAuthenticationError`, `AIQuotaExceededError`, `AIConnectionError`, `AITimeoutError`, `AIRateLimitError`
+- `GeminiProvider.complete()` — uses `google-generativeai` SDK with the same retry and error contract
+- `AIProviderFactory.get_provider(provider_name)` — optional explicit provider name parameter for routing-aware selection
+- Integration tests for `_call_ai()` proving real response returned when provider succeeds, fallback on connection error, `None` on unexpected error
+
+### Batch 4 — End-to-end Pipeline Wiring (2026-07-28)
+
+**Added:**
+- TA completed handler (`ta_completed_handler.py`) — handles `TechnicalAnalysisCompleted`, saves PineOutput with real indicator values, builds `IntelligencePacket` with real data, publishes `intelligence.PacketEnriched` on System B event bus
+- `AIReasoningOrchestrator` — orchestrates `StrategyMatcher` → `PromptManager` → `ModelRouter` → `DeepSeek`/`Gemini` → `AIResponseValidator` → `ConfidenceEngine`, publishes `ai_engine.RecommendationIssued`
+- Subscriptions in `journal` and `dashboard` for recommendation pipeline events (`RuleFired`, `RecommendationIssued`, `RecommendationCreated`)
+
+**Changed:**
+- `rule_engine` event handlers — `SUBSCRIBED_EVENTS` correctly ordered (handler defined before reference), accepts `DomainEvent`
+- `recommendations` handlers — repointed from `RuleFired` to `RecommendationIssued`; `create_recommendation` task receives pre-computed direction/confidence/strategy
+
 ### Fixed
 - Registered apps.common, apps.accounts, apps.health in INSTALLED_APPS (Issue 1)
 - Activated custom User model via AUTH_USER_MODEL (Issue 2)

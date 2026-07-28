@@ -17,6 +17,8 @@ Phase 4 will add:
 
 import logging
 import time
+from datetime import datetime, timezone
+from decimal import Decimal
 from typing import Any, ClassVar
 
 import httpx
@@ -26,6 +28,7 @@ from core.ai.exceptions import (
     AIAuthenticationError,
     AIConnectionError,
     AIProviderError,
+    AIQuotaExceededError,
     AIRateLimitError,
     AITimeoutError,
 )
@@ -185,17 +188,168 @@ class DeepSeekProvider(BaseAIProvider):
         """
         Submit a prompt to DeepSeek and return the raw response.
 
-        Not implemented in Phase 0. Will be fully implemented in Phase 4
-        alongside the ContextBuilder, ResponseParser, budget enforcement,
-        deduplication, and retry logic.
+        Calls the DeepSeek chat completions API with retry logic for
+        transient failures. Raises on authentication errors, quota
+        exhaustion, and unrecoverable provider errors.
+
+        Args:
+            request: A fully populated ``AIRequest`` with a rendered prompt.
+
+        Returns:
+            ``AIRawResponse`` containing the raw LLM text and token metadata.
 
         Raises:
-            NotImplementedError: Always, in Phase 0.
+            AIAuthenticationError:   If the API key is rejected (401).
+            AIRateLimitError:        If the provider rate limits the request (429).
+            AIQuotaExceededError:    If provider quota is exhausted.
+            AIConnectionError:       If the API is unreachable.
+            AITimeoutError:          If the request times out.
+            AIProviderError:         On any other provider-side error.
         """
-        raise NotImplementedError(
-            "DeepSeekProvider.complete() is not implemented in Phase 0. "
-            "It will be implemented in Phase 4 alongside the ContextBuilder "
-            "and ResponseParser."
+        if self._client is None:
+            raise AIProviderError("DeepSeek client is not initialised.")
+
+        payload: dict[str, Any] = {
+            "model": self._model_name,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "You are an expert trading and investment analyst. "
+                               "Return your analysis as JSON following the specified schema.",
+                },
+                {"role": "user", "content": request.prompt},
+            ],
+            "max_tokens": request.max_tokens,
+            "temperature": 0.1,
+        }
+
+        last_exception: Exception | None = None
+        max_retries: int = 3
+        for attempt in range(max_retries + 1):
+            try:
+                start: float = time.monotonic()
+                response = self._client.post(
+                    "/v1/chat/completions",
+                    json=payload,
+                )
+                latency_ms: float = (time.monotonic() - start) * 1000
+
+                if response.status_code == 200:
+                    data: Any = response.json()
+                    choices: list[Any] = data.get("choices", [])
+                    if not choices:
+                        raise AIProviderError(
+                            "DeepSeek returned an empty choices list."
+                        )
+                    raw_text: str = choices[0].get("message", {}).get("content", "")
+                    usage: Any = data.get("usage", {})
+                    return AIRawResponse(
+                        request_id=request.id,
+                        provider=self.provider_name,
+                        raw_text=raw_text,
+                        input_tokens=usage.get("prompt_tokens", 0),
+                        output_tokens=usage.get("completion_tokens", 0),
+                        latency_ms=latency_ms,
+                        estimated_cost_usd=Decimal(
+                            str(data.get("estimated_cost", "0.000"))
+                        ),
+                        timestamp=datetime.now(timezone.utc),
+                    )
+
+                if response.status_code in (429, 503):
+                    if attempt < max_retries:
+                        wait: float = 2.0 * (2 ** attempt)
+                        logger.warning(
+                            "deepseek_rate_limited_retrying",
+                            extra={
+                                "attempt": attempt + 1,
+                                "max_retries": max_retries,
+                                "status_code": response.status_code,
+                                "wait_seconds": wait,
+                            },
+                        )
+                        time.sleep(wait)
+                        continue
+                    raise AIRateLimitError(
+                        f"DeepSeek rate limited after {max_retries + 1} attempts. "
+                        f"HTTP {response.status_code}: {response.text[:200]}"
+                    )
+
+                if response.status_code in (401, 403):
+                    raise AIAuthenticationError(
+                        "DeepSeek API rejected the API key. "
+                        "Verify DEEPSEEK_API_KEY is correct and has not expired."
+                    )
+
+                if response.status_code == 402:
+                    raise AIQuotaExceededError(
+                        f"DeepSeek quota exhausted: {response.text[:200]}"
+                    )
+
+                raise AIProviderError(
+                    f"DeepSeek API returned HTTP {response.status_code}: "
+                    f"{response.text[:200]}"
+                )
+
+            except httpx.ConnectError as exc:
+                last_exception = exc
+                if attempt < max_retries:
+                    wait = 2.0 * (2 ** attempt)
+                    logger.warning(
+                        "deepseek_connection_retrying",
+                        extra={
+                            "attempt": attempt + 1,
+                            "max_retries": max_retries,
+                            "wait_seconds": wait,
+                            "error": str(exc),
+                        },
+                    )
+                    time.sleep(wait)
+                    continue
+                raise AIConnectionError(
+                    f"DeepSeek API unreachable after {max_retries + 1} attempts: {exc}"
+                ) from exc
+
+            except httpx.TimeoutException as exc:
+                last_exception = exc
+                if attempt < max_retries:
+                    wait = 2.0 * (2 ** attempt)
+                    logger.warning(
+                        "deepseek_timeout_retrying",
+                        extra={
+                            "attempt": attempt + 1,
+                            "max_retries": max_retries,
+                            "wait_seconds": wait,
+                            "error": str(exc),
+                        },
+                    )
+                    time.sleep(wait)
+                    continue
+                raise AITimeoutError(
+                    f"DeepSeek request timed out after {max_retries + 1} attempts: {exc}"
+                ) from exc
+
+            except (httpx.RequestError, httpx.HTTPError) as exc:
+                last_exception = exc
+                if attempt < max_retries:
+                    wait = 2.0 * (2 ** attempt)
+                    logger.warning(
+                        "deepseek_request_retrying",
+                        extra={
+                            "attempt": attempt + 1,
+                            "max_retries": max_retries,
+                            "wait_seconds": wait,
+                            "error": str(exc),
+                        },
+                    )
+                    time.sleep(wait)
+                    continue
+                raise AIProviderError(
+                    f"DeepSeek request failed after {max_retries + 1} attempts: {exc}"
+                ) from exc
+
+        raise AIProviderError(
+            f"DeepSeek request failed after {max_retries + 1} attempts."
         )
 
     def close(self) -> None:

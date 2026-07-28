@@ -237,6 +237,6 @@ class TestIngest:
 
         call_args = bus.publish.call_args
         event = call_args[0][0]
-        assert sorted(event.payload["indicator_keys"]) == sorted(
+        assert sorted(event.payload["indicators"].keys()) == sorted(
             ["rsi_14", "macd", "bb_upper"]
         )

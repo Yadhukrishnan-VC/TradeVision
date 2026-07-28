@@ -9,16 +9,16 @@
 
 ## Development Status
 
-> Last updated: 2026-07-27
+> Last updated: 2026-07-28
 
 | Phase | Status | Tests | Notes |
 |---|---|---|---|
 | 0 — Foundation | **COMPLETE** | 206 passing | All 23 source files + 17 test files implemented |
 | 1 — Market Data | NOT STARTED | — | Next phase |
-| 2 — Technical Analysis | NOT STARTED | — | — |
-| 3 — Intelligence Engine | **PARTIAL** (B.0 registered) | — | IntelligencePacket assembly, data quality scoring, freshness validation; apps.intelligence registered, PineOutput model migrated |
-| 4 — Rule Engine | NOT STARTED | — | — |
-| 5 — AI + Recommendations + Trader Memory | **PARTIAL** (Batch A+B delivered) | — | Gemini/DeepSeek wired, prompt templates, Model Router, Prompt Manager (DB-persisted), Strategy Registry, Confidence Engine V2, Recommendation Explanation |
+| 2 — Technical Analysis | **COMPLETE** | 60 non-DB passing | Webhook ingestion, validation, normalisation, TASnapshot persistence, Pine Script metadata, event publishing with real indicator/price data |
+| 3 — Intelligence Engine | **COMPLETE** | 60 non-DB passing | TA completed handler builds IntelligencePacket with real values, publishes PacketEnriched, System A + System B event buses wired |
+| 4 — Rule Engine | **COMPLETE** | 60 non-DB passing | SUBSCRIBED_EVENTS populated, enriched packet handler, rule evaluation and firing pipeline wired |
+| 5 — AI + Recommendations + Trader Memory | **COMPLETE** | 60 non-DB passing | DeepSeek/Gemini complete() implemented with retry, ModelRouter decision feeds provider selection, orchestrator calls real provider, fallback only on failure |
 | 6 — Notifications + WebSocket | NOT STARTED | — | — |
 | 7 — News + Announcements + Global Markets | NOT STARTED | — | — |
 | 8 — Frontend Dashboard | NOT STARTED | — | — |

@@ -39,7 +39,7 @@ def handle_ta_completed(event: DomainEvent) -> None:
         intel_service = IntelligenceService()
 
         ts = payload.get("snapshot_timestamp", event.occurred_at.isoformat())
-        indicator_keys = payload.get("indicator_keys", [])
+        indicators = payload.get("indicators", {})
 
         sys_packet = DomainEvent.create(
             event_type="intelligence.PacketEnriched",
@@ -49,7 +49,8 @@ def handle_ta_completed(event: DomainEvent) -> None:
                 "exchange": payload.get("exchange", ""),
                 "timeframe": payload.get("timeframe", ""),
                 "snapshot_timestamp": ts,
-                "indicator_keys": indicator_keys,
+                "indicators": indicators,
+                "price": payload.get("price", {}),
                 "pine_id": payload.get("pine_id", ""),
                 "pine_version": payload.get("pine_version", ""),
                 "packet_data": _serialize_packet(packet),
@@ -79,7 +80,8 @@ def handle_ta_completed(event: DomainEvent) -> None:
 def _save_pine_outputs(payload: dict[str, Any]) -> None:
     symbol = payload.get("symbol", "")
     timeframe = payload.get("timeframe", "")
-    indicator_keys = payload.get("indicator_keys", [])
+    raw_indicators: dict[str, Any] = payload.get("indicators", {})
+    raw_price: dict[str, Any] = payload.get("price", {})
     try:
         ts_str = payload.get("snapshot_timestamp", "")
         if ts_str:
@@ -89,9 +91,8 @@ def _save_pine_outputs(payload: dict[str, Any]) -> None:
     except (ValueError, TypeError):
         detected_ts = datetime.now(timezone.utc)
 
-    indicators: dict[str, Any] = {}
-    for key in indicator_keys:
-        indicators[key] = 0.0
+    indicators: dict[str, Any] = dict(raw_indicators)
+    indicators["current_price"] = raw_price.get("close", "0")
 
     try:
         PineOutput.objects.update_or_create(
@@ -111,32 +112,47 @@ def _save_pine_outputs(payload: dict[str, Any]) -> None:
         )
 
 
+def _to_decimal(value: Any) -> Decimal:
+    try:
+        return Decimal(str(value))
+    except (ValueError, TypeError, ArithmeticError):
+        return Decimal("0")
+
+
 def _build_packet(payload: dict[str, Any], occurred_at: datetime) -> IntelligencePacket:
     symbol = payload.get("symbol", "UNKNOWN")
-    indicator_keys = payload.get("indicator_keys", [])
-
-    exchange = payload.get("exchange", "")
-    timeframe = payload.get("timeframe", "")
+    indicators: dict[str, Any] = payload.get("indicators", {})
+    price_data: dict[str, Any] = payload.get("price", {})
 
     price_ctx = PriceContext(
-        current_price=Decimal("0"),
-        open_price=Decimal("0"),
-        high=Decimal("0"),
-        low=Decimal("0"),
-        prev_close=Decimal("0"),
-        change_pct=Decimal("0"),
-        volume=0,
+        current_price=_to_decimal(price_data.get("close")),
+        open_price=_to_decimal(price_data.get("open")),
+        high=_to_decimal(price_data.get("high")),
+        low=_to_decimal(price_data.get("low")),
+        prev_close=_to_decimal(price_data.get("prev_close")),
+        change_pct=_to_decimal(price_data.get("change_pct")),
+        volume=int(price_data.get("volume", 0)),
         avg_volume_20d=0,
         circuit_status=CircuitStatus.NORMAL,
     )
 
-    tech_ctx = TechnicalContext()
+    tech_ctx = TechnicalContext(
+        rsi_14=_to_decimal(indicators.get("rsi_14")),
+        macd=_to_decimal(indicators.get("macd")),
+        macd_signal=_to_decimal(indicators.get("macd_signal")),
+        bb_upper=_to_decimal(indicators.get("bb_upper")),
+        bb_lower=_to_decimal(indicators.get("bb_lower")),
+        ema_20=_to_decimal(indicators.get("ema_20")),
+        ema_50=_to_decimal(indicators.get("ema_50")),
+        ema_200=_to_decimal(indicators.get("ema_200")),
+        vwap=_to_decimal(indicators.get("vwap")),
+    )
 
     breadth_ctx = BreadthContext(
-        sector_index_change_pct=Decimal("0"),
-        sector_advance_decline=Decimal("0"),
-        nifty_change_pct=Decimal("0"),
-        sensex_change_pct=Decimal("0"),
+        sector_index_change_pct=_to_decimal(indicators.get("sector_index_change_pct")),
+        sector_advance_decline=_to_decimal(indicators.get("sector_advance_decline")),
+        nifty_change_pct=_to_decimal(indicators.get("nifty_change_pct")),
+        sensex_change_pct=_to_decimal(indicators.get("sensex_change_pct")),
     )
 
     dq = DataQuality(

@@ -250,6 +250,13 @@ class TechnicalAnalysisIngestionService:
                 hex=IdempotencyKey.generate(correlation_source).value[:32],
             )
 
+        price_data: dict[str, str] = {}
+        for raw_key, raw_value in snapshot.raw_payload.items():
+            key_lower = str(raw_key).lower().strip()
+            canonical = CANONICAL_FIELD_MAP.get(key_lower, key_lower)
+            if canonical in ("close", "high", "low", "open", "volume", "prev_close"):
+                price_data[canonical] = str(raw_value)
+
         event = DomainEvent.create(
             event_type="technical_analysis.TechnicalAnalysisCompleted",
             payload={
@@ -258,7 +265,8 @@ class TechnicalAnalysisIngestionService:
                 "exchange": snapshot.exchange,
                 "timeframe": snapshot.timeframe,
                 "snapshot_timestamp": snapshot.snapshot_timestamp.isoformat(),
-                "indicator_keys": list(snapshot.indicators.keys()),
+                "indicators": snapshot.indicators,
+                "price": price_data,
                 "pine_id": snapshot.pine_metadata.pine_id,
                 "pine_version": snapshot.pine_metadata.pine_version,
             },
