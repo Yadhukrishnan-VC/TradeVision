@@ -44,7 +44,10 @@ class TestValidate:
         service = TechnicalAnalysisIngestionService(
             repository=MagicMock(), event_bus=MagicMock()
         )
-        with pytest.raises(Exception):
+        from apps.technical_analysis.domain.exceptions import (
+            InvalidTechnicalAnalysisPayloadError,
+        )
+        with pytest.raises(InvalidTechnicalAnalysisPayloadError):
             service.validate("not_a_dict")
 
     def test_symbol_field_maps_to_ticker(self) -> None:
@@ -96,6 +99,15 @@ class TestNormalise:
         assert "snapshot_timestamp" in result
         assert isinstance(result["snapshot_timestamp"], datetime)
         assert result["snapshot_timestamp"].tzinfo is not None
+
+    def test_time_field_not_duplicated_as_raw(self) -> None:
+        service = TechnicalAnalysisIngestionService(
+            repository=MagicMock(), event_bus=MagicMock()
+        )
+        payload = {"ticker": "RELIANCE", "close": 2850.50, "time": 1699000000000}
+        result = service.normalise(payload)
+        assert "time" not in result          # raw int must not leak into normalised output
+        assert "snapshot_timestamp" in result
 
     def test_unknown_fields_become_indicators(self) -> None:
         service = TechnicalAnalysisIngestionService(
