@@ -194,7 +194,7 @@ class TechnicalAnalysisIngestionService:
                 normalised["snapshot_timestamp"] = datetime.fromtimestamp(
                     value / 1000, tz=timezone.utc
                 )
-            if canonical in CANONICAL_FIELD_MAP.values():
+            elif canonical in CANONICAL_FIELD_MAP.values():
                 normalised[canonical] = value
             else:
                 normalised.setdefault("indicators", {})[canonical] = value
