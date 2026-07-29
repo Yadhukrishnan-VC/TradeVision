@@ -41,6 +41,8 @@ CANONICAL_FIELD_MAP: dict[str, str] = {
     "pine_id": "pine_id",
     "pine_version": "pine_version",
     "pine_timestamp": "pine_timestamp",
+    "prev_close": "prev_close",
+    "change_pct": "change_pct",
 }
 
 REQUIRED_FIELDS: set[str] = {"ticker", "close"}

@@ -13,6 +13,7 @@ from apps.ai_engine.infrastructure.ai_reasoning_orchestrator import (
 )
 from apps.eventbus.domain.events import DomainEvent
 from core.ai.exceptions import AIConnectionError
+from core.constants import AIProviderName
 
 
 class TestOrchestratorIntegration:
@@ -188,7 +189,137 @@ class TestOrchestratorIntegration:
             parsed = json.loads(result.raw_text)
             assert parsed["direction"] == "BUY"
 
-    def test_call_ai_returns_none_on_unexpected_error(self) -> None:
+    def test_call_ai_uses_fallback_chain_then_hardcoded_fallback(self) -> None:
+        with (
+            patch("apps.ai_engine.infrastructure.ai_reasoning_orchestrator.AIProviderFactory.get_provider") as mock_factory,
+            patch("apps.ai_engine.infrastructure.ai_reasoning_orchestrator.ModelRouter") as mock_router_cls,
+        ):
+            mock_gemini = MagicMock()
+            mock_gemini.complete.side_effect = AIConnectionError("Gemini down")
+            mock_deepseek = MagicMock()
+            mock_deepseek.complete.side_effect = AIConnectionError("DeepSeek down")
+
+            def provider_side_effect(name):
+                if name == "gemini":
+                    return mock_gemini
+                return mock_deepseek
+            mock_factory.side_effect = provider_side_effect
+
+            mock_router = MagicMock()
+            mock_decision = MagicMock()
+            mock_decision.selected_provider.value = "gemini"
+            mock_decision.fallback_chain = (AIProviderName.DEEPSEEK,)
+            mock_router.route.return_value = mock_decision
+            mock_router_cls.return_value = mock_router
+
+            orchestrator = AIReasoningOrchestrator()
+            result = orchestrator._call_ai("test prompt", "RELIANCE", uuid.uuid4())
+
+            assert result is not None
+            assert result.provider == "fallback"
+            mock_gemini.complete.assert_called_once()
+            mock_deepseek.complete.assert_called_once()
+
+    def test_call_ai_uses_first_successful_provider_in_fallback_chain(self) -> None:
+        with (
+            patch("apps.ai_engine.infrastructure.ai_reasoning_orchestrator.AIProviderFactory.get_provider") as mock_factory,
+            patch("apps.ai_engine.infrastructure.ai_reasoning_orchestrator.ModelRouter") as mock_router_cls,
+        ):
+            from core.ai.base_provider import AIRawResponse
+            expected = AIRawResponse(
+                request_id=uuid.uuid4(),
+                provider="deepseek",
+                raw_text=json.dumps({
+                    "direction": "BUY",
+                    "confidence_score": 0.85,
+                    "reasoning": "Strong technical setup with sufficient length for reasoning",
+                    "risk_level": "LOW",
+                    "risk_explanation": "Risk explanation with sufficient length for validation",
+                    "key_factors": ["RSI bullish"],
+                    "contradicting_factors": [],
+                    "time_horizon": "SHORT",
+                    "follow_up_triggers": [],
+                }),
+                input_tokens=100,
+                output_tokens=50,
+                latency_ms=1200.0,
+                estimated_cost_usd=Decimal("0.001"),
+                timestamp=datetime.now(timezone.utc),
+            )
+
+            mock_gemini = MagicMock()
+            mock_gemini.complete.side_effect = AIConnectionError("Gemini down")
+            mock_deepseek = MagicMock()
+            mock_deepseek.complete.return_value = expected
+
+            def provider_side_effect(name):
+                if name == "gemini":
+                    return mock_gemini
+                return mock_deepseek
+            mock_factory.side_effect = provider_side_effect
+
+            mock_router = MagicMock()
+            mock_decision = MagicMock()
+            mock_decision.selected_provider.value = "gemini"
+            mock_decision.fallback_chain = (AIProviderName.DEEPSEEK,)
+            mock_router.route.return_value = mock_decision
+            mock_router_cls.return_value = mock_router
+
+            orchestrator = AIReasoningOrchestrator()
+            result = orchestrator._call_ai("test prompt", "RELIANCE", uuid.uuid4())
+
+            assert result is not None
+            assert result.provider == "deepseek"
+            assert json.loads(result.raw_text)["direction"] == "BUY"
+            mock_gemini.complete.assert_called_once()
+            mock_deepseek.complete.assert_called_once()
+
+    def test_fallback_not_executed_on_successful_provider_call(self) -> None:
+        with (
+            patch("apps.ai_engine.infrastructure.ai_reasoning_orchestrator.AIProviderFactory.get_provider") as mock_factory,
+            patch("apps.ai_engine.infrastructure.ai_reasoning_orchestrator.ModelRouter") as mock_router_cls,
+        ):
+            from core.ai.base_provider import AIRawResponse
+            expected = AIRawResponse(
+                request_id=uuid.uuid4(),
+                provider="deepseek",
+                raw_text=json.dumps({
+                    "direction": "BUY",
+                    "confidence_score": 0.85,
+                    "reasoning": "Strong technical setup with sufficient length for reasoning",
+                    "risk_level": "LOW",
+                    "risk_explanation": "Risk explanation with sufficient length for validation",
+                    "key_factors": ["RSI bullish"],
+                    "contradicting_factors": [],
+                    "time_horizon": "SHORT",
+                    "follow_up_triggers": [],
+                }),
+                input_tokens=100,
+                output_tokens=50,
+                latency_ms=1200.0,
+                estimated_cost_usd=Decimal("0.001"),
+                timestamp=datetime.now(timezone.utc),
+            )
+
+            mock_provider = MagicMock()
+            mock_provider.complete.return_value = expected
+            mock_factory.return_value = mock_provider
+
+            mock_router = MagicMock()
+            mock_decision = MagicMock()
+            mock_decision.selected_provider.value = "deepseek"
+            mock_decision.fallback_chain = (AIProviderName.GEMINI,)
+            mock_router.route.return_value = mock_decision
+            mock_router_cls.return_value = mock_router
+
+            orchestrator = AIReasoningOrchestrator()
+            result = orchestrator._call_ai("test prompt", "RELIANCE", uuid.uuid4())
+
+            assert result is not None
+            assert result.provider == "deepseek"
+            mock_provider.complete.assert_called_once()
+
+    def test_call_ai_fallback_on_unexpected_error(self) -> None:
         with (
             patch("apps.ai_engine.infrastructure.ai_reasoning_orchestrator.AIProviderFactory.get_provider") as mock_factory,
             patch("apps.ai_engine.infrastructure.ai_reasoning_orchestrator.ModelRouter") as mock_router_cls,
@@ -200,11 +331,13 @@ class TestOrchestratorIntegration:
             mock_router = MagicMock()
             mock_decision = MagicMock()
             mock_decision.selected_provider.value = "deepseek"
+            mock_decision.fallback_chain = ()
             mock_router.route.return_value = mock_decision
             mock_router_cls.return_value = mock_router
 
             orchestrator = AIReasoningOrchestrator()
             result = orchestrator._call_ai("test prompt", "RELIANCE", uuid.uuid4())
 
-            assert result is None
+            assert result is not None
+            assert result.provider == "fallback"
 

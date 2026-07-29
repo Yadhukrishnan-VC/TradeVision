@@ -184,45 +184,77 @@ class AIReasoningOrchestrator:
             return "Analyze the following market data and provide a trading recommendation."
 
     def _call_ai(self, prompt: str, symbol: str, correlation_id: uuid.UUID) -> AIRawResponse | None:
+        routing_request = RoutingRequest(
+            event_type=EventType.PRICE_MOVEMENT,
+            context_tokens_estimate=len(prompt.split()),
+        )
         try:
-            routing_request = RoutingRequest(
-                event_type=EventType.PRICE_MOVEMENT,
-                context_tokens_estimate=len(prompt.split()),
-            )
             decision = self._model_router.route(routing_request)
-
-            request = AIRequest(
-                id=uuid.uuid4(),
-                prompt=prompt,
-                event_type=routing_request.event_type.value,
-                symbol=symbol,
-                prompt_version=self._prompt_manager.get_version("price_movement"),
-                max_tokens=settings.AI_MAX_TOKENS,
-                timestamp=datetime.now(timezone.utc),
-            )
-
-            provider = AIProviderFactory.get_provider(decision.selected_provider.value)
-            raw_response = provider.complete(request)
-            return raw_response
-
-        except (AIAuthenticationError, AIProviderError, AIConnectionError,
-                AITimeoutError, AIRateLimitError, AIQuotaExceededError) as exc:
-            logger.warning(
-                "ai_provider_error_using_fallback",
-                extra={
-                    "symbol": symbol,
-                    "error_type": type(exc).__name__,
-                    "error": str(exc),
-                },
-            )
-            return self._fallback_response(request if 'request' in dir() else None, correlation_id, symbol)
-
         except Exception as exc:
-            logger.exception(
-                "ai_call_unexpected_error",
+            logger.warning(
+                "ai_router_failed",
                 extra={"symbol": symbol, "error": str(exc)},
             )
             return None
+
+        request = AIRequest(
+            id=uuid.uuid4(),
+            prompt=prompt,
+            event_type=routing_request.event_type.value,
+            symbol=symbol,
+            prompt_version=self._prompt_manager.get_version("price_movement"),
+            max_tokens=settings.AI_MAX_TOKENS,
+            timestamp=datetime.now(timezone.utc),
+            correlation_id=correlation_id,
+        )
+
+        providers_to_try: list[str] = [decision.selected_provider.value]
+        providers_to_try.extend(p.value for p in decision.fallback_chain)
+
+        last_error: Exception | None = None
+        for provider_name in providers_to_try:
+            try:
+                provider = AIProviderFactory.get_provider(provider_name)
+                raw_response = provider.complete(request)
+                logger.info(
+                    "ai_provider_succeeded",
+                    extra={
+                        "symbol": symbol,
+                        "provider": provider_name,
+                        "correlation_id": str(correlation_id),
+                    },
+                )
+                return raw_response
+            except (AIAuthenticationError, AIProviderError, AIConnectionError,
+                    AITimeoutError, AIRateLimitError, AIQuotaExceededError) as exc:
+                last_error = exc
+                logger.warning(
+                    "ai_provider_error_trying_next",
+                    extra={
+                        "symbol": symbol,
+                        "provider": provider_name,
+                        "error_type": type(exc).__name__,
+                        "error": str(exc),
+                    },
+                )
+                continue
+            except Exception as exc:
+                last_error = exc
+                logger.exception(
+                    "ai_provider_unexpected_error",
+                    extra={"symbol": symbol, "provider": provider_name, "error": str(exc)},
+                )
+                continue
+
+        logger.warning(
+            "ai_all_providers_failed_using_fallback",
+            extra={
+                "symbol": symbol,
+                "providers_tried": providers_to_try,
+                "last_error": str(last_error) if last_error else "unknown",
+            },
+        )
+        return self._fallback_response(request, correlation_id, symbol)
 
     def _fallback_response(
         self,

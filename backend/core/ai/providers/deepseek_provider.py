@@ -30,8 +30,10 @@ from core.ai.exceptions import (
     AIProviderError,
     AIQuotaExceededError,
     AIRateLimitError,
+    AIResponseValidationError,
     AITimeoutError,
 )
+from core.ai.validator import AIResponseSchema
 from core.config import config
 
 logger = logging.getLogger(__name__)
@@ -242,6 +244,24 @@ class DeepSeekProvider(BaseAIProvider):
                             "DeepSeek returned an empty choices list."
                         )
                     raw_text: str = choices[0].get("message", {}).get("content", "")
+
+                    try:
+                        import json
+                        parsed: Any = json.loads(raw_text)
+                        AIResponseSchema.model_validate(parsed)
+                    except Exception as exc:
+                        logger.error(
+                            "deepseek_response_schema_validation_failed",
+                            extra={
+                                "request_id": str(request.id),
+                                "error": str(exc),
+                                "raw_preview": raw_text[:200],
+                            },
+                        )
+                        raise AIResponseValidationError(
+                            f"DeepSeek response failed schema validation: {exc}"
+                        ) from exc
+
                     usage: Any = data.get("usage", {})
                     return AIRawResponse(
                         request_id=request.id,

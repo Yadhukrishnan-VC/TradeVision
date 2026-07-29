@@ -114,11 +114,11 @@ def _save_pine_outputs(payload: dict[str, Any]) -> None:
         )
 
 
-def _to_decimal(value: Any) -> Decimal:
+def _to_decimal(value: Any) -> Decimal | None:
     try:
         return Decimal(str(value))
     except (ValueError, TypeError, ArithmeticError):
-        return Decimal("0")
+        return None
 
 
 def _optional_decimal(value: Any) -> Decimal | None:
@@ -157,11 +157,14 @@ def _build_packet(payload: dict[str, Any], occurred_at: datetime) -> Intelligenc
     indicators: dict[str, Any] = payload.get("indicators", {})
     price_data: dict[str, Any] = payload.get("price", {})
 
-    current_price = _to_decimal(price_data.get("close"))
+    current_price = _to_decimal(price_data.get("close")) or Decimal("0")
+    open_price = _to_decimal(price_data.get("open")) or Decimal("0")
+    high = _to_decimal(price_data.get("high")) or Decimal("0")
+    low = _to_decimal(price_data.get("low")) or Decimal("0")
 
     change_pct_raw = price_data.get("change_pct")
     if change_pct_raw is not None:
-        change_pct = _to_decimal(change_pct_raw)
+        change_pct = _optional_decimal(change_pct_raw)
         prev_close = _get_prev_close(symbol, price_data)
     else:
         prev_close = _get_prev_close(symbol, price_data)
@@ -172,9 +175,9 @@ def _build_packet(payload: dict[str, Any], occurred_at: datetime) -> Intelligenc
 
     price_ctx = PriceContext(
         current_price=current_price,
-        open_price=_to_decimal(price_data.get("open")),
-        high=_to_decimal(price_data.get("high")),
-        low=_to_decimal(price_data.get("low")),
+        open_price=open_price,
+        high=high,
+        low=low,
         prev_close=prev_close,
         change_pct=change_pct,
         volume=int(price_data.get("volume", 0)),
@@ -195,10 +198,10 @@ def _build_packet(payload: dict[str, Any], occurred_at: datetime) -> Intelligenc
     )
 
     breadth_ctx = BreadthContext(
-        sector_index_change_pct=_to_decimal(indicators.get("sector_index_change_pct")),
-        sector_advance_decline=_to_decimal(indicators.get("sector_advance_decline")),
-        nifty_change_pct=_to_decimal(indicators.get("nifty_change_pct")),
-        sensex_change_pct=_to_decimal(indicators.get("sensex_change_pct")),
+        sector_index_change_pct=_to_decimal(indicators.get("sector_index_change_pct")) or Decimal("0"),
+        sector_advance_decline=_to_decimal(indicators.get("sector_advance_decline")) or Decimal("0"),
+        nifty_change_pct=_to_decimal(indicators.get("nifty_change_pct")) or Decimal("0"),
+        sensex_change_pct=_to_decimal(indicators.get("sensex_change_pct")) or Decimal("0"),
     )
 
     dq = DataQuality(

@@ -45,6 +45,7 @@ class AIRequest:
         prompt_version:  Version tag of the prompt template used (e.g. ``"v1.0"``).
         max_tokens:      Maximum output tokens requested from the provider.
         timestamp:       UTC datetime when the request was created.
+        correlation_id:  Correlation UUID for tracing across the event chain.
     """
 
     id: uuid.UUID
@@ -54,6 +55,7 @@ class AIRequest:
     prompt_version: str
     max_tokens: int
     timestamp: datetime
+    correlation_id: uuid.UUID | None = None
 
     def __post_init__(self) -> None:
         if self.timestamp.tzinfo is None:
