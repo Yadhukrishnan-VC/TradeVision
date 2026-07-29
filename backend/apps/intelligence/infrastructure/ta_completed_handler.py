@@ -9,7 +9,6 @@ from typing import Any
 from apps.eventbus.domain.events import DomainEvent
 from apps.eventbus.infrastructure.event_bus_factory import get_event_bus
 from apps.intelligence.models import PineOutput
-from apps.intelligence.services import IntelligenceService
 from apps.technical_analysis.application.services import CANONICAL_FIELD_MAP
 from apps.technical_analysis.infrastructure.repositories import TASnapshotRepository
 from core.events.event_types import (
@@ -38,12 +37,11 @@ def handle_ta_completed(event: DomainEvent) -> None:
 
     try:
         bus = get_event_bus()
-        intel_service = IntelligenceService()
         ts = payload.get("snapshot_timestamp", event.occurred_at.isoformat())
         indicators = payload.get("indicators", {})
 
         sys_packet = DomainEvent.create(
-            event_type="intelligence.PacketEnriched",
+            event_type="intelligence.PacketBuilt",
             payload={
                 "symbol": symbol,
                 "snapshot_id": payload.get("snapshot_id", ""),
@@ -60,8 +58,6 @@ def handle_ta_completed(event: DomainEvent) -> None:
             causation_id=event.event_id,
         )
         bus.publish(sys_packet)
-
-        intel_service.build_packet(packet)
 
         logger.info(
             "ta_completed_processed",

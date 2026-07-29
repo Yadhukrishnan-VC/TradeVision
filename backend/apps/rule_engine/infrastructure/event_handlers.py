@@ -109,7 +109,7 @@ def _serialize_for_task(enriched: EnrichedIntelligencePacket) -> dict:
 
 
 SUBSCRIBED_EVENTS: dict[str, list[Callable[[DomainEvent], None]]] = {
-    "intelligence.PacketEnriched": [handle_enriched_packet],
+    "intelligence.PacketBuilt": [handle_enriched_packet],
 }
 
 

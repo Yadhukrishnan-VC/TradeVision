@@ -9,14 +9,14 @@
 
 ## Development Status
 
-> Last updated: 2026-07-28
+> Last updated: 2026-07-29
 
 | Phase | Status | Tests | Notes |
 |---|---|---|---|
 | 0 — Foundation | **COMPLETE** | 206 passing | All 23 source files + 17 test files implemented |
 | 1 — Market Data | NOT STARTED | — | Next phase |
 | 2 — Technical Analysis | **COMPLETE** | 60 non-DB passing | Webhook ingestion, validation, normalisation, TASnapshot persistence, Pine Script metadata, event publishing with real indicator/price data |
-| 3 — Intelligence Engine | **COMPLETE** | 60 non-DB passing | TA completed handler builds IntelligencePacket with real values, publishes PacketEnriched, System A + System B event buses wired |
+| 3 — Intelligence Engine | **COMPLETE** | 60 non-DB passing | TA completed handler builds IntelligencePacket with real values, publishes PacketBuilt (not enriched). Portfolio/risk enrichment pipeline (PortfolioRiskContextBuilder + intelligence:enriched) deferred to Phase 9. |
 | 4 — Rule Engine | **COMPLETE** | 60 non-DB passing | SUBSCRIBED_EVENTS populated, enriched packet handler, rule evaluation and firing pipeline wired |
 | 5 — AI + Recommendations + Trader Memory | **COMPLETE** | 60 non-DB passing | DeepSeek/Gemini complete() implemented with retry, ModelRouter decision feeds provider selection, orchestrator calls real provider, fallback only on failure |
 | 6 — Notifications + WebSocket | NOT STARTED | — | — |
@@ -1173,7 +1173,7 @@ Production (live data, full security posture, same image)
 | ADR-011 | API versioning from Phase 1 | Retrofitting `/api/v1/` after clients exist breaks compatibility |
 | ADR-012 | Abstract market data provider | Same interface pattern as AI providers — swapping data vendors should be a config change |
 | ADR-013 | Event bus transport: Redis Streams (not Pub/Sub) | At-least-once delivery for AnalysisEvent; Pub/Sub retained for notifications fan-out (see ADR-013 doc for full trade-off table) |
-| ADR-014 | Intelligence Packet V2 — Portfolio, Risk, and Regime Context Blocks | Two-event enrichment pipeline: ``IntelligenceService.build_packet()`` publishes ``INTELLIGENCE_PACKET_READY``; ``PortfolioRiskContextBuilder`` reads ``PositionSnapshot``/``RiskStateSnapshot`` from EventBus streams (no direct PortfolioService call), attaches them, and republishes as ``INTELLIGENCE_PACKET_ENRICHED`` for ``PromptManager`` / the AI orchestrator |
+| ADR-014 | Intelligence Packet V2 — Portfolio, Risk, and Regime Context Blocks | **DEFERRED to Phase 9.** Two-event enrichment pipeline: ``IntelligenceService.build_packet()`` publishes ``INTELLIGENCE_PACKET_READY``; ``PortfolioRiskContextBuilder`` reads ``PositionSnapshot``/``RiskStateSnapshot`` from EventBus streams, attaches them, and republishes as ``INTELLIGENCE_PACKET_ENRICHED``. The code (``PortfolioRiskContextBuilder``, ``IntelligenceService.build_packet()``) remains in the tree but is not wired into any automatic subscriber until Phase 9. |
 | ADR-015 | DeepSeek AI Provider | Adds DeepSeek as a first-class AI provider via OpenAI-compatible chat API; Phase 0 covers auth/health, Phase 4 adds inference |
 | ADR-016 | Prompt Manager and Signal Schema | Structured Jinja2 prompt templates with versioning; PromptManager service; IntelligenceResponseSchema for AI output validation |
 | ADR-017 | Strategy Registry | Deterministic event-to-strategy matching via TradingStrategy model with symbol/sector filters, per-strategy preferred_provider hook into ModelRouter, and configurable confidence/risk thresholds |

@@ -27,7 +27,7 @@ class TestPipelineIntegration:
             captured_event = event
 
         bus.subscribe(
-            "intelligence.PacketEnriched",
+            "intelligence.PacketBuilt",
             test_handler,
             consumer_group="test_pipeline",
         )
@@ -51,14 +51,12 @@ class TestPipelineIntegration:
             correlation_id=cid,
         )
 
-        with patch("apps.intelligence.infrastructure.ta_completed_handler.IntelligenceService") as mock_intel:
-            mock_intel.return_value = MagicMock()
-            with patch("apps.eventbus.infrastructure.fake_event_bus.StoredEvent.objects.create"):
-                handle_ta_completed(event)
+        with patch("apps.eventbus.infrastructure.fake_event_bus.StoredEvent.objects.create"):
+            handle_ta_completed(event)
 
             assert handler_called
             assert captured_event is not None
-            assert captured_event.event_type == "intelligence.PacketEnriched"
+            assert captured_event.event_type == "intelligence.PacketBuilt"
             assert captured_event.payload["symbol"] == "RELIANCE"
             assert captured_event.correlation_id == cid
 
@@ -151,14 +149,12 @@ class TestPipelineIntegration:
 
         with (
             patch("apps.eventbus.infrastructure.fake_event_bus.StoredEvent.objects.create"),
-            patch("apps.intelligence.infrastructure.ta_completed_handler.IntelligenceService") as mock_intel,
             patch("apps.intelligence.infrastructure.ta_completed_handler.TASnapshotRepository") as mock_repo,
             patch("apps.ai_engine.infrastructure.ai_reasoning_orchestrator.AIReasoningOrchestrator._match_strategy") as mock_match,
             patch("apps.ai_engine.infrastructure.ai_reasoning_orchestrator.AIReasoningOrchestrator._render_prompt") as mock_render,
             patch("apps.ai_engine.infrastructure.ai_reasoning_orchestrator.AIReasoningOrchestrator._validate_response") as mock_validate,
             patch("apps.ai_engine.infrastructure.ai_reasoning_orchestrator.AIReasoningOrchestrator._evaluate_confidence") as mock_conf,
         ):
-            mock_intel.return_value = MagicMock()
             mock_repo.return_value.find_by_symbol.return_value = []
 
             mock_match.return_value = None
