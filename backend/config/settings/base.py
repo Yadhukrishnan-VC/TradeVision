@@ -316,6 +316,12 @@ CONFIDENCE_ENGINE_V2_ENABLED: bool = config("CONFIDENCE_ENGINE_V2_ENABLED", defa
 MODEL_ROUTER_PREFERRED_PROVIDER_ENABLED: bool = config(
     "MODEL_ROUTER_PREFERRED_PROVIDER_ENABLED", default=False, cast=bool
 )
+MARKET_CONTEXT_SCORING_ENABLED: bool = config(
+    "MARKET_CONTEXT_SCORING_ENABLED", default=False, cast=bool
+)
+MARKET_CONTEXT_CACHE_TTL_SECONDS: int = config(
+    "MARKET_CONTEXT_CACHE_TTL_SECONDS", default=900, cast=int
+)
 
 # ---------------------------------------------------------------------------
 # Circuit breaker defaults

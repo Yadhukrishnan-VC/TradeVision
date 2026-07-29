@@ -6,6 +6,8 @@ from decimal import Decimal
 from typing import Any
 
 from apps.eventbus.domain.events import DomainEvent
+from apps.eventbus.infrastructure.event_bus_factory import get_event_bus
+from apps.intelligence.infrastructure.market_context_cache import MarketContextCache
 from apps.intelligence.models import PineOutput
 from apps.intelligence.services import MarketContextService, SignalContextRef
 from apps.technical_analysis.infrastructure.repositories import TASnapshotRepository
@@ -61,6 +63,39 @@ def _fetch_technical_context(symbol: str) -> dict[str, Any]:
     except Exception:
         logger.warning("signal_bridge_pine_fetch_failed", extra={"symbol": symbol})
     return {}
+
+
+def _publish_market_context(context: Any, event: DomainEvent) -> None:
+    try:
+        bus = get_event_bus()
+        mc_event = DomainEvent.create(
+            event_type="intelligence.MarketContextBuilt",
+            payload={
+                "symbol": context.symbol,
+                "market_regime": context.market_regime.value if hasattr(context.market_regime, "value") else str(context.market_regime),
+                "regime_evidence": list(context.regime_evidence),
+                "multi_timeframe_alignment": context.multi_timeframe_alignment.value if hasattr(context.multi_timeframe_alignment, "value") else str(context.multi_timeframe_alignment),
+                "bullishness_score": context.bullishness_score,
+                "bearishness_score": context.bearishness_score,
+                "volatility_score": context.volatility_score,
+                "trend_score": context.trend_score,
+                "liquidity_score": context.liquidity_score,
+                "momentum_score": context.momentum_score,
+                "overall_context_confidence": context.overall_context_confidence,
+                "pattern_alignment_note": context.pattern_alignment_note,
+                "sector_context": context.sector_context,
+                "data_quality_note": context.data_quality_note,
+                "trading_signal_id": str(context.trading_signal.signal_id) if context.trading_signal else None,
+            },
+            correlation_id=event.correlation_id,
+            causation_id=event.event_id,
+        )
+        bus.publish(mc_event)
+        cache = MarketContextCache()
+        cache.set(context.symbol, context)
+        logger.debug("market_context_published", extra={"symbol": context.symbol})
+    except Exception as exc:
+        logger.warning("market_context_publish_failed", extra={"symbol": context.symbol, "error": str(exc)})
 
 
 def _fetch_breadth_context(indicators: dict[str, Any]) -> dict[str, Any]:
@@ -133,6 +168,9 @@ def handle_signal_created(event: DomainEvent) -> None:
         packet=packet,
         trading_signal=signal_ref,
     )
+
+    _publish_market_context(context, event)
+
     logger.info(
         "signal_context_triggered_by_bridge",
         extra={

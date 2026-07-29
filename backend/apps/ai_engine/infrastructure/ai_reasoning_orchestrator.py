@@ -13,6 +13,7 @@ from django.conf import settings
 from apps.ai_engine.model_router import ModelRouter, RoutingRequest
 from apps.ai_engine.prompt_manager.service import PromptManager
 from apps.ai_engine.services import ConfidenceEngine, ConfidenceResult
+from apps.intelligence.infrastructure.market_context_cache import MarketContextCache
 from apps.eventbus.domain.events import DomainEvent
 from apps.eventbus.infrastructure.event_bus_factory import get_event_bus
 from apps.strategy_registry.models import TradingStrategy
@@ -161,13 +162,52 @@ class AIReasoningOrchestrator:
         try:
             payload = event.payload
             trigger_data = payload.get("trigger_data", {})
+            symbol = payload.get("symbol", "")
+
+            market_regime = "UNKNOWN"
+            mtf = "NEUTRAL"
+            bullishness_score = 0.0
+            bearishness_score = 0.0
+            volatility_score = 0.0
+            trend_score = 0.0
+            liquidity_score = 0.0
+            momentum_score = 0.0
+            overall_context_confidence = 0.0
+            pattern_alignment_note = "PATTERN_ENGINE_NOT_AVAILABLE"
+
+            if symbol and getattr(settings, "MARKET_CONTEXT_SCORING_ENABLED", False):
+                try:
+                    cache = MarketContextCache()
+                    cached = cache.get(symbol)
+                    if cached is not None:
+                        market_regime = cached.market_regime.value if hasattr(cached.market_regime, "value") else str(cached.market_regime)
+                        mtf = cached.multi_timeframe_alignment.value if hasattr(cached.multi_timeframe_alignment, "value") else str(cached.multi_timeframe_alignment)
+                        bullishness_score = cached.bullishness_score
+                        bearishness_score = cached.bearishness_score
+                        volatility_score = cached.volatility_score
+                        trend_score = cached.trend_score
+                        liquidity_score = cached.liquidity_score
+                        momentum_score = cached.momentum_score
+                        overall_context_confidence = cached.overall_context_confidence
+                        pattern_alignment_note = cached.pattern_alignment_note
+                except Exception as exc:
+                    logger.debug("market_context_cache_miss", extra={"symbol": symbol, "error": str(exc)})
+
             signal_context = {
                 "pine_output": json.dumps(trigger_data.get("indicators", {})),
-                "market_regime": "UNKNOWN",
-                "multi_timeframe_alignment": "NEUTRAL",
+                "market_regime": market_regime,
+                "multi_timeframe_alignment": mtf,
                 "news_headlines": [],
                 "sector_context": payload.get("sector_context", ""),
                 "event": trigger_data,
+                "bullishness_score": bullishness_score,
+                "bearishness_score": bearishness_score,
+                "volatility_score": volatility_score,
+                "trend_score": trend_score,
+                "liquidity_score": liquidity_score,
+                "momentum_score": momentum_score,
+                "overall_context_confidence": overall_context_confidence,
+                "pattern_alignment_note": pattern_alignment_note,
             }
         except Exception as exc:
             logger.warning("prompt_context_assembly_failed", extra={"error": str(exc)})

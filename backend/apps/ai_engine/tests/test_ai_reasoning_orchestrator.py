@@ -247,5 +247,172 @@ class TestAIReasoningOrchestrator:
             assert captured_request["routing"].preferred_provider == AIProviderName.GEMINI
 
 
+    def test_render_prompt_cache_hit_populates_scores(self) -> None:
+        from unittest.mock import PropertyMock
+
+        cid = uuid.uuid4()
+        event = DomainEvent.create(
+            event_type="rule_engine.RuleFired",
+            payload={
+                "symbol": "RELIANCE",
+                "event_type": "price_movement",
+                "trigger_data": {"indicators": {"rsi_14": 62.5}},
+            },
+            correlation_id=cid,
+        )
+
+        mock_context = MagicMock()
+        mock_context.market_regime = type("MR", (), {"value": "BULLISH"})()
+        mock_context.multi_timeframe_alignment = type("MTF", (), {"value": "BULLISH_ALIGNED"})()
+        mock_context.bullishness_score = 0.74
+        mock_context.bearishness_score = 0.11
+        mock_context.volatility_score = 0.32
+        mock_context.trend_score = 0.68
+        mock_context.liquidity_score = 0.81
+        mock_context.momentum_score = 0.63
+        mock_context.overall_context_confidence = 0.88
+        mock_context.pattern_alignment_note = "PATTERN_ENGINE_NOT_AVAILABLE"
+
+        with (
+            patch("apps.ai_engine.infrastructure.ai_reasoning_orchestrator.MarketContextCache") as mock_cache_cls,
+            patch.object(AIReasoningOrchestrator, "_match_strategy") as mock_match,
+            patch("apps.ai_engine.infrastructure.ai_reasoning_orchestrator.PromptManager") as mock_pm_cls,
+            patch("apps.ai_engine.infrastructure.ai_reasoning_orchestrator.get_event_bus") as mock_get_bus,
+            patch("apps.ai_engine.infrastructure.ai_reasoning_orchestrator.ModelRouter") as mock_router_cls,
+            patch("apps.ai_engine.infrastructure.ai_reasoning_orchestrator.AIProviderFactory.get_provider") as mock_factory,
+            patch.object(AIReasoningOrchestrator, "_validate_response") as mock_validate,
+            patch.object(AIReasoningOrchestrator, "_evaluate_confidence") as mock_conf,
+        ):
+            mock_cache = MagicMock()
+            mock_cache.get.return_value = mock_context
+            mock_cache_cls.return_value = mock_cache
+
+            mock_match.return_value = None
+
+            mock_pm = MagicMock()
+            mock_pm.render.return_value = "rendered prompt"
+            mock_pm_cls.return_value = mock_pm
+
+            mock_bus = MagicMock()
+            mock_get_bus.return_value = mock_bus
+
+            mock_router = MagicMock()
+            decision = MagicMock()
+            decision.selected_provider.value = "deepseek"
+            decision.fallback_chain = ()
+            mock_router.route.return_value = decision
+            mock_router_cls.return_value = mock_router
+
+            mock_provider = MagicMock()
+            mock_provider.complete.return_value = MagicMock()
+            mock_factory.return_value = mock_provider
+
+            valid = MagicMock()
+            valid.direction = "BUY"
+            valid.confidence_score = 0.85
+            valid.reasoning = "Test reasoning with sufficient length for validation"
+            valid.risk_level = "LOW"
+            valid.risk_explanation = "Risk explanation sufficient for validation"
+            valid.key_factors = ("factor1",)
+            valid.contradicting_factors = ()
+            valid.time_horizon = "SHORT"
+            valid.follow_up_triggers = ()
+            mock_validate.return_value = valid
+
+            conf_result = MagicMock()
+            conf_result.adjusted_confidence = 0.85
+            conf_result.confidence_evaluation_id = "eval-cache-hit"
+            mock_conf.return_value = conf_result
+
+            orchestrator = AIReasoningOrchestrator()
+            result = orchestrator.orchestrate(event)
+
+            assert result is not None
+            assert mock_cache.get.called
+            assert mock_cache.get.call_args[0][0] == "RELIANCE"
+
+            assert mock_pm.render.called
+            rendered_kwargs = mock_pm.render.call_args[1]
+            ctx = rendered_kwargs["signal_context"]
+            assert ctx["market_regime"] == "BULLISH"
+            assert ctx["bullishness_score"] == 0.74
+            assert ctx["overall_context_confidence"] == 0.88
+
+    def test_render_prompt_cache_miss_uses_unknown_defaults(self) -> None:
+        cid = uuid.uuid4()
+        event = DomainEvent.create(
+            event_type="rule_engine.RuleFired",
+            payload={
+                "symbol": "RELIANCE",
+                "event_type": "price_movement",
+                "trigger_data": {"indicators": {"rsi_14": 62.5}},
+            },
+            correlation_id=cid,
+        )
+
+        with (
+            patch("apps.ai_engine.infrastructure.ai_reasoning_orchestrator.MarketContextCache") as mock_cache_cls,
+            patch.object(AIReasoningOrchestrator, "_match_strategy") as mock_match,
+            patch("apps.ai_engine.infrastructure.ai_reasoning_orchestrator.PromptManager") as mock_pm_cls,
+            patch("apps.ai_engine.infrastructure.ai_reasoning_orchestrator.get_event_bus") as mock_get_bus,
+            patch("apps.ai_engine.infrastructure.ai_reasoning_orchestrator.ModelRouter") as mock_router_cls,
+            patch("apps.ai_engine.infrastructure.ai_reasoning_orchestrator.AIProviderFactory.get_provider") as mock_factory,
+            patch.object(AIReasoningOrchestrator, "_validate_response") as mock_validate,
+            patch.object(AIReasoningOrchestrator, "_evaluate_confidence") as mock_conf,
+        ):
+            mock_cache = MagicMock()
+            mock_cache.get.return_value = None
+            mock_cache_cls.return_value = mock_cache
+
+            mock_match.return_value = None
+
+            mock_pm = MagicMock()
+            mock_pm.render.return_value = "rendered prompt"
+            mock_pm_cls.return_value = mock_pm
+
+            mock_bus = MagicMock()
+            mock_get_bus.return_value = mock_bus
+
+            mock_router = MagicMock()
+            decision = MagicMock()
+            decision.selected_provider.value = "deepseek"
+            decision.fallback_chain = ()
+            mock_router.route.return_value = decision
+            mock_router_cls.return_value = mock_router
+
+            mock_provider = MagicMock()
+            mock_provider.complete.return_value = MagicMock()
+            mock_factory.return_value = mock_provider
+
+            valid = MagicMock()
+            valid.direction = "WATCH"
+            valid.confidence_score = 0.70
+            valid.reasoning = "Test reasoning with sufficient length for validation"
+            valid.risk_level = "MEDIUM"
+            valid.risk_explanation = "Risk explanation sufficient for validation"
+            valid.key_factors = ("Default",)
+            valid.contradicting_factors = ()
+            valid.time_horizon = "SHORT"
+            valid.follow_up_triggers = ()
+            mock_validate.return_value = valid
+
+            conf_result = MagicMock()
+            conf_result.adjusted_confidence = 0.70
+            conf_result.confidence_evaluation_id = "eval-cache-miss"
+            mock_conf.return_value = conf_result
+
+            orchestrator = AIReasoningOrchestrator()
+            result = orchestrator.orchestrate(event)
+
+            assert result is not None
+
+            assert mock_pm.render.called
+            rendered_kwargs = mock_pm.render.call_args[1]
+            ctx = rendered_kwargs["signal_context"]
+            assert ctx["market_regime"] == "UNKNOWN"
+            assert ctx["bullishness_score"] == 0.0
+            assert ctx["overall_context_confidence"] == 0.0
+
+
 def orchestrator_instance() -> AIReasoningOrchestrator:
     return AIReasoningOrchestrator()

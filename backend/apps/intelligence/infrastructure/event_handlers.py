@@ -4,6 +4,7 @@ import logging
 from typing import Any
 
 from apps.eventbus.infrastructure.event_bus_factory import get_event_bus
+from apps.intelligence.infrastructure.pattern_context_handler import handle_pattern_analysis_completed
 from apps.intelligence.infrastructure.ta_completed_handler import handle_ta_completed
 from apps.intelligence.infrastructure.trading_signal_bridge import handle_signal_created
 
@@ -20,6 +21,11 @@ def register_handlers(event_bus: Any = None) -> None:
     bus.subscribe(
         "technical_analysis.TechnicalAnalysisCompleted",
         handle_ta_completed,
+        consumer_group="intelligence",
+    )
+    bus.subscribe(
+        "pattern_engine.PatternAnalysisCompleted",
+        handle_pattern_analysis_completed,
         consumer_group="intelligence",
     )
     logger.debug("intelligence_handlers_registered")

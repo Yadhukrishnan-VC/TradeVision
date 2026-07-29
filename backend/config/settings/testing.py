@@ -64,6 +64,11 @@ CHANNEL_LAYERS = {
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
 
 # ---------------------------------------------------------------------------
+# Batch AI-4 — enable Market Context scoring in tests to exercise the path
+# ---------------------------------------------------------------------------
+MARKET_CONTEXT_SCORING_ENABLED = True
+
+# ---------------------------------------------------------------------------
 # Logging — silence during test runs to keep output clean
 # ---------------------------------------------------------------------------
 LOGGING = {  # type: ignore[name-defined]  # noqa: F405

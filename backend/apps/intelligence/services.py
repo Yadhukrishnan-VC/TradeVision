@@ -20,6 +20,10 @@ from typing import Any
 
 from django.utils import timezone
 
+from apps.intelligence.domain.context_scoring import (
+    ContextScoringInput,
+    compute_context_scores,
+)
 from apps.intelligence.domain.market_regime import (
     MarketRegime,
     MultiTimeframeAlignment,
@@ -63,6 +67,15 @@ class SignalContext:
     event_data: dict[str, Any] = field(default_factory=dict)
     data_quality_note: str = ""
     trading_signal: SignalContextRef | None = None
+
+    bullishness_score: float = 0.0
+    bearishness_score: float = 0.0
+    volatility_score: float = 0.0
+    trend_score: float = 0.0
+    liquidity_score: float = 0.0
+    momentum_score: float = 0.0
+    overall_context_confidence: float = 0.0
+    pattern_alignment_note: str = "PATTERN_ENGINE_NOT_AVAILABLE"
 
 
 @dataclass(frozen=True)
@@ -204,6 +217,39 @@ class MarketContextService:
             "prev_close": float(packet.price_context.prev_close) if packet.price_context.prev_close is not None else 0.0,
         }
 
+        from django.conf import settings
+
+        if settings.MARKET_CONTEXT_SCORING_ENABLED:
+            cs_input = ContextScoringInput(
+                price_context=packet.price_context,
+                technical_context=packet.technical_context,
+                breadth_context=packet.breadth_context,
+                news_context=packet.news_context,
+                regime=regime.regime,
+                mtf_alignment=mtf,
+                global_context=packet.global_context,
+                pattern_context=packet.pattern_context,
+                data_quality=dq,
+            )
+            cs_output = compute_context_scores(cs_input)
+            bullishness_score = cs_output.bullishness_score
+            bearishness_score = cs_output.bearishness_score
+            volatility_score = cs_output.volatility_score
+            trend_score = cs_output.trend_score
+            liquidity_score = cs_output.liquidity_score
+            momentum_score = cs_output.momentum_score
+            overall_context_confidence = cs_output.overall_context_confidence
+            pattern_alignment_note = cs_output.pattern_alignment_note
+        else:
+            bullishness_score = 0.0
+            bearishness_score = 0.0
+            volatility_score = 0.0
+            trend_score = 0.0
+            liquidity_score = 0.0
+            momentum_score = 0.0
+            overall_context_confidence = 0.0
+            pattern_alignment_note = "SCORING_DISABLED"
+
         logger.info(
             "signal_context_built",
             extra={
@@ -226,6 +272,14 @@ class MarketContextService:
             event_data=event_data,
             data_quality_note="; ".join(dq_notes) if dq_notes else "All sources fresh and available.",
             trading_signal=trading_signal,
+            bullishness_score=bullishness_score,
+            bearishness_score=bearishness_score,
+            volatility_score=volatility_score,
+            trend_score=trend_score,
+            liquidity_score=liquidity_score,
+            momentum_score=momentum_score,
+            overall_context_confidence=overall_context_confidence,
+            pattern_alignment_note=pattern_alignment_note,
         )
 
     def _get_pine_outputs(
