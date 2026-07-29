@@ -15,6 +15,7 @@ class ConfidenceResult:
     adjusted_confidence: float
     threshold_met: bool
     adjustment_reasons: list[str] = field(default_factory=list)
+    confidence_evaluation_id: str | None = None
 
 
 class ConfidenceEngine:
@@ -92,7 +93,7 @@ class ConfidenceEngine:
         from apps.ai_engine.models import ConfidenceEvaluation
 
         try:
-            ConfidenceEvaluation.objects.create(
+            obj = ConfidenceEvaluation.objects.create(
                 packet_id=packet_id,
                 raw_confidence=result.raw_confidence,
                 adjusted_confidence=result.adjusted_confidence,
@@ -100,6 +101,7 @@ class ConfidenceEngine:
                 adjustment_reasons=result.adjustment_reasons,
                 strategy=strategy if strategy and hasattr(strategy, "id") else None,
             )
+            result.confidence_evaluation_id = str(obj.id)
         except Exception:
             logger.exception(
                 "confidence_evaluation_persist_failed",

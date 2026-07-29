@@ -341,3 +341,105 @@ class TestOrchestratorIntegration:
             assert result is not None
             assert result.provider == "fallback"
 
+    def test_call_ai_propagates_real_event_type_to_router(self) -> None:
+        with (
+            patch("apps.ai_engine.infrastructure.ai_reasoning_orchestrator.AIProviderFactory.get_provider") as mock_factory,
+            patch("apps.ai_engine.infrastructure.ai_reasoning_orchestrator.ModelRouter") as mock_router_cls,
+        ):
+            mock_provider = MagicMock()
+            mock_provider.complete.return_value = MagicMock()
+            mock_factory.return_value = mock_provider
+
+            mock_router = MagicMock()
+            mock_decision = MagicMock()
+            mock_decision.selected_provider.value = "deepseek"
+            mock_decision.fallback_chain = ()
+            mock_router.route.return_value = mock_decision
+            mock_router_cls.return_value = mock_router
+
+            orchestrator = AIReasoningOrchestrator()
+            cid = uuid.uuid4()
+            result = orchestrator._call_ai("test", "RELIANCE", cid, event_type_str="volume_spike")
+
+            assert result is not None
+            call_args = mock_router.route.call_args[0][0]
+            assert call_args.event_type.value == "volume_spike"
+
+    def test_call_ai_non_price_movement_records_correct_prompt_version(self) -> None:
+        with (
+            patch("apps.ai_engine.infrastructure.ai_reasoning_orchestrator.AIProviderFactory.get_provider") as mock_factory,
+            patch("apps.ai_engine.infrastructure.ai_reasoning_orchestrator.ModelRouter") as mock_router_cls,
+            patch("apps.ai_engine.prompt_manager.service.PromptManager.get_version", return_value="v-earnings-abc123") as mock_get_version,
+        ):
+            mock_provider = MagicMock()
+            mock_provider.complete.return_value = MagicMock()
+            mock_factory.return_value = mock_provider
+
+            mock_router = MagicMock()
+            mock_decision = MagicMock()
+            mock_decision.selected_provider.value = "deepseek"
+            mock_decision.fallback_chain = ()
+            mock_router.route.return_value = mock_decision
+            mock_router_cls.return_value = mock_router
+
+            orchestrator = AIReasoningOrchestrator()
+            cid = uuid.uuid4()
+            result = orchestrator._call_ai("test", "RELIANCE", cid, event_type_str="earnings")
+
+            assert result is not None
+            mock_get_version.assert_called_with("earnings")
+
+    def test_call_ai_wires_strategy_preferred_provider_to_router(self) -> None:
+        with (
+            patch("apps.ai_engine.infrastructure.ai_reasoning_orchestrator.AIProviderFactory.get_provider") as mock_factory,
+            patch("apps.ai_engine.infrastructure.ai_reasoning_orchestrator.ModelRouter") as mock_router_cls,
+        ):
+            mock_provider = MagicMock()
+            mock_provider.complete.return_value = MagicMock()
+            mock_factory.return_value = mock_provider
+
+            mock_router = MagicMock()
+            mock_decision = MagicMock()
+            mock_decision.selected_provider.value = "deepseek"
+            mock_decision.fallback_chain = ()
+            mock_router.route.return_value = mock_decision
+            mock_router_cls.return_value = mock_router
+
+            strategy = MagicMock()
+            strategy.preferred_provider = "gemini"
+
+            orchestrator = AIReasoningOrchestrator()
+            cid = uuid.uuid4()
+            result = orchestrator._call_ai("test", "RELIANCE", cid, strategy=strategy)
+
+            assert result is not None
+            call_args = mock_router.route.call_args[0][0]
+            assert call_args.preferred_provider == AIProviderName.GEMINI
+
+    def test_call_ai_ignores_invalid_strategy_preferred_provider(self) -> None:
+        with (
+            patch("apps.ai_engine.infrastructure.ai_reasoning_orchestrator.AIProviderFactory.get_provider") as mock_factory,
+            patch("apps.ai_engine.infrastructure.ai_reasoning_orchestrator.ModelRouter") as mock_router_cls,
+        ):
+            mock_provider = MagicMock()
+            mock_provider.complete.return_value = MagicMock()
+            mock_factory.return_value = mock_provider
+
+            mock_router = MagicMock()
+            mock_decision = MagicMock()
+            mock_decision.selected_provider.value = "deepseek"
+            mock_decision.fallback_chain = ()
+            mock_router.route.return_value = mock_decision
+            mock_router_cls.return_value = mock_router
+
+            strategy = MagicMock()
+            strategy.preferred_provider = "nonexistent_provider"
+
+            orchestrator = AIReasoningOrchestrator()
+            cid = uuid.uuid4()
+            result = orchestrator._call_ai("test", "RELIANCE", cid, strategy=strategy)
+
+            assert result is not None
+            call_args = mock_router.route.call_args[0][0]
+            assert call_args.preferred_provider is None
+

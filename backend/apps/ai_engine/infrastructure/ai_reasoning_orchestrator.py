@@ -12,9 +12,10 @@ from django.conf import settings
 
 from apps.ai_engine.model_router import ModelRouter, RoutingRequest
 from apps.ai_engine.prompt_manager.service import PromptManager
-from apps.ai_engine.services import ConfidenceEngine
+from apps.ai_engine.services import ConfidenceEngine, ConfidenceResult
 from apps.eventbus.domain.events import DomainEvent
 from apps.eventbus.infrastructure.event_bus_factory import get_event_bus
+from apps.strategy_registry.models import TradingStrategy
 from apps.strategy_registry.services import StrategyMatcher
 from core.ai.base_provider import AIRecommendation, AIRequest, AIRawResponse
 from core.ai.exceptions import (
@@ -29,6 +30,7 @@ from core.ai.exceptions import (
 from core.ai.provider_factory import AIProviderFactory
 from core.ai.signals import IntelligenceSignal, map_signal_to_recommendation
 from core.ai.validator import AIResponseValidator
+from core.constants import AIProviderName
 from core.events.event_types import EventType
 from core.resilience.circuit_breaker import CircuitBreakerFactory
 from core.redis_client import get_redis_client
@@ -55,13 +57,14 @@ class AIReasoningOrchestrator:
 
         correlation_id = event.correlation_id
         causation_id = event.event_id
+        event_type_str = payload.get("event_type", "price_movement")
 
         strategy = self._match_strategy(symbol)
         strategy_id = str(strategy.id) if strategy else None
 
         rendered_prompt = self._render_prompt(event, strategy)
 
-        raw_response = self._call_ai(rendered_prompt, symbol, correlation_id)
+        raw_response = self._call_ai(rendered_prompt, symbol, correlation_id, event_type_str, strategy)
         if raw_response is None:
             logger.error("ai_call_failed", extra={"symbol": symbol})
             return None
@@ -98,7 +101,7 @@ class AIReasoningOrchestrator:
                 "time_horizon": validated.time_horizon,
                 "follow_up_triggers": list(validated.follow_up_triggers),
                 "provider": raw_response.provider,
-                "event_type": payload.get("event_type", ""),
+                "event_type": event_type_str,
                 "rule_id": payload.get("rule_id", ""),
                 "trigger_data": payload.get("trigger_data", {}),
                 "validated_response": {
@@ -183,10 +186,33 @@ class AIReasoningOrchestrator:
             )
             return "Analyze the following market data and provide a trading recommendation."
 
-    def _call_ai(self, prompt: str, symbol: str, correlation_id: uuid.UUID) -> AIRawResponse | None:
+    def _call_ai(
+        self,
+        prompt: str,
+        symbol: str,
+        correlation_id: uuid.UUID,
+        event_type_str: str = "price_movement",
+        strategy: TradingStrategy | None = None,
+    ) -> AIRawResponse | None:
+        preferred_provider: AIProviderName | None = None
+        if strategy and strategy.preferred_provider:
+            try:
+                preferred_provider = AIProviderName(strategy.preferred_provider)
+            except ValueError:
+                logger.warning(
+                    "invalid_preferred_provider",
+                    extra={"symbol": symbol, "provider": strategy.preferred_provider},
+                )
+
+        try:
+            event_type = EventType(event_type_str)
+        except ValueError:
+            event_type = EventType.PRICE_MOVEMENT
+
         routing_request = RoutingRequest(
-            event_type=EventType.PRICE_MOVEMENT,
+            event_type=event_type,
             context_tokens_estimate=len(prompt.split()),
+            preferred_provider=preferred_provider,
         )
         try:
             decision = self._model_router.route(routing_request)
@@ -200,9 +226,9 @@ class AIReasoningOrchestrator:
         request = AIRequest(
             id=uuid.uuid4(),
             prompt=prompt,
-            event_type=routing_request.event_type.value,
+            event_type=event_type_str,
             symbol=symbol,
-            prompt_version=self._prompt_manager.get_version("price_movement"),
+            prompt_version=self._prompt_manager.get_version(event_type_str),
             max_tokens=settings.AI_MAX_TOKENS,
             timestamp=datetime.now(timezone.utc),
             correlation_id=correlation_id,
@@ -301,21 +327,9 @@ class AIReasoningOrchestrator:
         raw_confidence: float,
         strategy: Any | None,
         packet_id: str,
-    ) -> Any:
-        result = self._confidence_engine.evaluate_and_persist(
+    ) -> ConfidenceResult:
+        return self._confidence_engine.evaluate_and_persist(
             raw_confidence=raw_confidence,
             packet_id=packet_id,
             strategy=strategy,
         )
-        confidence_eval = None
-        if result is not None and hasattr(result, 'adjusted_confidence'):
-            from apps.ai_engine.models import ConfidenceEvaluation
-            try:
-                latest = ConfidenceEvaluation.objects.filter(packet_id=packet_id).order_by("-created_at").first()
-                if latest:
-                    confidence_eval = str(latest.id)
-            except Exception:
-                pass
-
-        result.confidence_evaluation_id = confidence_eval
-        return result
