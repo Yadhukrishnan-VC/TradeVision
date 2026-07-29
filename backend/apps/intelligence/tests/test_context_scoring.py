@@ -299,3 +299,86 @@ class TestContextScoring:
         )
         result = compute_context_scores(inputs)
         assert 0.3 <= result.momentum_score <= 0.7
+
+    def test_zero_current_price_with_atr_does_not_raise(self) -> None:
+        inputs = ContextScoringInput(
+            price_context=PriceContext(
+                current_price=Decimal("0"),
+                open_price=Decimal("0"),
+                high=Decimal("0"),
+                low=Decimal("0"),
+                volume=50000,
+                avg_volume_20d=100000,
+                circuit_status=CircuitStatus.NORMAL,
+            ),
+            technical_context=TechnicalContext(
+                atr_14=Decimal("45.0"),
+            ),
+            breadth_context=BreadthContext(
+                sector_index_change_pct=Decimal("0.00"),
+                sector_advance_decline=Decimal("0.00"),
+                nifty_change_pct=Decimal("0.00"),
+                sensex_change_pct=Decimal("0.00"),
+            ),
+            news_context=NewsContext(),
+            regime=MarketRegime.RANGING,
+            mtf_alignment=MultiTimeframeAlignment.NEUTRAL,
+        )
+        result = compute_context_scores(inputs)
+        assert 0.0 <= result.volatility_score <= 1.0
+
+    def test_zero_ema_50_with_ema_20_does_not_raise(self) -> None:
+        inputs = ContextScoringInput(
+            price_context=PriceContext(
+                current_price=Decimal("100.00"),
+                open_price=Decimal("99.00"),
+                high=Decimal("101.00"),
+                low=Decimal("98.00"),
+                volume=50000,
+                avg_volume_20d=50000,
+                circuit_status=CircuitStatus.NORMAL,
+            ),
+            technical_context=TechnicalContext(
+                ema_20=Decimal("100.00"),
+                ema_50=Decimal("0"),
+            ),
+            breadth_context=BreadthContext(
+                sector_index_change_pct=Decimal("0.00"),
+                sector_advance_decline=Decimal("0.00"),
+                nifty_change_pct=Decimal("0.00"),
+                sensex_change_pct=Decimal("0.00"),
+            ),
+            news_context=NewsContext(),
+            regime=MarketRegime.RANGING,
+            mtf_alignment=MultiTimeframeAlignment.NEUTRAL,
+        )
+        result = compute_context_scores(inputs)
+        assert 0.0 <= result.trend_score <= 1.0
+
+    def test_zero_ema_200_with_ema_50_does_not_raise(self) -> None:
+        inputs = ContextScoringInput(
+            price_context=PriceContext(
+                current_price=Decimal("100.00"),
+                open_price=Decimal("99.00"),
+                high=Decimal("101.00"),
+                low=Decimal("98.00"),
+                volume=50000,
+                avg_volume_20d=50000,
+                circuit_status=CircuitStatus.NORMAL,
+            ),
+            technical_context=TechnicalContext(
+                ema_50=Decimal("100.00"),
+                ema_200=Decimal("0"),
+            ),
+            breadth_context=BreadthContext(
+                sector_index_change_pct=Decimal("0.00"),
+                sector_advance_decline=Decimal("0.00"),
+                nifty_change_pct=Decimal("0.00"),
+                sensex_change_pct=Decimal("0.00"),
+            ),
+            news_context=NewsContext(),
+            regime=MarketRegime.RANGING,
+            mtf_alignment=MultiTimeframeAlignment.NEUTRAL,
+        )
+        result = compute_context_scores(inputs)
+        assert 0.0 <= result.trend_score <= 1.0

@@ -154,12 +154,11 @@ def compute_context_scores(inputs: ContextScoringInput) -> ContextScoringOutput:
 
     if tc.atr_14 is not None:
         vol_weight += 1.0
-        if atr_14 > 0:
-            if pc.avg_volume_20d > 0:
-                atr_to_avg = atr_14 / float(pc.current_price) * 100
-                vol_signals += _clamp(atr_to_avg / 3.0)
-            else:
-                vol_signals += 0.5
+        if atr_14 > 0 and float(pc.current_price) > 0:
+            atr_to_avg = atr_14 / float(pc.current_price) * 100
+            vol_signals += _clamp(atr_to_avg / 3.0)
+        elif atr_14 > 0:
+            vol_signals += 0.5
 
     if tc.bb_upper is not None and tc.bb_lower is not None:
         vol_weight += 1.0
@@ -188,12 +187,12 @@ def compute_context_scores(inputs: ContextScoringInput) -> ContextScoringOutput:
     trend_signals = 0.0
     trend_weight = 0.0
 
-    if tc.ema_20 is not None and tc.ema_50 is not None:
+    if tc.ema_20 is not None and tc.ema_50 is not None and ema_50 > 0:
         trend_weight += 1.0
         ema_gap = abs(_to_float(tc.ema_20) - ema_50) / ema_50
         trend_signals += _clamp(ema_gap * 5.0)
 
-    if tc.ema_50 is not None and tc.ema_200 is not None:
+    if tc.ema_50 is not None and tc.ema_200 is not None and ema_200 > 0:
         trend_weight += 1.0
         ema_gap = abs(ema_50 - ema_200) / ema_200
         trend_signals += _clamp(ema_gap * 5.0)

@@ -1185,6 +1185,7 @@ Production (live data, full security posture, same image)
 | ADR-023 | Confidence Engine V2 | Deterministic confidence adjustment from raw LLM output; data-quality penalties, strategy threshold checks, audit trail |
 | ADR-024 | Recommendation Explanation Boundary | ExplanationComposer consumes validated LLM trade_explanation/risk_explanation; appends confidence adjustment and strategy context |
 | ADR-025 | AI/Intelligence App Registration & Migrations | apps.ai_engine, apps.intelligence, apps.recommendations, apps.strategy_registry registered in INSTALLED_APPS with initial migrations |
+| ADR-026 | Market Context Engine (Batch AI-4) | Extends existing MarketContextService with deterministic scoring (bullishness, bearishness, volatility, trend, liquidity, momentum, overall_context_confidence); completes SignalContext → AI prompt wiring via MarketContextCache; PatternContext consumption dormant pending Pattern Engine |
 
 ---
 
