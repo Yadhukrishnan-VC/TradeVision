@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import uuid
 from unittest.mock import MagicMock, patch
 
@@ -7,6 +8,7 @@ from apps.ai_engine.infrastructure.ai_reasoning_orchestrator import (
     AIReasoningOrchestrator,
 )
 from apps.eventbus.domain.events import DomainEvent
+from core.constants import AIProviderName
 
 
 class TestAIReasoningOrchestrator:
@@ -100,6 +102,149 @@ class TestAIReasoningOrchestrator:
 
                     result = orchestrator_instance().orchestrate(event)
                     assert result is None
+
+
+    def test_orchestrate_non_price_movement_event_type_reaches_router(self) -> None:
+        cid = uuid.uuid4()
+        event = DomainEvent.create(
+            event_type="rule_engine.RuleFired",
+            payload={
+                "symbol": "RELIANCE",
+                "rule_id": "volume_spike_rule",
+                "event_type": "volume_spike",
+                "severity": "HIGH",
+                "trigger_data": {"volume_surge_pct": "250"},
+                "analysis_event_id": str(uuid.uuid4()),
+            },
+            correlation_id=cid,
+        )
+
+        captured_request = {}
+
+        def capture_route(request):
+            captured_request["routing"] = request
+            decision = MagicMock()
+            decision.selected_provider.value = "deepseek"
+            decision.fallback_chain = ()
+            return decision
+
+        with (
+            patch("apps.ai_engine.infrastructure.ai_reasoning_orchestrator.AIProviderFactory.get_provider") as mock_factory,
+            patch("apps.ai_engine.infrastructure.ai_reasoning_orchestrator.ModelRouter") as mock_router_cls,
+            patch.object(AIReasoningOrchestrator, "_render_prompt") as mock_render,
+            patch.object(AIReasoningOrchestrator, "_validate_response") as mock_validate,
+            patch.object(AIReasoningOrchestrator, "_evaluate_confidence") as mock_conf,
+            patch("apps.ai_engine.infrastructure.ai_reasoning_orchestrator.get_event_bus") as mock_get_bus,
+        ):
+            mock_provider = MagicMock()
+            mock_provider.complete.return_value = MagicMock()
+            mock_factory.return_value = mock_provider
+
+            mock_router = MagicMock()
+            mock_router.route.side_effect = capture_route
+            mock_router_cls.return_value = mock_router
+
+            mock_render.return_value = "test prompt"
+
+            valid = MagicMock()
+            valid.direction = "BUY"
+            valid.confidence_score = 0.85
+            valid.reasoning = "Test reasoning with sufficient length for validation"
+            valid.risk_level = "LOW"
+            valid.risk_explanation = "Risk explanation sufficient for validation"
+            valid.key_factors = ("Volume spike",)
+            valid.contradicting_factors = ()
+            valid.time_horizon = "SHORT"
+            valid.follow_up_triggers = ()
+            mock_validate.return_value = valid
+
+            conf_result = MagicMock()
+            conf_result.adjusted_confidence = 0.85
+            conf_result.confidence_evaluation_id = "eval-volume"
+            mock_conf.return_value = conf_result
+
+            mock_bus = MagicMock()
+            mock_get_bus.return_value = mock_bus
+
+            orchestrator = AIReasoningOrchestrator()
+            result = orchestrator.orchestrate(event)
+
+            assert result is not None
+            assert captured_request["routing"].event_type.value == "volume_spike"
+
+    def test_orchestrate_wires_strategy_preferred_provider_to_router(self) -> None:
+        cid = uuid.uuid4()
+        event = DomainEvent.create(
+            event_type="rule_engine.RuleFired",
+            payload={
+                "symbol": "RELIANCE",
+                "rule_id": "announcement_rule",
+                "event_type": "announcement",
+                "trigger_data": {},
+                "analysis_event_id": str(uuid.uuid4()),
+            },
+            correlation_id=cid,
+        )
+
+        captured_request = {}
+
+        def capture_route(request):
+            captured_request["routing"] = request
+            decision = MagicMock()
+            decision.selected_provider.value = "deepseek"
+            decision.fallback_chain = ()
+            return decision
+
+        strategy = MagicMock()
+        strategy.id = uuid.uuid4()
+        strategy.preferred_provider = "gemini"
+
+        with (
+            patch("apps.ai_engine.infrastructure.ai_reasoning_orchestrator.AIProviderFactory.get_provider") as mock_factory,
+            patch("apps.ai_engine.infrastructure.ai_reasoning_orchestrator.ModelRouter") as mock_router_cls,
+            patch.object(AIReasoningOrchestrator, "_match_strategy") as mock_match,
+            patch.object(AIReasoningOrchestrator, "_render_prompt") as mock_render,
+            patch.object(AIReasoningOrchestrator, "_validate_response") as mock_validate,
+            patch.object(AIReasoningOrchestrator, "_evaluate_confidence") as mock_conf,
+            patch("apps.ai_engine.infrastructure.ai_reasoning_orchestrator.get_event_bus") as mock_get_bus,
+        ):
+            mock_provider = MagicMock()
+            mock_provider.complete.return_value = MagicMock()
+            mock_factory.return_value = mock_provider
+
+            mock_router = MagicMock()
+            mock_router.route.side_effect = capture_route
+            mock_router_cls.return_value = mock_router
+
+            mock_match.return_value = strategy
+            mock_render.return_value = "test prompt"
+
+            valid = MagicMock()
+            valid.direction = "WATCH"
+            valid.confidence_score = 0.70
+            valid.reasoning = "Test reasoning with sufficient length for validation"
+            valid.risk_level = "MEDIUM"
+            valid.risk_explanation = "Risk explanation sufficient for validation"
+            valid.key_factors = ("Announcement",)
+            valid.contradicting_factors = ()
+            valid.time_horizon = "SHORT"
+            valid.follow_up_triggers = ()
+            mock_validate.return_value = valid
+
+            conf_result = MagicMock()
+            conf_result.adjusted_confidence = 0.70
+            conf_result.confidence_evaluation_id = "eval-announce"
+            mock_conf.return_value = conf_result
+
+            mock_bus = MagicMock()
+            mock_get_bus.return_value = mock_bus
+
+            orchestrator = AIReasoningOrchestrator()
+            result = orchestrator.orchestrate(event)
+
+            assert result is not None
+            assert captured_request["routing"].event_type.value == "announcement"
+            assert captured_request["routing"].preferred_provider == AIProviderName.GEMINI
 
 
 def orchestrator_instance() -> AIReasoningOrchestrator:
