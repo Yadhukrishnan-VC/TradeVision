@@ -1,6 +1,6 @@
 # TradeVision AI — Development Roadmap
 
-> Last updated: 2026-07-27
+> Last updated: 2026-08-01
 
 ---
 
@@ -18,7 +18,7 @@
 | **7 — News + Announcements + Global Markets** | NLP, filing feeds, global indices, FII data, IntelligencePacket enriched | NOT STARTED | — |
 | **8 — Frontend Dashboard** | React app, all pages, TradingView charts, WebSocket integration | NOT STARTED | — |
 | **9 — Portfolio + Options Chain** | Position tracking, P&L, options analysis, options context in AI prompts | NOT STARTED | — |
-| **10 — Pattern Engine** | Historical similarity scoring, feature vector precomputation, pattern context in AI prompts | NOT STARTED | — |
+| **10 — Pattern Engine** | Historical similarity scoring, feature vector precomputation, pattern context in AI prompts | **COMPLETE** (Batch AI-5) | 48 passing (DB-backed) |
 | **11 — Backtesting + Calibration** | Outcome tracking, accuracy reports, confidence calibration, drift detection | NOT STARTED | — |
 | **12 — Hardening** | Load testing, security review, SEBI disclaimer integration, disaster recovery drill, staging environment | NOT STARTED | — |
 
