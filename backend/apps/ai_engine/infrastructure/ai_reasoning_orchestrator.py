@@ -279,9 +279,13 @@ class AIReasoningOrchestrator:
 
         last_error: Exception | None = None
         for provider_name in providers_to_try:
+            breaker = self._circuit_breaker_factory.get_or_create(
+                f"ai-provider-{provider_name}"
+            )
             try:
                 provider = AIProviderFactory.get_provider(provider_name)
                 raw_response = provider.complete(request)
+                breaker.record_success()
                 logger.info(
                     "ai_provider_succeeded",
                     extra={
@@ -294,6 +298,7 @@ class AIReasoningOrchestrator:
             except (AIAuthenticationError, AIProviderError, AIConnectionError,
                     AITimeoutError, AIRateLimitError, AIQuotaExceededError) as exc:
                 last_error = exc
+                breaker.record_failure()
                 logger.warning(
                     "ai_provider_error_trying_next",
                     extra={
@@ -306,6 +311,7 @@ class AIReasoningOrchestrator:
                 continue
             except Exception as exc:
                 last_error = exc
+                breaker.record_failure()
                 logger.exception(
                     "ai_provider_unexpected_error",
                     extra={"symbol": symbol, "provider": provider_name, "error": str(exc)},
