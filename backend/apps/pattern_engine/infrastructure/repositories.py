@@ -177,6 +177,14 @@ class PatternAnalysisRunRepository(BaseRepository[PatternAnalysisRun]):
         obj.save()
         return obj
 
+    def latest_for_symbol(self, symbol: str) -> PatternAnalysisRun | None:
+        """Return the most recent analysis run for ``symbol`` (newest-first)."""
+        return (
+            PatternAnalysisRun.objects.filter(symbol=symbol.upper())
+            .order_by("-as_of")
+            .first()
+        )
+
     @staticmethod
     def to_domain(obj: PatternAnalysisRun) -> PatternAnalysisResult:
         return decode_analysis_run(obj)

@@ -24,6 +24,8 @@ class ConfidenceEngine:
         raw_confidence: float,
         strategy: Any = None,
         packet: Any = None,
+        pattern_confidence_contribution: float | None = None,
+        pattern_historical_accuracy: float | None = None,
     ) -> ConfidenceResult:
         adjusted = raw_confidence
         reasons: list[str] = []
@@ -68,6 +70,24 @@ class ConfidenceEngine:
                 reasons.append("risk context missing")
                 adjusted = max(0.0, adjusted - 0.03)
 
+        if pattern_confidence_contribution is not None and pattern_confidence_contribution > 0:
+            adjusted = min(1.0, adjusted + pattern_confidence_contribution)
+            reasons.append(
+                f"pattern confidence contribution: +{pattern_confidence_contribution:.4f}"
+            )
+
+        if pattern_historical_accuracy is not None:
+            floor = float(
+                getattr(settings, "CONFIDENCE_ENGINE_PATTERN_ACCURACY_FLOOR", 0.50)
+            )
+            if pattern_historical_accuracy < floor:
+                penalty = (floor - pattern_historical_accuracy) * 0.5
+                adjusted = max(0.0, adjusted - penalty)
+                reasons.append(
+                    f"pattern accuracy penalty: accuracy={pattern_historical_accuracy:.4f}, "
+                    f"penalty={penalty:.4f}"
+                )
+
         adjusted = round(max(0.0, min(1.0, adjusted)), 4)
 
         return ConfidenceResult(
@@ -83,11 +103,15 @@ class ConfidenceEngine:
         packet_id: str,
         strategy: Any = None,
         packet: Any = None,
+        pattern_confidence_contribution: float | None = None,
+        pattern_historical_accuracy: float | None = None,
     ) -> ConfidenceResult:
         result = self.evaluate(
             raw_confidence=raw_confidence,
             strategy=strategy,
             packet=packet,
+            pattern_confidence_contribution=pattern_confidence_contribution,
+            pattern_historical_accuracy=pattern_historical_accuracy,
         )
 
         from apps.ai_engine.models import ConfidenceEvaluation

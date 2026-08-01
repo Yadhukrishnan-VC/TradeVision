@@ -82,6 +82,7 @@ class AIReasoningOrchestrator:
             raw_confidence=raw_confidence,
             strategy=strategy,
             packet_id=str(causation_id),
+            symbol=symbol,
         )
 
         recommendation_event = DomainEvent.create(
@@ -373,9 +374,41 @@ class AIReasoningOrchestrator:
         raw_confidence: float,
         strategy: Any | None,
         packet_id: str,
+        symbol: str | None = None,
     ) -> ConfidenceResult:
+        pattern_confidence_contribution: float | None = None
+        pattern_historical_accuracy: float | None = None
+        if symbol and getattr(settings, "CONFIDENCE_ENGINE_V2_ENABLED", False):
+            try:
+                from apps.pattern_engine.infrastructure.repositories import (
+                    PatternAnalysisRunRepository,
+                )
+
+                run = PatternAnalysisRunRepository().latest_for_symbol(symbol)
+                if run is not None:
+                    pattern_confidence_contribution = float(run.confidence_contribution)
+                    if run.historical_recommendation_accuracy is not None:
+                        pattern_historical_accuracy = float(
+                            run.historical_recommendation_accuracy
+                        )
+                    logger.info(
+                        "pattern_confidence_feed_applied",
+                        extra={
+                            "symbol": symbol,
+                            "confidence_contribution": pattern_confidence_contribution,
+                            "historical_accuracy": pattern_historical_accuracy,
+                        },
+                    )
+            except Exception as exc:
+                logger.warning(
+                    "pattern_confidence_feed_lookup_failed",
+                    extra={"symbol": symbol, "error": str(exc)},
+                )
+
         return self._confidence_engine.evaluate_and_persist(
             raw_confidence=raw_confidence,
             packet_id=packet_id,
             strategy=strategy,
+            pattern_confidence_contribution=pattern_confidence_contribution,
+            pattern_historical_accuracy=pattern_historical_accuracy,
         )

@@ -13,7 +13,7 @@
 | **2 — Technical Analysis** | Indicator computation triggered by ingestion, TimescaleDB indicator tables, API | NOT STARTED | — |
 | **3 — Intelligence Engine** | IntelligencePacket assembly, data quality scoring, freshness validation | **PARTIAL** (B.0 registered, PineOutput model migrated) | — |
 | **4 — Rule Engine** | First 10 rules, freshness guard, rule registry, RuleExecution log | NOT STARTED | — |
-| **5 — AI + Recommendations + Trader Memory** | Gemini + DeepSeek wired, prompt templates (DB-versioned), Model Router, Strategy Registry, Confidence Engine V2, recommendation lifecycle, explanation composition | **PARTIAL** (Batch A+B + AI-5B + AI-5C delivered; AI-5C wired circuit-breaker record_success/record_failure into the orchestrator provider loop) | 87 passing (AI-5B/AI-5C batch targets) |
+| **5 — AI + Recommendations + Trader Memory** | Gemini + DeepSeek wired, prompt templates (DB-versioned), Model Router, Strategy Registry, Confidence Engine V2, recommendation lifecycle, explanation composition | **PARTIAL** (Batch A+B + AI-5B + AI-5C + AI-5D delivered; AI-5D feeds numeric Pattern Engine confidence/accuracy into Confidence Engine V2, gated on `CONFIDENCE_ENGINE_V2_ENABLED`) | 53 passing (AI-5B/AI-5C/AI-5D batch targets) |
 | **6 — Notifications + WebSocket** | Django Channels, WebSocket consumers, notification delivery, user preferences | NOT STARTED | — |
 | **7 — News + Announcements + Global Markets** | NLP, filing feeds, global indices, FII data, IntelligencePacket enriched | NOT STARTED | — |
 | **8 — Frontend Dashboard** | React app, all pages, TradingView charts, WebSocket integration | NOT STARTED | — |
@@ -32,6 +32,14 @@
 - **End-to-end reachability trace** test: RuleFired → orchestrator → DeepSeek `complete()` (mocked httpx) → `AIResponseValidator` → `RecommendationIssued` → `create_recommendation` → persisted `Recommendation` row with `provider="deepseek"` + original `correlation_id`.
 - **Key provisioning**: `backend/.env` (read by python-decouple from the process CWD) contains `GEMINI_API_KEY=test-key` — a **placeholder, not a usable credential**. `DEEPSEEK_API_KEY` is unset. A live DeepSeek call requires a real key; CI uses recorded/mocked `httpx` fixtures, not real keys.
 - **Batch targets**: 87 passing (AI-5B 11 + AI-5C 7 + DeepSeek provider 22 + circuit breaker 10 + router/orchestrator suites).
+
+### Batch AI-5D — Numeric Pattern Confidence Feed into Confidence Engine V2 (delivered)
+
+- **Numeric feed** wired: `AIReasoningOrchestrator._evaluate_confidence` now reads the latest `PatternAnalysisRun` for the symbol (`PatternAnalysisRunRepository.latest_for_symbol`, explicit `.order_by("-as_of").first()`) and passes `pattern_confidence_contribution` + `pattern_historical_accuracy` as scalars into `ConfidenceEngine.evaluate()`. Additive — no `packet=` threading, no `orchestrate()` restructure (the RuleFired event never carried a packet, so wiring `packet=` through was correctly rejected as a restructure requiring separate approval).
+- **Gating**: the feed is dark unless `CONFIDENCE_ENGINE_V2_ENABLED` (existing kill-switch, default `False`) is set. This is the ADR-023 §Decision.2.c trader-memory calibration hook being filled — no new flag. `evaluate()` stays a pure function; the gate lives at the orchestrator call site.
+- **Adjustment formula** (mirrors the existing data-quality block): `confidence_contribution` is additive and clamped at 1.0; `historical_recommendation_accuracy` below `CONFIDENCE_ENGINE_PATTERN_ACCURACY_FLOOR` (default 0.50) applies a percentage penalty `(floor - accuracy) * 0.5` capped at 0.0, both logged in `adjustment_reasons`. `None` inputs no-op exactly like today's behavior.
+- **Batch targets**: 53 passing (prior 40 + AI-5D 13).
+- **Tracked cleanup (deferred, out of scope)**: `apps/ai_engine/tasks.py::evaluate_confidence` (and `route_and_render`) are orphaned Celery tasks with no `.delay()`/`.apply_async()` dispatch site in production code; both funnel through the same `ConfidenceEngine.evaluate()` so there is no logic loss — remove or wire in a future batch.
 
 ---
 
