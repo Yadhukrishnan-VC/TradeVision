@@ -10,6 +10,7 @@ from apps.common.infrastructure.model_mixins import TimestampedModel
 
 
 class User(AbstractUser):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     username = models.CharField(max_length=150, unique=True, default="", blank=True)
     role = models.CharField(
         max_length=16,

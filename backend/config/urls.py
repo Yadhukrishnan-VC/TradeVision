@@ -55,4 +55,7 @@ urlpatterns = [
 
     # Technical Analysis Webhook API — Batch 3
     path("api/v1/technical-analysis/", include("apps.technical_analysis.interfaces.api.urls")),
+
+    # Pattern Engine API — Batch AI-5
+    path("api/v1/pattern-engine/", include("apps.pattern_engine.interfaces.api.urls")),
 ]

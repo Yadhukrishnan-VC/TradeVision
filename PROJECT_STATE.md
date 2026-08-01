@@ -23,7 +23,7 @@
 | 7 — News + Announcements + Global Markets | NOT STARTED | — | — |
 | 8 — Frontend Dashboard | NOT STARTED | — | — |
 | 9 — Portfolio + Options Chain | NOT STARTED | — | — |
-| 10 — Pattern Engine | NOT STARTED | — | — |
+| 10 — Pattern Engine | **COMPLETE** | 48 passing (DB-backed) | Deterministic historical session similarity (ADR-007 §5.2 weights), subscribes to intelligence.PacketBuilt, publishes pattern_engine.PatternAnalysisCompleted, Trader Memory accuracy enrichment flag-gated; frozen apps untouched |
 | 11 — Backtesting + Calibration | NOT STARTED | — | — |
 | 12 — Hardening | NOT STARTED | — | — |
 

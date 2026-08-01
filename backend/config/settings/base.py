@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from decimal import Decimal
 from pathlib import Path
 
 from decouple import config
@@ -60,6 +61,10 @@ LOCAL_APPS: list[str] = [
     "apps.signals_engine",
     # Batch 3 — Technical Analysis
     "apps.technical_analysis",
+    # Market Data — Historical OHLCV source consumed by the Pattern Engine
+    "apps.market_data",
+    # Batch AI-5 — Pattern Engine
+    "apps.pattern_engine",
 ]
 
 THIRD_PARTY_APPS = []
@@ -208,6 +213,10 @@ CELERY_TASK_ROUTES = {
     # Trader Memory
     "tradevision.trader_memory.record_memory_entry": {"queue": "analytics"},
     "tradevision.trader_memory.rebuild_projection": {"queue": "analytics"},
+    # Pattern Engine — nightly precompute + triggered analysis both run on the
+    # analytics queue (same profile as backtesting/calibration per §9.2).
+    "tradevision.pattern_engine.precompute_historical_vectors": {"queue": "analytics"},
+    "tradevision.pattern_engine.run_pattern_analysis": {"queue": "analytics"},
 }
 
 CELERY_TASK_QUEUES = [
@@ -321,6 +330,31 @@ MARKET_CONTEXT_SCORING_ENABLED: bool = config(
 )
 MARKET_CONTEXT_CACHE_TTL_SECONDS: int = config(
     "MARKET_CONTEXT_CACHE_TTL_SECONDS", default=900, cast=int
+)
+
+# ---------------------------------------------------------------------------
+# Batch AI-5 — Pattern Engine
+# ---------------------------------------------------------------------------
+# Kill switch — the Pattern Engine ships dark until explicitly enabled.
+PATTERN_ENGINE_ENABLED: bool = config(
+    "PATTERN_ENGINE_ENABLED", default=False, cast=bool
+)
+# Number of most-similar historical sessions to retain (ADR-007 §5.2).
+PATTERN_ENGINE_TOP_N: int = config(
+    "PATTERN_ENGINE_TOP_N", default=5, cast=int
+)
+# Minimum weighted similarity for a historical session to be retained.
+PATTERN_ENGINE_MIN_SIMILARITY: Decimal = Decimal(
+    config("PATTERN_ENGINE_MIN_SIMILARITY", default="0.60")
+)
+# Maximum number of precomputed historical feature vectors loaded per symbol.
+PATTERN_ENGINE_HISTORY_LIMIT: int = config(
+    "PATTERN_ENGINE_HISTORY_LIMIT", default=500, cast=int
+)
+# Optional, read-only Trader Memory enrichment for historical recommendation
+# accuracy. Defaults to False — accuracy is enrichment, never a hard dependency.
+PATTERN_ENGINE_ACCURACY_LOOKUP_ENABLED: bool = config(
+    "PATTERN_ENGINE_ACCURACY_LOOKUP_ENABLED", default=False, cast=bool
 )
 
 # ---------------------------------------------------------------------------
