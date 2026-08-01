@@ -2,6 +2,7 @@
 Tests for DeepSeekProvider — Phase 0 unit tests with httpx mocked.
 """
 
+import json
 import uuid
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
@@ -159,12 +160,86 @@ class TestDeepSeekProviderHealthCheck:
 
 
 class TestDeepSeekProviderComplete:
-    """complete() — raises NotImplementedError in Phase 0."""
+    """complete() — submits chat completions and validates the response."""
 
-    def test_complete_raises_not_implemented(self, deepseek_provider) -> None:
-        request = _make_request()
-        with pytest.raises(NotImplementedError, match="Phase 0"):
-            deepseek_provider.complete(request)
+    def test_complete_returns_raw_response_on_success(self, deepseek_provider) -> None:
+        content = json.dumps({
+            "direction": "BUY",
+            "confidence_score": 0.85,
+            "reasoning": "Strong technical setup with sufficient length",
+            "risk_level": "LOW",
+            "risk_explanation": "Risk explanation with sufficient length",
+            "key_factors": ["RSI bullish"],
+            "contradicting_factors": [],
+            "time_horizon": "SHORT",
+            "follow_up_triggers": [],
+        })
+        mock_response = MagicMock(
+            status_code=200,
+            json=lambda: {
+                "choices": [{"message": {"content": content}}],
+                "usage": {"prompt_tokens": 120, "completion_tokens": 60},
+            },
+        )
+        deepseek_provider._client.post.return_value = mock_response
+
+        result = deepseek_provider.complete(_make_request())
+
+        assert result.provider == "deepseek"
+        assert result.raw_text == content
+        assert result.input_tokens == 120
+        assert result.output_tokens == 60
+
+    def test_complete_raises_validation_error_on_non_conformant_json(self, deepseek_provider) -> None:
+        from core.ai.exceptions import AIResponseValidationError
+
+        content = json.dumps({
+            "signal": "BUY",
+            "confidence_score": 0.85,
+            "reasoning": "Strong technical setup with sufficient length",
+            "risk_level": "LOW",
+            "risk_explanation": "Risk explanation with sufficient length",
+            "key_factors": ["RSI bullish"],
+            "contradicting_factors": [],
+            "time_horizon": "SHORT",
+            "follow_up_triggers": [],
+        })
+        mock_response = MagicMock(
+            status_code=200,
+            json=lambda: {
+                "choices": [{"message": {"content": content}}],
+                "usage": {"prompt_tokens": 120, "completion_tokens": 60},
+            },
+        )
+        deepseek_provider._client.post.return_value = mock_response
+
+        with pytest.raises(AIResponseValidationError):
+            deepseek_provider.complete(_make_request())
+
+    def test_complete_raises_authentication_error_on_401(self, deepseek_provider) -> None:
+        deepseek_provider._client.post.return_value = MagicMock(
+            status_code=401,
+            text="unauthorized",
+        )
+        with pytest.raises(AIAuthenticationError):
+            deepseek_provider.complete(_make_request())
+
+    def test_complete_raises_rate_limit_error_when_exhausted(self, deepseek_provider) -> None:
+        deepseek_provider._client.post.return_value = MagicMock(
+            status_code=429,
+            text="rate limited",
+        )
+        with pytest.raises(AIRateLimitError):
+            deepseek_provider.complete(_make_request())
+
+    def test_complete_raises_provider_error_on_empty_choices(self, deepseek_provider) -> None:
+        mock_response = MagicMock(
+            status_code=200,
+            json=lambda: {"choices": [], "usage": {}},
+        )
+        deepseek_provider._client.post.return_value = mock_response
+        with pytest.raises(AIProviderError):
+            deepseek_provider.complete(_make_request())
 
 
 class TestDeepSeekProviderClose:

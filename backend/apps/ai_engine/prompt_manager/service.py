@@ -134,6 +134,18 @@ class PromptManager:
             context["news_headlines"] = signal_context.get("news_headlines", [])
             context["sector_context"] = signal_context.get("sector_context", "")
             context["event"] = signal_context.get("event", {})
+            context["bullishness_score"] = signal_context.get("bullishness_score", 0.0)
+            context["bearishness_score"] = signal_context.get("bearishness_score", 0.0)
+            context["volatility_score"] = signal_context.get("volatility_score", 0.0)
+            context["trend_score"] = signal_context.get("trend_score", 0.0)
+            context["liquidity_score"] = signal_context.get("liquidity_score", 0.0)
+            context["momentum_score"] = signal_context.get("momentum_score", 0.0)
+            context["overall_context_confidence"] = signal_context.get(
+                "overall_context_confidence", 0.0
+            )
+            context["pattern_alignment_note"] = signal_context.get(
+                "pattern_alignment_note", "PATTERN_ENGINE_NOT_AVAILABLE"
+            )
 
         context["portfolio_state"] = portfolio_state
         context["risk_state"] = risk_state

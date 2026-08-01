@@ -45,6 +45,8 @@ class RecommendationAggregate:
     confidence_evaluation_id: UUID | None
     published_at: datetime | None
     created_at: datetime | None = None
+    provider: str = "fallback"
+    correlation_id: UUID | None = None
 
     def publish(self) -> None:
         self._transition(RecommendationStatus.PUBLISHED)

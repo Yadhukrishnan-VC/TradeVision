@@ -11,7 +11,7 @@ from rest_framework.response import Response
 from apps.recommendations.application.recommendation_command_service import RecommendationCommandService
 from apps.recommendations.application.recommendation_query_service import RecommendationQueryService
 from apps.recommendations.domain.exceptions import IllegalTransition, RecommendationNotFound
-from apps.recommendations.infrastructure.models import RecommendationExplanation
+from apps.recommendations.models import RecommendationExplanation
 from apps.recommendations.interfaces.api.serializers import (
     RecommendationActionSerializer,
     RecommendationExplanationSerializer,

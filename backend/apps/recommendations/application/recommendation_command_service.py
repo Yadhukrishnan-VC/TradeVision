@@ -29,6 +29,8 @@ class RecommendationCommandService(BaseService):
         rule_execution_id: uuid.UUID | None = None,
         strategy_id: uuid.UUID | None = None,
         confidence_evaluation_id: uuid.UUID | None = None,
+        provider: str = "fallback",
+        correlation_id: uuid.UUID | None = None,
     ) -> RecommendationAggregate:
         recommendation = Recommendation(
             symbol=symbol,
@@ -39,6 +41,8 @@ class RecommendationCommandService(BaseService):
             rule_execution_id=rule_execution_id,
             strategy_id=strategy_id,
             confidence_evaluation_id=confidence_evaluation_id,
+            provider=provider,
+            correlation_id=correlation_id,
         )
         with transaction.atomic():
             recommendation.full_clean()
@@ -172,9 +176,11 @@ class RecommendationCommandService(BaseService):
             confidence_score=rec.confidence_score,
             status=rec.status,
             analysis_event_id=rec.analysis_event_id,
-            rule_execution_id=rec.rule_execution_id_id if rec.rule_execution_id_id else None,
+            rule_execution_id=rec.rule_execution_id if rec.rule_execution_id else None,
             strategy_id=rec.strategy_id,
             confidence_evaluation_id=rec.confidence_evaluation_id,
+            provider=rec.provider,
+            correlation_id=rec.correlation_id,
             published_at=rec.published_at,
             created_at=rec.created_at,
         )

@@ -11,6 +11,17 @@ PINE OUTPUT:
 MARKET REGIME: {{ market_regime }}
 MULTI-TIMEFRAME ALIGNMENT: {{ multi_timeframe_alignment }}
 ---
+MARKET CONTEXT SCORES (0-1, higher = stronger signal):
+- Bullishness: {{ bullishness_score | default(0.0) }}
+- Bearishness: {{ bearishness_score | default(0.0) }}
+- Volatility: {{ volatility_score | default(0.0) }}
+- Trend: {{ trend_score | default(0.0) }}
+- Liquidity: {{ liquidity_score | default(0.0) }}
+- Momentum: {{ momentum_score | default(0.0) }}
+- Overall Context Confidence: {{ overall_context_confidence | default(0.0) }}
+PATTERN ALIGNMENT:
+{{ pattern_alignment_note | default("PATTERN_ENGINE_NOT_AVAILABLE") }}
+---
 NEWS:
 {% for item in news_headlines %}
 - {{ item.title }} ({{ item.source }}, sentiment: {{ item.sentiment }}, materiality: {{ item.materiality }})
@@ -43,7 +54,7 @@ EVENT SPECIFIC CONTEXT:
 
 Based on ALL context above, output a JSON object with exactly these fields:
 {
-    "signal": "BUY" | "SELL" | "WAIT" | "EXIT" | "REDUCE",
+    "direction": "BUY" | "SELL" | "WATCH" | "AVOID",
     "confidence_score": float between 0.0 and 1.0,
     "reasoning": "step-by-step analysis of ALL context blocks",
     "trade_explanation": "clear narrative for the trader",
@@ -58,12 +69,11 @@ Based on ALL context above, output a JSON object with exactly these fields:
     "data_quality_note": "any caveats about data freshness or completeness"
 }
 
-SIGNAL DEFINITIONS:
+DIRECTION DEFINITIONS:
 - BUY: Confident long entry. Strong evidence across multiple context blocks.
 - SELL: Confident short or exit. Bearish evidence outweighs bullish.
-- WAIT: Hold existing positions. No clear edge in either direction.
-- EXIT: Urgent position closure. Risk factors have crossed critical threshold.
-- REDUCE: Cut position by half. Moderate risk increase detected.
+- WATCH: Hold existing positions. No clear edge in either direction.
+- AVOID: Risk factors make the instrument unsuitable at this time.
 
 CONFIDENCE GUIDELINES:
 - 0.85+: Multiple aligned signals from independent context blocks

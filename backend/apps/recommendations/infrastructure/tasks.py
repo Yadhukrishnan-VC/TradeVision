@@ -49,6 +49,8 @@ def create_recommendation(
         analysis_event_id=uuid.UUID(analysis_event_id) if analysis_event_id else None,
         strategy_id=uuid.UUID(strategy_id) if strategy_id else None,
         confidence_evaluation_id=uuid.UUID(confidence_evaluation_id) if confidence_evaluation_id else None,
+        provider=provider,
+        correlation_id=uuid.UUID(correlation_id) if correlation_id else None,
     )
 
     response_payload = validated_response or {

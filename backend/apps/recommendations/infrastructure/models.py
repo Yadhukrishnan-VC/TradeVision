@@ -17,6 +17,8 @@ class Recommendation(BaseModel):
     )
     strategy_id = models.UUIDField(null=True, blank=True)
     confidence_evaluation_id = models.UUIDField(null=True, blank=True)
+    provider = models.CharField(max_length=50, default="fallback", db_index=True)
+    correlation_id = models.UUIDField(null=True, blank=True)
     direction = models.CharField(max_length=20, db_index=True)
     confidence_score = models.DecimalField(max_digits=5, decimal_places=2)
     status = models.CharField(
