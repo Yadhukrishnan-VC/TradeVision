@@ -9,13 +9,14 @@
 
 ## Development Status
 
-> Last updated: 2026-08-02
+> Last updated: 2026-08-03
 
 | Phase | Status | Tests | Notes |
 |---|---|---|---|
 | 0 — Foundation | **COMPLETE** | 206 passing | All 23 source files + 17 test files implemented |
 | M2 — Deterministic Trading Setups | **COMPLETE** | 51 M2 tests passing | Long Momentum / Short Sell / Volatility Breakout setups (ADR-013), SessionFactsService, TA-handler enrichment, idempotent `RuleExecution` (commit `e6e749c`) |
 | M3 — Deterministic Risk Management | **COMPLETE** | 32 tests passing | `apps.risk_management` (ADR-027): stub capital gateway (`portfolio_gateway_impl="stub"`), 9-check fail-closed pipeline, Postgres kill switch (GLOBAL→ACCOUNT→SYMBOL) with short-TTL cache, `RiskApproved`/`RiskRejected` events, `entry_price` added to M2 trigger_data |
+| M4 — Portfolio & Capital Management | **COMPLETE** | 122 tests passing | `apps.portfolio` (ADR-028): authoritative `AccountCapitalState` ledger, ledger-style `Position` lifecycle, idempotent `PositionFillExecution`, 5 approved events (`positions.*` feed unmodified dashboard projections; `portfolio.*` new territory). Risk gateways swapped to real `RealCapitalGateway`/`RealPortfolioStateGateway` (`implementation_name="portfolio_v1"`, default `RISK_MANAGEMENT_GATEWAY_IMPL="portfolio"`) with stub as defensive fallback. Portfolio API at `/api/v1/portfolio/` (summary/positions/fills). Permission fix: `permission_classes` now uses scope-wrapper classes in portfolio + risk_management (was an instance ⇒ `TypeError`). Natural-form Decimal payloads + 8-dp quantize at persistence boundaries |
 | 1 — Market Data | NOT STARTED | — | Next phase |
 | 2 — Technical Analysis | **COMPLETE** | 60 non-DB passing | Webhook ingestion, validation, normalisation, TASnapshot persistence, Pine Script metadata, event publishing with real indicator/price data |
 | 3 — Intelligence Engine | **COMPLETE** | 60 non-DB passing | TA completed handler builds IntelligencePacket with real values, publishes PacketBuilt (not enriched). Portfolio/risk enrichment pipeline (PortfolioRiskContextBuilder + intelligence:enriched) deferred to Phase 9. |
@@ -24,7 +25,7 @@
 | 6 — Notifications + WebSocket | NOT STARTED | — | — |
 | 7 — News + Announcements + Global Markets | NOT STARTED | — | — |
 | 8 — Frontend Dashboard | NOT STARTED | — | — |
-| 9 — Portfolio + Options Chain | NOT STARTED | — | — |
+| 9 — Portfolio + Options Chain | **PARTIAL** | 122 passing | Backend `apps.portfolio` complete (ADR-028): authoritative capital ledger, position lifecycle, real risk gateways (`portfolio_v1`), `/api/v1/portfolio/` API. Frontend portfolio page, options analysis, and options-aware AI context remain NOT STARTED |
 | 10 — Pattern Engine | **COMPLETE** | 48 passing (DB-backed) | Deterministic historical session similarity (ADR-007 §5.2 weights), subscribes to intelligence.PacketBuilt, publishes pattern_engine.PatternAnalysisCompleted, Trader Memory accuracy enrichment flag-gated; frozen apps untouched |
 | 11 — Backtesting + Calibration | NOT STARTED | — | — |
 | 12 — Hardening | NOT STARTED | — | — |
@@ -1189,6 +1190,7 @@ Production (live data, full security posture, same image)
 | ADR-025 | AI/Intelligence App Registration & Migrations | apps.ai_engine, apps.intelligence, apps.recommendations, apps.strategy_registry registered in INSTALLED_APPS with initial migrations |
 | ADR-026 | Market Context Engine (Batch AI-4) | Extends existing MarketContextService with deterministic scoring (bullishness, bearishness, volatility, trend, liquidity, momentum, overall_context_confidence); completes SignalContext → AI prompt wiring via MarketContextCache; PatternContext consumption dormant pending Pattern Engine |
 | ADR-027 | Deterministic Risk Management (Batch M3) | New `apps.risk_management` context consumes `rule_engine.RuleFired` → `RiskApproved`/`RiskRejected`; stub capital gateway (`portfolio_gateway_impl="stub"`, never backs a real order); additive `entry_price` in M2 trigger_data; Postgres-backed fail-closed kill switch (GLOBAL→ACCOUNT→SYMBOL) with short-TTL cache |
+| ADR-028 | Portfolio & Capital Management (Batch M4) | New `apps.portfolio` context: authoritative `AccountCapitalState` ledger + ledger-style `Position` lifecycle + idempotent `PositionFillExecution`; 5 approved events (`positions.*` feed unmodified dashboard projections, rich `PositionClosed` feeds `TradeProjectionService`; `portfolio.*` new territory); risk gateways swapped to real `RealCapitalGateway`/`RealPortfolioStateGateway` (`implementation_name="portfolio_v1"`, default `RISK_MANAGEMENT_GATEWAY_IMPL="portfolio"`, stub as defensive fallback); Portfolio API at `/api/v1/portfolio/`; 8-dp quantize at persistence boundaries + natural-form Decimal payloads; scope-wrapper permission classes fix in portfolio + risk_management |
 
 ---
 

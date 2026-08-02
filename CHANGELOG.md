@@ -35,6 +35,28 @@ All notable changes to TradeVision AI will be documented in this file.
 
 ## [Unreleased]
 
+### Batch M4 — Portfolio & Capital Management (2026-08-03)
+
+**Added:**
+- `apps.portfolio` bounded context (ADR-028): authoritative `AccountCapitalState` per-account capital ledger, ledger-style `Position` lifecycle (open → quantity-changed\* → closed, with over-offset flip), idempotent `PositionFillExecution` (`source_fill_id` unique guard mirroring `RuleExecution`/`RiskDecisionExecution`)
+- `CapitalService` — deposit / withdraw / reserve_margin / release_margin / record_realized_pnl / reconcile_unrealized; `equity = cash + unrealized_pnl_today`, `available_capital = cash - margin_used`; insufficient-available-capital rejection; `Account` created ⇒ zero-balance `AccountCapitalState` via additive `post_save` signal (apps.accounts untouched)
+- `PositionLedgerService` — `record_fill` / `close_position` / `adjust_quantity`, all idempotent on `source_fill_id`, one DB transaction per applied fill (position + margin + realized P&L + events)
+- 5 approved events: `positions.PositionOpened` / `PositionQuantityChanged` / **rich** `PositionClosed` (symbol, side, entry/exit price, quantity, realized_pnl, realized_pnl_pct, holding_period_seconds, opened_at — the locked `TradeProjectionService` contract) + `portfolio.AccountCapitalChanged` / `portfolio.ExposureChanged`
+- `RealCapitalGateway` / `RealPortfolioStateGateway` (`implementation_name="portfolio_v1"`) implementing the M3 risk ports; `apps.risk_management.gateways.factory` selects impl from `RISK_MANAGEMENT_GATEWAY_IMPL` **defaulting to `"portfolio"`** (stub remains only as a defensive fallback); Celery task `evaluate_rule_firing` now uses the factory
+- Portfolio API at `/api/v1/portfolio/`: summary (`read:portfolio`), open positions with live marks (`read:portfolio`), manual/paper fill recording (`manage:execution`; `201` applied / `200` duplicate-skipped / `400` domain error)
+- 8-dp money convention: `quantize_money()` at every persistence boundary + natural-form Decimal payloads (`"200"` not `"200.00000000"`)
+- 122 portfolio/risk tests: unit (capital invariants, position lifecycle, gateway conformance), integration (unmodified dashboard `PositionSnapshot` projection driven by fills; real `RiskEvaluationService` → `RiskApproved`/`MISSING_ACCOUNT_STATE`; correlation/causation), API (scope enforcement, idempotency, natural-form), risk API (permission fix proof)
+
+**Fixed:**
+- Latent `permission_classes = [HasAPIKeyScope.with_scope(...)]` bug (an *instance* in a list DRF instantiates ⇒ `TypeError` on every request) in `apps/portfolio` and `apps/risk_management` views — replaced with scope-wrapper permission classes matching the dashboard convention
+- User-approved one-line `from uuid import UUID` in `apps/dashboard/projection/trading_core/position_projection_service.py` (pre-existing `NameError` — dashboard's own 4 `position_projection` tests now pass)
+
+**Changed:**
+- `config/settings/base.py`: `apps.portfolio` registered, `RISK_MANAGEMENT_GATEWAY_IMPL` setting added (default `"portfolio"`)
+- `config/urls.py`: `api/v1/portfolio/` mounted
+- `apps/risk_management/infrastructure/tasks.py`: gateway construction delegated to `gateways/factory.py`
+
+
 ### Batch M3 — Deterministic Risk Management (2026-08-02)
 
 **Added:**

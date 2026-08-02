@@ -7,11 +7,13 @@ from rest_framework.generics import GenericAPIView, ListAPIView
 from rest_framework.request import Request
 from rest_framework.response import Response
 
-from apps.accounts.domain.value_objects import Scope
-from apps.accounts.infrastructure.permissions import HasAPIKeyScope
 from apps.risk_management.application.kill_switch_service import KillSwitchService
 from apps.risk_management.infrastructure.models import KillSwitchState
 from apps.risk_management.infrastructure.repositories import RiskDecisionRepository
+from apps.risk_management.interfaces.api.permissions import (
+    HasDashboardReadRisk,
+    HasManageRiskPolicy,
+)
 from apps.risk_management.interfaces.api.serializers import (
     KillSwitchStateSerializer,
     KillSwitchToggleSerializer,
@@ -33,7 +35,7 @@ def _problem_detail(
 class RiskDecisionListView(ListAPIView):
     """List persisted risk decisions (read-only)."""
 
-    permission_classes = [HasAPIKeyScope.with_scope(Scope.DASHBOARD_READ_RISK)]
+    permission_classes = [HasDashboardReadRisk]
     serializer_class = RiskDecisionSerializer
 
     def __init__(self, **kwargs: Any) -> None:
@@ -59,7 +61,7 @@ class RiskDecisionListView(ListAPIView):
 class KillSwitchListView(ListAPIView):
     """List kill-switch state history (read-only, MANAGE_RISK_POLICY)."""
 
-    permission_classes = [HasAPIKeyScope.with_scope(Scope.MANAGE_RISK_POLICY)]
+    permission_classes = [HasManageRiskPolicy]
     serializer_class = KillSwitchStateSerializer
 
     def get(self, request: Request, *args: Any, **kwargs: Any) -> Response:
@@ -74,7 +76,7 @@ class KillSwitchListView(ListAPIView):
 class KillSwitchActivateView(GenericAPIView):
     """Activate a kill-switch scope (MANAGE_RISK_POLICY)."""
 
-    permission_classes = [HasAPIKeyScope.with_scope(Scope.MANAGE_RISK_POLICY)]
+    permission_classes = [HasManageRiskPolicy]
     serializer_class = KillSwitchToggleSerializer
 
     def __init__(self, **kwargs: Any) -> None:
@@ -109,7 +111,7 @@ class KillSwitchActivateView(GenericAPIView):
 class KillSwitchDeactivateView(GenericAPIView):
     """Deactivate a kill-switch scope (MANAGE_RISK_POLICY)."""
 
-    permission_classes = [HasAPIKeyScope.with_scope(Scope.MANAGE_RISK_POLICY)]
+    permission_classes = [HasManageRiskPolicy]
     serializer_class = KillSwitchToggleSerializer
 
     def __init__(self, **kwargs: Any) -> None:

@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import uuid
 from decimal import Decimal
+from uuid import UUID
 
 from django.utils import timezone
 

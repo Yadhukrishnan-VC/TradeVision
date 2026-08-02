@@ -61,4 +61,7 @@ urlpatterns = [
 
     # Risk Management API — Batch M3
     path("api/v1/risk-management/", include("apps.risk_management.interfaces.api.urls")),
+
+    # Portfolio API — Batch M4
+    path("api/v1/portfolio/", include("apps.portfolio.interfaces.api.urls")),
 ]

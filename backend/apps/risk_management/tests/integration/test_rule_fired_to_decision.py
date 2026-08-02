@@ -27,6 +27,28 @@ def _use_fake_event_bus() -> None:
 
 
 @pytest.fixture(autouse=True)
+def _funded_default_account(db, django_user_model) -> None:
+    """A default account with 1,000,000 in capital.
+
+    M4 (ADR-028) made the real ``apps.portfolio`` gateway the production
+    default, so the risk chain now reads capital/exposure from
+    ``AccountCapitalState`` instead of the M3 config-driven stub. Funding the
+    default account keeps ``position_size`` at the M3-expected 5000
+    (risk_pct 0.01, |entry - stop| = 2 -> raw_size = 1_000_000 * 0.01 / 2).
+    """
+    from apps.accounts.infrastructure.models import Account
+    from apps.portfolio.application.capital_service import CapitalService
+    from decimal import Decimal
+
+    user = django_user_model.objects.create_user(
+        username=f"risk_user_{uuid.uuid4().hex[:8]}", password="p"
+    )
+    account = Account.objects.create(name="Primary", owner=user, is_default=True)
+    CapitalService().deposit(account.id, Decimal("1000000"))
+    return account
+
+
+@pytest.fixture(autouse=True)
 def _market_open(monkeypatch) -> None:
     """Deterministic market/freshness state regardless of wall-clock time."""
     from apps.risk_management.gateways.market_calendar_status_gateway import (
@@ -88,14 +110,14 @@ class TestRuleFiredToRiskDecision:
         assert approved.correlation_id == firing_id
         assert approved.causation_id == fired_event.event_id
         assert approved.payload["position_size"] == 5000
-        assert approved.payload["portfolio_gateway_impl"] == "stub"
+        assert approved.payload["portfolio_gateway_impl"] == "portfolio_v1"
 
         execution = RiskDecisionExecution.objects.get(
             analysis_event_id=str(firing_id),
             rule_id="long_momentum_v1",
         )
         assert execution.status == "APPROVED"
-        assert execution.portfolio_gateway_impl == "stub"
+        assert execution.portfolio_gateway_impl == "portfolio_v1"
 
     def test_rejected_event_published(self) -> None:
         bus = get_event_bus()
@@ -108,7 +130,7 @@ class TestRuleFiredToRiskDecision:
         )
         assert rejected.payload["reason_code"] == "STOP_EQUALS_ENTRY"
         assert "position_size" not in rejected.payload
-        assert rejected.payload["portfolio_gateway_impl"] == "stub"
+        assert rejected.payload["portfolio_gateway_impl"] == "portfolio_v1"
 
     def test_duplicate_delivery_is_skipped(self) -> None:
         bus = get_event_bus()

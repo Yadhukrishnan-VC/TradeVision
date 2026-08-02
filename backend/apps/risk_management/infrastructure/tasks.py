@@ -14,11 +14,12 @@ from apps.risk_management.application.risk_evaluation_service import (
     RiskEvaluationService,
 )
 from apps.risk_management.domain.events import RiskApproved, RiskRejected
+from apps.risk_management.gateways.factory import (
+    get_capital_gateway,
+    get_portfolio_state_gateway,
+)
 from apps.risk_management.gateways.market_calendar_status_gateway import (
     MarketCalendarStatusGateway,
-)
-from apps.risk_management.gateways.stub_portfolio_state_gateway import (
-    StubPortfolioStateGateway,
 )
 from apps.risk_management.infrastructure.repositories import RiskDecisionRepository
 from core.tasks.base import DEFAULT_MAX_RETRIES, DEFAULT_RETRY_DELAY, BaseTask
@@ -53,8 +54,8 @@ def evaluate_rule_firing(
     from apps.risk_management.application.risk_config import risk_config_from_settings
 
     service = RiskEvaluationService(
-        capital_gateway=StubPortfolioStateGateway(),
-        portfolio_gateway=StubPortfolioStateGateway(),
+        capital_gateway=get_capital_gateway(),
+        portfolio_gateway=get_portfolio_state_gateway(),
         market_gateway=MarketCalendarStatusGateway(),
         kill_switch_service=KillSwitchService(),
         config=risk_config_from_settings(),

@@ -59,6 +59,8 @@ LOCAL_APPS: list[str] = [
     "apps.trader_memory",
     # M3 — Deterministic Risk Management
     "apps.risk_management",
+    # M4 — Portfolio & Capital Management (authoritative portfolio state)
+    "apps.portfolio",
     # Batch 2 — Signals Engine
     "apps.signals_engine",
     # Batch 3 — Technical Analysis
@@ -459,4 +461,15 @@ RISK_MANAGEMENT: dict = {
 # Short-TTL for the kill-switch read-through cache (fail-closed on error).
 RISK_KILL_SWITCH_CACHE_TTL_SECONDS: int = config(
     "RISK_KILL_SWITCH_CACHE_TTL_SECONDS", default=10, cast=int
+)
+
+# M4 — gateway implementation feeding Risk Management's capital/exposure reads.
+# "portfolio" → RealCapitalGateway / RealPortfolioStateGateway backed by
+# apps.portfolio (the production source of truth, ADR-028 §2.9); "stub" →
+# the M3 config-driven StubPortfolioStateGateway (guarded dev/fallback).
+# The production default is the real gateway so the stub is never the
+# production capital source (ADR-028 DoD #7). The factory keeps its own
+# "stub" fallback for safety if the setting is ever absent.
+RISK_MANAGEMENT_GATEWAY_IMPL: str = config(
+    "RISK_MANAGEMENT_GATEWAY_IMPL", default="portfolio", cast=str
 )
