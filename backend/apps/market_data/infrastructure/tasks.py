@@ -21,6 +21,35 @@ from core.utils import get_ist_now, get_now
 logger = logging.getLogger(__name__)
 
 
+def _publish_candles_persisted(
+    instrument_token: int,
+    timeframe: Timeframe,
+    persisted: int,
+    provider_name: str,
+) -> None:
+    """Publish a ``marketdata.CandlesPersisted`` event after candle persistence.
+
+    Additive; the event currently has no subscribers (Technical Analysis
+    ingestion remains webhook-driven) and completes the publisher-side
+    event contract alongside ``marketdata.SessionStatusChanged``.
+    """
+    event = DomainEvent.create(
+        event_type="marketdata.CandlesPersisted",
+        payload={
+            "instrument_token": instrument_token,
+            "timeframe": timeframe.value,
+            "candle_count": persisted,
+            "provider": provider_name,
+        },
+        correlation_id=uuid.uuid5(
+            uuid.NAMESPACE_DNS,
+            f"marketdata.CandlesPersisted:{instrument_token}:{timeframe.value}",
+        ),
+        version=1,
+    )
+    get_event_bus().publish(event)
+
+
 @shared_task(
     bind=True,
     max_retries=3,
@@ -91,6 +120,13 @@ def refresh_candles(
                 "timeframe": timeframe,
                 "candles_persisted": count,
             },
+        )
+
+        _publish_candles_persisted(
+            instrument_token=instrument_token,
+            timeframe=tf,
+            persisted=count,
+            provider_name=provider.provider_name,
         )
     except Exception as exc:
         logger.error(

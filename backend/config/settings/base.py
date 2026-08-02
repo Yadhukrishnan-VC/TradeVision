@@ -231,7 +231,39 @@ CELERY_TASK_QUEUES = [
     "analytics",
     "notifications",
     "maintenance",
+    "market_data",
 ]
+
+# ---------------------------------------------------------------------------
+# Celery Beat schedule — market_data periodic tasks
+#
+# Only arg-free periodic tasks are scheduled here. ``refresh_candles`` and
+# ``run_historical_sync`` require per-instrument ``instrument_token`` +
+# ``timeframe`` arguments, so they are invoked on-demand (by other tasks or
+# by orchestration) rather than on a global schedule — a beat entry without
+# a concrete instrument would either crash or require fabricating a token.
+# ---------------------------------------------------------------------------
+CELERY_BEAT_SCHEDULE = {
+    # Poll session state every 30s during market hours; publishes
+    # marketdata.SessionStatusChanged only on an actual transition.
+    "detect-session-transitions": {
+        "task": "apps.market_data.infrastructure.tasks.detect_session_transitions",
+        "schedule": 30.0,
+        "options": {"queue": "market_data"},
+    },
+    # Self-healing watchdog for the WebSocket tick manager.
+    "reconnect-websocket-watchdog": {
+        "task": "apps.market_data.infrastructure.tasks.reconnect_websocket_watchdog",
+        "schedule": 300.0,
+        "options": {"queue": "market_data"},
+    },
+    # Nightly instrument master sync after market close (IST ~22:30).
+    "sync-instrument-master": {
+        "task": "apps.market_data.infrastructure.tasks.sync_instrument_master",
+        "schedule": "crontab(hour=22, minute=30)",
+        "options": {"queue": "maintenance"},
+    },
+}
 
 LOGGING = {
     "version": 1,
@@ -313,6 +345,14 @@ OLLAMA_MODEL: str = config("OLLAMA_MODEL", default="llama3.2")
 DEEPSEEK_API_KEY: str = config("DEEPSEEK_API_KEY", default="")
 DEEPSEEK_MODEL: str = config("DEEPSEEK_MODEL", default="deepseek-chat")
 DEEPSEEK_BASE_URL: str = config("DEEPSEEK_BASE_URL", default="https://api.deepseek.com")
+
+# ---------------------------------------------------------------------------
+# Zerodha Kite Connect — short-lived access token obtained out-of-band via
+# the Kite login flow (request_token → generate_session exchange). This batch
+# does not implement that flow; the token must be provisioned by an operator.
+# ---------------------------------------------------------------------------
+ZERODHA_API_KEY: str = config("ZERODHA_API_KEY", default="")
+ZERODHA_ACCESS_TOKEN: str = config("ZERODHA_ACCESS_TOKEN", default="")
 
 # ---------------------------------------------------------------------------
 # Batch B kill switches — all default False until verified

@@ -97,6 +97,14 @@ class ZerodhaMarketDataProvider(BaseMarketDataProvider):
     def fetch(self, request: MarketDataRequest) -> MarketDataResponse:
         """Retrieve OHLCV bars from Zerodha Kite Connect historical API.
 
+        The Kite Connect historical endpoint requires the numeric
+        ``instrument_token`` in the URL path, not the trading symbol. The
+        token is resolved locally from the ``Instrument`` table (the same
+        lookup ``HistoricalSyncService`` uses); if no matching instrument
+        row exists yet (instrument sync has not run), a
+        ``DataProviderError`` is raised instead of sending a malformed
+        request.
+
         Args:
             request: A populated ``MarketDataRequest``.
 
@@ -104,16 +112,18 @@ class ZerodhaMarketDataProvider(BaseMarketDataProvider):
             ``MarketDataResponse`` with the requested OHLCV bars.
 
         Raises:
-            DataProviderError: On API errors or unexpected responses.
+            DataProviderError: On API errors or unexpected responses, or
+                when the instrument token cannot be resolved.
         """
         session = self._get_session()
         start = time.monotonic()
 
+        instrument_token = self._resolve_instrument_token(request.symbol)
         kite_interval = self._map_interval(request.interval)
         from_str = request.from_timestamp.strftime("%Y-%m-%d %H:%M:%S")
         to_str = request.to_timestamp.strftime("%Y-%m-%d %H:%M:%S")
 
-        url = f"{_ZERODHA_API_BASE}/instruments/historical/{request.symbol}/{kite_interval}"
+        url = f"{_ZERODHA_API_BASE}/instruments/historical/{instrument_token}/{kite_interval}"
         params = {"from": from_str, "to": to_str}
 
         try:
@@ -202,6 +212,39 @@ class ZerodhaMarketDataProvider(BaseMarketDataProvider):
             self._session = requests.Session()
             self._session.headers.update(self._headers)
         return self._session
+
+    @staticmethod
+    def _resolve_instrument_token(tradingsymbol: str) -> int:
+        """Resolve the numeric Kite Connect instrument token for a trading symbol.
+
+        The historical API requires the numeric ``instrument_token`` in the
+        URL path, not the trading symbol. The token is looked up from the
+        locally synced ``Instrument`` table (populated by
+        ``InstrumentSyncService``).
+
+        Args:
+            tradingsymbol: The exchange trading symbol (e.g. ``"RELIANCE"``).
+
+        Returns:
+            The numeric instrument token.
+
+        Raises:
+            DataProviderError: If no ``Instrument`` row exists for the symbol,
+                i.e. instrument sync has not run yet.
+        """
+        from apps.common.domain.value_objects import Symbol
+        from apps.market_data.infrastructure.repositories import InstrumentRepository
+
+        instrument = InstrumentRepository().find_by_symbol(
+            Symbol(exchange=config.default_exchange, tradingsymbol=tradingsymbol)
+        )
+        if instrument is None:
+            raise DataProviderError(
+                f"Cannot resolve instrument token for '{tradingsymbol}': "
+                "instrument not found in local table. Run instrument sync "
+                "(InstrumentSyncService.sync or sync_instrument_master) first."
+            )
+        return instrument.instrument_token
 
     @staticmethod
     def _map_interval(interval: str) -> str:

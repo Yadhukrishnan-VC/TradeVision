@@ -98,6 +98,13 @@ class HistoricalSyncService:
 
         persisted = self._persist_candles(instrument_token, timeframe, response.bars)
 
+        self._publish_candles_persisted(
+            instrument_token=instrument_token,
+            timeframe=timeframe,
+            persisted=persisted,
+            provider_name=provider.provider_name,
+        )
+
         logger.info(
             "historical_sync_complete",
             extra={
@@ -130,6 +137,40 @@ class HistoricalSyncService:
             )
             count += 1
         return count
+
+    def _publish_candles_persisted(
+        self,
+        instrument_token: int,
+        timeframe: Timeframe,
+        persisted: int,
+        provider_name: str,
+    ) -> None:
+        """Publish a ``marketdata.CandlesPersisted`` event after a successful backfill.
+
+        The event is additive and currently has no subscribers; it completes
+        the publisher-side event contract alongside ``marketdata.SessionStatusChanged``
+        and unblocks a future, separately-scoped Technical Analysis consumption path.
+        """
+        import uuid
+
+        from apps.eventbus.domain.events import DomainEvent
+        from apps.eventbus.infrastructure.event_bus_factory import get_event_bus
+
+        event = DomainEvent.create(
+            event_type="marketdata.CandlesPersisted",
+            payload={
+                "instrument_token": instrument_token,
+                "timeframe": timeframe.value,
+                "candle_count": persisted,
+                "provider": provider_name,
+            },
+            correlation_id=uuid.uuid5(
+                uuid.NAMESPACE_DNS,
+                f"marketdata.CandlesPersisted:{instrument_token}:{timeframe.value}",
+            ),
+            version=1,
+        )
+        get_event_bus().publish(event)
 
 
 _service_instance: HistoricalSyncService | None = None

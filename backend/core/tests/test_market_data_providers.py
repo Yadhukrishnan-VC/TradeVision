@@ -2,12 +2,15 @@
 Tests for market data providers — MockProvider contract, factory singleton, reset.
 """
 
-import pytest
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 
+import pytest
+from django.test import override_settings
+
+from core.exceptions import DataProviderError
 from core.market_data.base_provider import BaseMarketDataProvider, MarketDataRequest
-from core.market_data.providers.mock_provider import MockMarketDataProvider
 from core.market_data.provider_factory import MarketDataProviderFactory
+from core.market_data.providers.mock_provider import MockMarketDataProvider
 
 
 def _make_request(symbol: str = "RELIANCE") -> MarketDataRequest:
@@ -73,3 +76,30 @@ class TestMarketDataProviderFactory:
     def test_returns_mock_provider(self) -> None:
         provider = MarketDataProviderFactory.get_provider()
         assert provider.provider_name == "mock"
+
+    def test_factory_selects_paper_provider(self) -> None:
+        from apps.market_data.infrastructure.providers.paper_provider import (
+            PaperMarketDataProvider,
+        )
+
+        with override_settings(MARKET_DATA_PROVIDER="paper"):
+            provider = MarketDataProviderFactory.get_provider()
+        assert isinstance(provider, PaperMarketDataProvider)
+        assert provider.provider_name == "paper"
+
+    def test_factory_selects_zerodha_provider(self) -> None:
+        from apps.market_data.infrastructure.providers.zerodha_provider import (
+            ZerodhaMarketDataProvider,
+        )
+
+        with override_settings(MARKET_DATA_PROVIDER="zerodha"):
+            provider = MarketDataProviderFactory.get_provider()
+        assert isinstance(provider, ZerodhaMarketDataProvider)
+        assert provider.provider_name == "zerodha"
+
+    def test_factory_unknown_provider_still_raises(self) -> None:
+        with (
+            override_settings(MARKET_DATA_PROVIDER="does-not-exist"),
+            pytest.raises(DataProviderError, match="does-not-exist"),
+        ):
+            MarketDataProviderFactory.get_provider()

@@ -31,10 +31,9 @@ class MarketDataProviderFactory:
     call — used for test isolation and provider switching.
 
     Currently supported providers:
-        ``mock`` — Deterministic fake data, no network I/O (Phase 0)
-
-    Phase 1 will add:
-        ``nse``  — NSE/BSE vendor API integration
+        ``mock``    — Deterministic fake data, no network I/O (Phase 0)
+        ``paper``   — Seeded simulated OHLCV, no network I/O (dev/testing)
+        ``zerodha`` — Real Kite Connect historical + instrument data
     """
 
     _instance: ClassVar[BaseMarketDataProvider | None] = None
@@ -93,11 +92,15 @@ class MarketDataProviderFactory:
         """
         from core.config import config
         from core.market_data.providers.mock_provider import MockMarketDataProvider
+        from apps.market_data.infrastructure.providers.paper_provider import PaperMarketDataProvider
+        from apps.market_data.infrastructure.providers.zerodha_provider import ZerodhaMarketDataProvider
 
         provider_name: str = config.market_data_provider
 
         provider_map: dict[str, type[BaseMarketDataProvider]] = {
             "mock": MockMarketDataProvider,
+            "paper": PaperMarketDataProvider,
+            "zerodha": ZerodhaMarketDataProvider,
         }
 
         if provider_name not in provider_map:

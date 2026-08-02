@@ -217,10 +217,26 @@ class TradeVisionConfig:
 
     @property
     def market_data_provider(self) -> str:
-        """Active market data provider name (e.g. ``mock``, ``nse``)."""
+        """Active market data provider name (e.g. ``mock``, ``paper``, ``zerodha``)."""
         from django.conf import settings
 
         return getattr(settings, "MARKET_DATA_PROVIDER", "mock").lower()
+
+    @property
+    def zerodha_api_key(self) -> str:
+        """Zerodha Kite Connect API key."""
+        from django.conf import settings
+
+        return getattr(settings, "ZERODHA_API_KEY", "")
+
+    @property
+    def zerodha_access_token(self) -> str:
+        """Zerodha Kite Connect access token (short-lived; generated out-of-band
+        via the Kite login flow — this batch does not implement that flow).
+        """
+        from django.conf import settings
+
+        return getattr(settings, "ZERODHA_ACCESS_TOKEN", "")
 
     # ---------------------------------------------------------------------------
     # Market and exchange
