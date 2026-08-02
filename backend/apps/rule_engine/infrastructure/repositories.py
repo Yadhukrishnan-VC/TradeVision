@@ -4,6 +4,7 @@ import logging
 import uuid
 from typing import Any
 
+from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 
 from core.repository import BaseRepository
@@ -78,7 +79,7 @@ class RuleExecutionRepository(BaseRepository[RuleExecution]):
             execution.full_clean()
             execution.save()
             return execution
-        except IntegrityError:
+        except (IntegrityError, ValidationError):
             logger.warning(
                 "duplicate_rule_execution",
                 extra={
@@ -90,10 +91,14 @@ class RuleExecutionRepository(BaseRepository[RuleExecution]):
             return None
 
     def mark_published(
-        self, analysis_event_id: uuid.UUID, published_event_id: uuid.UUID
+        self,
+        analysis_event_id: uuid.UUID,
+        published_event_id: uuid.UUID,
+        rule_id: str | None = None,
     ) -> None:
         RuleExecution.objects.filter(
             analysis_event_id=analysis_event_id,
+            rule_id=rule_id,
             published_event_id__isnull=True,
         ).update(published_event_id=published_event_id)
 

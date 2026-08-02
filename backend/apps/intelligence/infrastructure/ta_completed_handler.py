@@ -125,6 +125,36 @@ def _optional_decimal(value: Any) -> Decimal | None:
         return None
 
 
+def _optional_int(value: Any) -> int | None:
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (ValueError, TypeError, ArithmeticError):
+        return None
+
+
+def _optional_levels(value: Any) -> tuple[Decimal, ...]:
+    """Parse a payload list (or scalar) of levels into a tuple of Decimals."""
+    if value is None:
+        return ()
+    items = value if isinstance(value, (list, tuple)) else [value]
+    parsed: list[Decimal] = []
+    for item in items:
+        dec = _optional_decimal(item)
+        if dec is not None:
+            parsed.append(dec)
+    return tuple(parsed)
+
+
+def _optional_direction(value: Any) -> str | None:
+    """Validate a Supertrend direction string (``up``/``down``), else None."""
+    if not isinstance(value, str):
+        return None
+    lowered = value.strip().lower()
+    return lowered if lowered in ("up", "down") else None
+
+
 def _get_prev_close(symbol: str, price_data: dict[str, Any]) -> Decimal | None:
     prev_close_raw = price_data.get("prev_close")
     if prev_close_raw is not None:
@@ -176,7 +206,8 @@ def _build_packet(payload: dict[str, Any], occurred_at: datetime) -> Intelligenc
         prev_close=prev_close,
         change_pct=change_pct,
         volume=int(price_data.get("volume", 0)),
-        avg_volume_20d=0,
+        avg_volume_20d=_optional_int(price_data.get("avg_volume_20d")) or 0,
+        avg_volume_10d=_optional_int(price_data.get("avg_volume_10d")),
         circuit_status=CircuitStatus.NORMAL,
     )
 
@@ -186,10 +217,16 @@ def _build_packet(payload: dict[str, Any], occurred_at: datetime) -> Intelligenc
         macd_signal=_optional_decimal(indicators.get("macd_signal")),
         bb_upper=_optional_decimal(indicators.get("bb_upper")),
         bb_lower=_optional_decimal(indicators.get("bb_lower")),
+        bb_width=_optional_decimal(indicators.get("bb_width")),
+        vwap=_optional_decimal(indicators.get("vwap")),
+        atr_14=_optional_decimal(indicators.get("atr_14")),
         ema_20=_optional_decimal(indicators.get("ema_20")),
         ema_50=_optional_decimal(indicators.get("ema_50")),
         ema_200=_optional_decimal(indicators.get("ema_200")),
-        vwap=_optional_decimal(indicators.get("vwap")),
+        support_levels=_optional_levels(indicators.get("support_levels")),
+        resistance_levels=_optional_levels(indicators.get("resistance_levels")),
+        supertrend_value=_optional_decimal(indicators.get("supertrend_value")),
+        supertrend_direction=_optional_direction(indicators.get("supertrend_direction")),
     )
 
     breadth_ctx = BreadthContext(
@@ -215,7 +252,72 @@ def _build_packet(payload: dict[str, Any], occurred_at: datetime) -> Intelligenc
         news_context=NewsContext(),
         data_quality=dq,
     )
-    return packet
+    return _enrich_with_session_facts(packet)
+
+
+def _enrich_with_session_facts(packet: IntelligencePacket) -> IntelligencePacket:
+    """Fill session-fact fields (opening 15m candle, prev-day H/L, avg volume).
+
+    These facts are derived from already-persisted ``market_data`` candles via
+    ``SessionFactsService`` (read-only). The enrichment is additive and fully
+    defensive: if the instrument cannot be resolved or the DB is unavailable,
+    the packet is returned unchanged and the optional fields stay ``None``
+    (rules then fail safe per the missing-data contract).
+    """
+    from dataclasses import replace
+
+    from apps.market_data.application.session_facts_service import SessionFactsService
+    from apps.market_data.infrastructure.repositories import InstrumentRepository
+    from apps.common.domain.value_objects import Symbol
+    from core.config import config
+
+    try:
+        instrument = InstrumentRepository().find_by_symbol(
+            Symbol(exchange=config.default_exchange, tradingsymbol=packet.symbol)
+        )
+        if instrument is None:
+            return packet
+
+        facts = SessionFactsService()
+        opening = facts.get_opening_15m_candle(
+            instrument.instrument_token, packet.timestamp
+        )
+        prev_high, prev_low = facts.get_previous_day_ohlc(
+            instrument.instrument_token, packet.timestamp
+        )
+        avg_volume_10d = facts.get_avg_daily_volume(
+            instrument.instrument_token, packet.timestamp, days=10
+        )
+        avg_volume_20d = facts.get_avg_daily_volume(
+            instrument.instrument_token, packet.timestamp, days=20
+        )
+        opening_avg_volume = facts.get_avg_opening_15m_volume(
+            instrument.instrument_token, packet.timestamp, days=10
+        )
+    except Exception:
+        logger.debug("session_facts_unavailable", extra={"symbol": packet.symbol})
+        return packet
+
+    price = packet.price_context
+    tech = packet.technical_context
+
+    new_price = replace(
+        price,
+        avg_volume_10d=price.avg_volume_10d or avg_volume_10d,
+        avg_volume_20d=price.avg_volume_20d or (avg_volume_20d or 0),
+    )
+    new_tech = replace(
+        tech,
+        opening_15m_open=opening.open if opening else None,
+        opening_15m_high=opening.high if opening else None,
+        opening_15m_low=opening.low if opening else None,
+        opening_15m_close=opening.close if opening else None,
+        opening_15m_volume=opening.volume if opening else None,
+        opening_15m_avg_volume=opening_avg_volume,
+        prev_day_high=prev_high,
+        prev_day_low=prev_low,
+    )
+    return replace(packet, price_context=new_price, technical_context=new_tech)
 
 
 def _serialize_packet(packet: IntelligencePacket) -> dict[str, Any]:

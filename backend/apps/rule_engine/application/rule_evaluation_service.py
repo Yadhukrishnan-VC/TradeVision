@@ -11,7 +11,14 @@ from apps.eventbus.domain.events import DomainEvent
 from apps.eventbus.infrastructure.event_bus_factory import get_event_bus
 from apps.rule_engine.domain.entities import RuleFiring
 from apps.rule_engine.domain.exceptions import RuleEvaluationError
-from apps.rule_engine.domain.rules import PriceMovementRule, VolumeSpikeRule, BreakoutRule
+from apps.rule_engine.domain.rules import (
+    BreakoutRule,
+    LongMomentumRule,
+    PriceMovementRule,
+    ShortSellRule,
+    VolatilityBreakoutRule,
+    VolumeSpikeRule,
+)
 from apps.rule_engine.infrastructure.repositories import RuleExecutionRepository
 
 
@@ -26,6 +33,9 @@ class RuleEvaluationService(BaseService):
         self._registry.register(PriceMovementRule())
         self._registry.register(VolumeSpikeRule())
         self._registry.register(BreakoutRule())
+        self._registry.register(LongMomentumRule())
+        self._registry.register(ShortSellRule())
+        self._registry.register(VolatilityBreakoutRule())
 
     def evaluate_enriched_packet(
         self,
@@ -79,7 +89,9 @@ class RuleEvaluationService(BaseService):
         try:
             bus = get_event_bus()
             bus.publish(event)
-            self._repository.mark_published(firing.analysis_event_id, event.event_id)
+            self._repository.mark_published(
+                firing.analysis_event_id, event.event_id, rule_id=firing.rule_id
+            )
             return event.event_id
         except Exception as exc:
             self._logger.exception(

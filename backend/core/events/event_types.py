@@ -94,6 +94,10 @@ class PriceContext:
     circuit_status: CircuitStatus
     prev_close: Decimal | None = None
     change_pct: Decimal | None = None
+    avg_volume_10d: int | None = None
+    """Average daily volume over the trailing 10 sessions (0 or None when
+    unavailable). Populated from persisted market-data candles at packet
+    assembly; deterministic setups use it for volume-ratio conditions."""
 
 
 @dataclass(frozen=True)
@@ -116,6 +120,35 @@ class TechnicalContext:
     ema_200: Decimal | None = None
     support_levels: tuple[Decimal, ...] = ()
     resistance_levels: tuple[Decimal, ...] = ()
+    supertrend_value: Decimal | None = None
+    """Supertrend(10, 2) value as supplied by the Pine alert payload. The rule
+    engine reads this as a pre-computed scalar; it is never recomputed locally
+    (rules must not perform series math). None when the payload omits it."""
+
+    supertrend_direction: str | None = None
+    """Supertrend(10, 2) direction: ``"up"`` (price above the band, long bias)
+    or ``"down"`` (price below the band, short bias). Supplied by the Pine
+    payload; None when unavailable."""
+
+    opening_15m_open: Decimal | None = None
+    opening_15m_high: Decimal | None = None
+    opening_15m_low: Decimal | None = None
+    opening_15m_close: Decimal | None = None
+    """OHLC of the opening 15-minute candle of the session. Derived from
+    persisted market-data candles at packet assembly; None when unavailable."""
+
+    opening_15m_volume: int | None = None
+    """Volume of the opening 15-minute candle (used by the short-sell setup's
+    high-volume-selling condition)."""
+
+    opening_15m_avg_volume: int | None = None
+    """Average volume of the opening 15-minute candle across the trailing
+    sessions (baseline for the short-sell setup's volume ratio)."""
+
+    prev_day_high: Decimal | None = None
+    prev_day_low: Decimal | None = None
+    """Previous trading day's high/low, derived from persisted market-data
+    candles at packet assembly; None when unavailable."""
 
 
 @dataclass(frozen=True)

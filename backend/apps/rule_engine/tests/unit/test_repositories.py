@@ -314,7 +314,7 @@ class TestRuleExecutionRepository:
             )
         )
 
-        repo.mark_published(analysis_event_id, published_event_id)
+        repo.mark_published(analysis_event_id, published_event_id, rule_id="pub_test")
 
         fetched = repo.get_by_id(execution.id)
         assert fetched is not None
@@ -335,26 +335,30 @@ class TestRuleExecutionRepository:
             )
         )
 
-        repo.mark_published(analysis_event_id, first_published)
-        repo.mark_published(analysis_event_id, second_published)
+        repo.mark_published(analysis_event_id, first_published, rule_id="pub_test_2")
+        repo.mark_published(analysis_event_id, second_published, rule_id="pub_test_2")
 
         fetched = repo.get_by_id(execution.id)
         assert fetched is not None
         assert fetched.published_event_id == first_published
 
-    def test_mark_published_updates_all_unpublished_for_event(self) -> None:
+    def test_mark_published_updates_only_scoped_rule_for_event(self) -> None:
         repo = RuleExecutionRepository()
         analysis_event_id = uuid.uuid4()
         published_event_id = uuid.uuid4()
 
-        repo.create(
+        r1 = repo.create(
             RuleExecution(analysis_event_id=analysis_event_id, rule_id="r1", symbol="X", severity="HIGH")
         )
         repo.create(
             RuleExecution(analysis_event_id=analysis_event_id, rule_id="r2", symbol="X", severity="LOW")
         )
 
-        repo.mark_published(analysis_event_id, published_event_id)
+        repo.mark_published(analysis_event_id, published_event_id, rule_id="r1")
+
+        r1.refresh_from_db()
+        assert r1.published_event_id == published_event_id
 
         for ex in repo.list(analysis_event_id=analysis_event_id):
-            assert ex.published_event_id == published_event_id
+            if ex.rule_id == "r2":
+                assert ex.published_event_id is None
