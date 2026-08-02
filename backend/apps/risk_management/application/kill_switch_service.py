@@ -1,0 +1,190 @@
+from __future__ import annotations
+
+import logging
+import uuid
+
+from django.utils import timezone as dj_timezone
+
+from apps.eventbus.domain.events import DomainEvent
+from apps.eventbus.infrastructure.event_bus_factory import get_event_bus
+from apps.risk_management.domain.events import (
+    KillSwitchActivated,
+    KillSwitchDeactivated,
+)
+from apps.risk_management.domain.value_objects import KillSwitchScope
+from apps.risk_management.infrastructure.cache import KillSwitchCache
+from apps.risk_management.infrastructure.models import KillSwitchState
+from apps.risk_management.infrastructure.repositories import KillSwitchStateRepository
+from core.services import BaseService
+
+logger = logging.getLogger(__name__)
+
+
+class KillSwitchService(BaseService):
+    """Read-through, fail-closed kill-switch state management.
+
+    ``is_trade_blocked(symbol)`` answers "should this trade be blocked?" by
+    checking SYMBOL → ACCOUNT → GLOBAL (most-specific wins). Every lookup
+    error — cache or database — resolves to *blocked* (fail-closed).
+
+    Toggles persist a ``KillSwitchState`` row and publish a domain event that
+    the audit-log ``*`` subscriber records for free.
+    """
+
+    def __init__(
+        self,
+        repository: KillSwitchStateRepository | None = None,
+        cache: KillSwitchCache | None = None,
+    ) -> None:
+        super().__init__()
+        self._repository = repository or KillSwitchStateRepository()
+        self._cache = cache or KillSwitchCache()
+
+    # ------------------------------------------------------------------
+    # Read path
+    # ------------------------------------------------------------------
+
+    def is_trade_blocked(self, symbol: str) -> bool:
+        """Return whether the symbol is blocked by any kill-switch scope.
+
+        Fail-closed: on any lookup error the trade is considered blocked.
+        """
+        for scope in (
+            KillSwitchScope.SYMBOL,
+            KillSwitchScope.ACCOUNT,
+            KillSwitchScope.GLOBAL,
+        ):
+            if self._is_active(scope.value, symbol if scope is KillSwitchScope.SYMBOL else None):
+                return True
+        return False
+
+    def is_active(self, scope: str, symbol: str | None = None) -> bool:
+        """Return the active-state of a single scope (fail-closed)."""
+        return self._is_active(scope, symbol)
+
+    def _is_active(self, scope: str, symbol: str | None) -> bool:
+        try:
+            cached = self._cache.get(scope, symbol)
+            if cached is not None:
+                return cached
+        except Exception:
+            logger.exception(
+                "kill_switch_cache_read_error",
+                extra={"scope": scope, "symbol": symbol},
+            )
+        try:
+            active = self._repository.has_active(scope, symbol)
+        except Exception:
+            logger.exception(
+                "kill_switch_db_read_error",
+                extra={"scope": scope, "symbol": symbol},
+            )
+            return True  # fail-closed
+        try:
+            self._cache.set(scope, symbol, active)
+        except Exception:
+            logger.exception(
+                "kill_switch_cache_write_error",
+                extra={"scope": scope, "symbol": symbol},
+            )
+        return active
+
+    # ------------------------------------------------------------------
+    # Write path
+    # ------------------------------------------------------------------
+
+    def activate(
+        self,
+        scope: str,
+        symbol: str | None = None,
+        reason: str = "",
+        actor: str = "system",
+        correlation_id: uuid.UUID | None = None,
+    ) -> KillSwitchState:
+        """Activate a kill-switch scope and publish ``KillSwitchActivated``."""
+        self._validate_scope_symbol(scope, symbol)
+        scope_enum = KillSwitchScope(scope)
+        self._repository.deactivate_all_for_scope_symbol(scope, symbol)
+
+        state = KillSwitchState(
+            scope=scope,
+            symbol=symbol,
+            is_active=True,
+            activated_at=dj_timezone.now(),
+            actor=actor,
+            reason=reason,
+        )
+        state.full_clean()
+        state.save()
+
+        self._cache.set(scope, symbol, True)
+        self._publish_toggle_event(
+            KillSwitchActivated(
+                scope=scope_enum,
+                symbol=symbol,
+                actor=actor,
+                reason=reason,
+            ),
+            correlation_id=correlation_id,
+        )
+        return state
+
+    def deactivate(
+        self,
+        scope: str,
+        symbol: str | None = None,
+        reason: str = "",
+        actor: str = "system",
+        correlation_id: uuid.UUID | None = None,
+    ) -> bool:
+        """Deactivate a kill-switch scope and publish ``KillSwitchDeactivated``."""
+        self._validate_scope_symbol(scope, symbol)
+        scope_enum = KillSwitchScope(scope)
+        updated = self._repository.deactivate_all_for_scope_symbol(scope, symbol)
+
+        self._cache.set(scope, symbol, False)
+        if updated:
+            self._publish_toggle_event(
+                KillSwitchDeactivated(
+                    scope=scope_enum,
+                    symbol=symbol,
+                    actor=actor,
+                    reason=reason,
+                ),
+                correlation_id=correlation_id,
+            )
+        return updated > 0
+
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _validate_scope_symbol(scope: str, symbol: str | None) -> None:
+        if scope not in KillSwitchScope.__members__:
+            raise ValueError(f"Unknown kill-switch scope: {scope!r}")
+        if symbol is not None and scope != KillSwitchScope.SYMBOL.value:
+            raise ValueError(f"symbol must be None for scope {scope!r}")
+
+    def _publish_toggle_event(
+        self,
+        toggle,
+        correlation_id: uuid.UUID | None = None,
+    ) -> None:
+        event_type = (
+            "risk_management.KillSwitchActivated"
+            if isinstance(toggle, KillSwitchActivated)
+            else "risk_management.KillSwitchDeactivated"
+        )
+        event = DomainEvent.create(
+            event_type=event_type,
+            payload=toggle.to_payload(),
+            correlation_id=correlation_id or uuid.uuid4(),
+        )
+        try:
+            get_event_bus().publish(event)
+        except Exception:
+            logger.exception(
+                "kill_switch_toggle_publish_failed",
+                extra={"event_type": event_type, "scope": toggle.scope.value},
+            )

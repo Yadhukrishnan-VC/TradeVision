@@ -84,6 +84,7 @@ class ShortSellRule(BaseRule):
             severity=self.severity,
             trigger_data={
                 "setup": "short_sell_v1",
+                "entry_price": str(current_price),
                 "change_pct": str(change_pct),
                 "opening_15m_volume": opening_volume,
                 "opening_15m_avg_volume": opening_avg_volume,

@@ -57,6 +57,8 @@ LOCAL_APPS: list[str] = [
     "apps.strategy_registry",
     "apps.rule_engine",
     "apps.trader_memory",
+    # M3 — Deterministic Risk Management
+    "apps.risk_management",
     # Batch 2 — Signals Engine
     "apps.signals_engine",
     # Batch 3 — Technical Analysis
@@ -208,6 +210,8 @@ CELERY_TASK_ROUTES = {
     # Rule Engine
     "tradevision.rule_engine.evaluate_packet": {"queue": "rule_engine"},
     "tradevision.rule_engine.publish_rule_firing": {"queue": "rule_engine"},
+    # Risk Management — M3
+    "tradevision.risk_management.evaluate_rule_firing": {"queue": "decisions"},
     # Recommendations
     "tradevision.recommendations.create_recommendation": {"queue": "ai_reasoning"},
     # Trader Memory
@@ -430,3 +434,29 @@ EVENT_STREAM_CONSUMER_GROUP_PREFIX: str = config(
 # Market data provider
 # ---------------------------------------------------------------------------
 MARKET_DATA_PROVIDER: str = config("MARKET_DATA_PROVIDER", default="mock")
+
+# ---------------------------------------------------------------------------
+# M3 — Deterministic Risk Management
+# ---------------------------------------------------------------------------
+# Stub capital source (ADR-027): config-driven, non-production. Every read is
+# logged as a WARNING and every persisted RiskDecision records
+# portfolio_gateway_impl="stub". Never used to back a real order.
+RISK_MANAGEMENT: dict = {
+    "risk_pct": Decimal("0.01"),
+    "max_position_size": 1_000_000,
+    "max_exposure_cap": Decimal("1000000"),
+    "daily_loss_limit": Decimal("100000"),
+    "min_risk_reward": Decimal("1.0"),
+    "kill_switch_active": False,
+    "tradable_symbols": [],
+    "max_freshness_seconds": 600,
+    "market_hours_only": True,
+    "available_capital": Decimal("1000000"),
+    "current_exposure": Decimal("0"),
+    "daily_loss": Decimal("0"),
+    "instrument_max_qty": None,
+}
+# Short-TTL for the kill-switch read-through cache (fail-closed on error).
+RISK_KILL_SWITCH_CACHE_TTL_SECONDS: int = config(
+    "RISK_KILL_SWITCH_CACHE_TTL_SECONDS", default=10, cast=int
+)

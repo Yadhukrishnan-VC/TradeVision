@@ -88,6 +88,7 @@ class LongMomentumRule(BaseRule):
             severity=self.severity,
             trigger_data={
                 "setup": "long_momentum_v1",
+                "entry_price": str(current_price),
                 "change_pct": str(change_pct),
                 "volume": volume,
                 "avg_volume_10d": avg_volume_10d,

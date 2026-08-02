@@ -58,4 +58,7 @@ urlpatterns = [
 
     # Pattern Engine API — Batch AI-5
     path("api/v1/pattern-engine/", include("apps.pattern_engine.interfaces.api.urls")),
+
+    # Risk Management API — Batch M3
+    path("api/v1/risk-management/", include("apps.risk_management.interfaces.api.urls")),
 ]

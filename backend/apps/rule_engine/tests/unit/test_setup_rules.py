@@ -115,6 +115,7 @@ class TestLongMomentumRule:
         assert result.rule_id == "long_momentum_v1"
         assert result.event_type == EventType.BREAKOUT
         assert result.severity == RuleSeverity.HIGH
+        assert result.trigger_data["entry_price"] == "103.00"
         assert result.trigger_data["stop_loss_basis"] == "opening_15m_low"
         assert result.trigger_data["stop_loss"] == "100.00"
 
@@ -222,6 +223,7 @@ class TestShortSellRule:
         assert result.rule_id == "short_sell_v1"
         assert result.event_type == EventType.BREAKDOWN
         assert result.severity == RuleSeverity.HIGH
+        assert result.trigger_data["entry_price"] == "97.00"
         assert result.trigger_data["stop_loss_basis"] == "opening_15m_high"
         assert result.trigger_data["stop_loss"] == "100.00"
 
@@ -336,6 +338,7 @@ class TestVolatilityBreakoutRule:
         assert result.event_type == EventType.BREAKOUT
         assert result.trigger_data["direction"] == "long"
         assert result.trigger_data["daily_range"] == "15.00"
+        assert result.trigger_data["entry_price"] == "112.00"
 
     def test_fires_on_short_breakdown(self) -> None:
         rule = VolatilityBreakoutRule()

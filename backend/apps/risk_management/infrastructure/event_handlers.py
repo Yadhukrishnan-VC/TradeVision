@@ -1,0 +1,41 @@
+from __future__ import annotations
+
+from collections.abc import Callable
+
+from apps.eventbus.application.ports import EventBus
+from apps.eventbus.domain.events import DomainEvent
+from apps.risk_management.infrastructure.tasks import evaluate_rule_firing
+
+
+def handle_rule_fired(event: DomainEvent) -> None:
+    """Dispatch a ``rule_engine.RuleFired`` event to the risk evaluator.
+
+    ``causation_id`` is the RuleFired ``event_id``; the payload's
+    ``analysis_event_id`` is the stable idempotency key consumed by the
+    (analysis_event_id, rule_id) UniqueConstraint downstream.
+    """
+    data = event.payload
+    evaluate_rule_firing.delay(
+        symbol=data.get("symbol", ""),
+        rule_id=data.get("rule_id", ""),
+        event_type=data.get("event_type", ""),
+        trigger_data=data.get("trigger_data", {}) or {},
+        analysis_event_id=data.get("analysis_event_id", ""),
+        occurred_at=data.get("occurred_at", ""),
+        rule_fired_event_id=str(event.event_id),
+    )
+
+
+SUBSCRIBED_EVENTS: dict[str, list[Callable[[DomainEvent], None]]] = {
+    "rule_engine.RuleFired": [handle_rule_fired],
+}
+
+
+def register_handlers(event_bus: EventBus) -> None:
+    for event_type, handlers in SUBSCRIBED_EVENTS.items():
+        for handler in handlers:
+            event_bus.subscribe(
+                event_type=event_type,
+                handler=handler,
+                consumer_group="risk_management",
+            )

@@ -83,6 +83,7 @@ class VolatilityBreakoutRule(BaseRule):
 
         trigger_data = {
             "setup": "volatility_breakout_v1",
+            "entry_price": str(current_price),
             "atr_14": str(atr_14),
             "daily_range": str(daily_range),
             "prev_day_high": str(prev_day_high),

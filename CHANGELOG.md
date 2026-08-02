@@ -35,6 +35,24 @@ All notable changes to TradeVision AI will be documented in this file.
 
 ## [Unreleased]
 
+### Batch M3 — Deterministic Risk Management (2026-08-02)
+
+**Added:**
+- `apps.risk_management` bounded context (ADR-027): consumes `rule_engine.RuleFired` and produces `risk_management.RiskApproved` / `RiskRejected` events, never touching the AI/intelligence risk-context pipeline
+- Deterministic fail-closed risk pipeline: 9 checks in fixed order (kill switch → data freshness → market session → instrument → stop direction → position sizing → exposure → daily loss → risk/reward), first rejection wins, `RejectionReason.UNKNOWN` on any unexpected error
+- Decimal-only position sizing (`ROUND_FLOOR`) from capital × risk_pct over |entry − stop|
+- Kill switch: GLOBAL → ACCOUNT → SYMBOL scopes, Postgres-backed `KillSwitchState` with partial-unique active rows, short-TTL read-through cache, **fail-closed** on any cache/db error; toggles published as `KillSwitchActivated`/`KillSwitchDeactivated` (audit-log `*` subscriber records them for free)
+- `StubPortfolioStateGateway` — config-driven capital/exposure source; every read logs `WARNING`, every persisted `RiskDecisionExecution` records `portfolio_gateway_impl="stub"` (ADR-027 guardrail: never backs a real order)
+- Idempotent `RiskDecisionExecution` persistence mirroring `RuleExecution` (`UniqueConstraint(analysis_event_id, rule_id)`, duplicate ⇒ skip)
+- Celery task `tradevision.risk_management.evaluate_rule_firing` + event handler wired to `rule_engine.RuleFired` (correlation = analysis_event_id, causation = RuleFired.event_id)
+- Risk Management API: `/api/v1/risk-management/` (decision list read-only, kill-switch activate/deactivate gated by `Scope.MANAGE_RISK_POLICY`)
+- 32 unit + integration tests (per-RejectionReason, kill-switch-first ordering, fail-closed cache/db proof, idempotent duplicate delivery, correlation/causation propagation, audit entry for toggles)
+
+**Changed:**
+- M2 setup rules (Long Momentum, Short Sell, Volatility Breakout) now include `trigger_data["entry_price"] = str(current_price)` (additive amendment; regression-tested)
+- `config/settings/base.py`: `apps.risk_management` registered, `RISK_MANAGEMENT` settings block added, task route + API URL wired
+
+
 ### Batch AI-1 — Real AI Reasoning Pipeline (2026-07-28)
 
 **Changed:**
