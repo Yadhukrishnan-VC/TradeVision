@@ -56,6 +56,10 @@ class TestChartinkScanFetcher:
     def test_execute_scan_http_error(self, mock_requests: MagicMock) -> None:
         from requests.exceptions import RequestException
 
+        # The production module raises through ``except requests.RequestException``,
+        # so the patched module-level ``requests`` must expose the real exception
+        # class for that except clause to match.
+        mock_requests.RequestException = RequestException
         mock_requests.post.side_effect = RequestException("Timeout")
         fetcher = ChartinkScanFetcher(scan_name="scan1", scan_id=1)
 

@@ -53,6 +53,10 @@ urlpatterns = [
     # Signals Engine API — Batch 2
     path("api/v1/signals/", include("apps.signals_engine.interfaces.api.urls")),
 
+    # Ingestion Webhook API — external webhook front door (TradingView,
+    # Chartink) plus a staff-only raw-event debug listing.
+    path("api/v1/ingestion/", include("apps.ingestion.interfaces.api.urls")),
+
     # Technical Analysis Webhook API — Batch 3
     path("api/v1/technical-analysis/", include("apps.technical_analysis.interfaces.api.urls")),
 

@@ -61,6 +61,11 @@ LOCAL_APPS: list[str] = [
     "apps.risk_management",
     # M4 — Portfolio & Capital Management (authoritative portfolio state)
     "apps.portfolio",
+    # Ingestion — single front door for external webhook payloads
+    # (TradingView alerts, Chartink scan results). Publishers the
+    # ingestion.RawAlertReceived / ingestion.ScanResultReceived events that
+    # the signals_engine consumes.
+    "apps.ingestion",
     # Batch 2 — Signals Engine
     "apps.signals_engine",
     # Batch 3 — Technical Analysis

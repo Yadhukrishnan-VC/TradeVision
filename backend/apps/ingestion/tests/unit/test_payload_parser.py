@@ -41,8 +41,8 @@ class TestTradingViewPayloadParser:
 
     def test_parse_malformed_json(self, parser: TradingViewPayloadParser) -> None:
         body = b"this is not json at all"
-        result = parser.parse(body)
-        assert isinstance(result, dict)
+        with pytest.raises(MalformedPayloadError, match="Missing required fields"):
+            parser.parse(body)
 
     def test_normalise_symbol_field(self, parser: TradingViewPayloadParser) -> None:
         body = json.dumps({

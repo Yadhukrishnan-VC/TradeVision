@@ -1,19 +1,21 @@
 from __future__ import annotations
 
+import hashlib
+import hmac
 import json
-import uuid
-from datetime import datetime
-from unittest.mock import MagicMock, patch
 
 from django.test import TestCase, override_settings
 
-from apps.eventbus.domain.events import DomainEvent
 from apps.eventbus.infrastructure.event_bus_factory import reset_event_bus
 from apps.ingestion.infrastructure.models import RawWebhookEvent
-from apps.ingestion.interfaces.api.views import (
-    ChartinkWebhookView,
-    TradingViewWebhookView,
-)
+
+
+def _chartink_signature(body: bytes, shared_secret: str) -> str:
+    return hmac.new(
+        shared_secret.encode("utf-8"),
+        body,
+        hashlib.sha256,
+    ).hexdigest()
 
 
 @override_settings(
@@ -26,8 +28,8 @@ class TestTradingViewWebhookIntegration(TestCase):
         reset_event_bus()
 
     def test_webhook_accepted_and_persisted(self) -> None:
-        from apps.eventbus.infrastructure.fake_event_bus import FakeEventBus
         from apps.eventbus.infrastructure.event_bus_factory import get_event_bus
+        from apps.eventbus.infrastructure.fake_event_bus import FakeEventBus
 
         bus = get_event_bus()
         self.assertIsInstance(bus, FakeEventBus)
@@ -90,12 +92,16 @@ class TestChartinkWebhookIntegration(TestCase):
             "scan_name": "my_scan",
             "symbols": ["RELIANCE", "TCS", "INFY"],
         }
+        signature = _chartink_signature(
+            json.dumps(body).encode("utf-8"),
+            "shared_secret",
+        )
 
         request = self.client.post(
             "/api/v1/ingestion/webhooks/chartink/chartink_token_456/",
             data=json.dumps(body),
             content_type="application/json",
-            HTTP_X_SIGNATURE="test",
+            HTTP_X_SIGNATURE=signature,
         )
 
         self.assertEqual(request.status_code, 202)
