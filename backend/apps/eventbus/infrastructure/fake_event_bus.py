@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
-from typing import Any
 
 from apps.eventbus.application.ports import EventBus
 from apps.eventbus.domain.events import DomainEvent
+from apps.eventbus.domain.exceptions import EventBusError
 from apps.eventbus.infrastructure.models import StoredEvent
 
 logger = logging.getLogger(__name__)
@@ -58,6 +58,9 @@ class FakeEventBus(EventBus):
                     },
                 )
 
+    def _handler_path(self, handler: Callable[[DomainEvent], None]) -> str:
+        return f"{handler.__module__}.{handler.__name__}" if callable(handler) else str(handler)
+
     def subscribe(
         self,
         event_type: str,
@@ -65,13 +68,40 @@ class FakeEventBus(EventBus):
         *,
         consumer_group: str,
     ) -> None:
+        handler_path = self._handler_path(handler)
+
         if event_type == "*":
+            for existing_handler, existing_group in self._wildcard_handlers:
+                if existing_group != consumer_group:
+                    continue
+                existing_path = self._handler_path(existing_handler)
+                if existing_path == handler_path:
+                    return
+                raise EventBusError(
+                    f"Duplicate subscription for event_type={event_type!r} "
+                    f"consumer_group={consumer_group!r} already bound to handler "
+                    f"{existing_path!r}"
+                )
             self._wildcard_handlers.append((handler, consumer_group))
             return
 
-        if event_type not in self._handlers:
-            self._handlers[event_type] = []
-        self._handlers[event_type].append((handler, consumer_group))
+        for existing_handler, existing_group in self._handlers.get(event_type, []):
+            if existing_group != consumer_group:
+                continue
+            existing_path = self._handler_path(existing_handler)
+            if existing_path == handler_path:
+                return
+            raise EventBusError(
+                f"Duplicate subscription for event_type={event_type!r} "
+                f"consumer_group={consumer_group!r} already bound to handler "
+                f"{existing_path!r}"
+            )
+
+        self._handlers.setdefault(event_type, []).append((handler, consumer_group))
+
+    @property
+    def handlers(self) -> dict[str, list[tuple[Callable[[DomainEvent], None], str]]]:
+        return {event_type: list(entries) for event_type, entries in self._handlers.items()}
 
     @property
     def published_events(self) -> list[DomainEvent]:

@@ -11,7 +11,7 @@ from django.db import transaction
 
 from apps.eventbus.application.ports import EventBus
 from apps.eventbus.domain.events import DomainEvent
-from apps.eventbus.domain.exceptions import EventPublishError
+from apps.eventbus.domain.exceptions import EventBusError, EventPublishError
 from apps.eventbus.infrastructure.models import StoredEvent
 
 logger = logging.getLogger(__name__)
@@ -97,10 +97,31 @@ class RedisStreamsEventBus(EventBus):
         handler_path = f"{handler.__module__}.{handler.__name__}" if callable(handler) else str(handler)
 
         if event_type == "*":
+            for existing_path, existing_group in self._wildcard_handlers:
+                if existing_group != consumer_group:
+                    continue
+                if existing_path == handler_path:
+                    return
+                raise EventBusError(
+                    f"Duplicate subscription for event_type={event_type!r} "
+                    f"consumer_group={consumer_group!r} already bound to handler "
+                    f"{existing_path!r}"
+                )
             self._wildcard_handlers.append((handler_path, consumer_group))
             for et in self._handlers:
                 self._ensure_consumer_group(et, consumer_group)
             return
+
+        for existing_path, existing_group in self._handlers.get(event_type, []):
+            if existing_group != consumer_group:
+                continue
+            if existing_path == handler_path:
+                return
+            raise EventBusError(
+                f"Duplicate subscription for event_type={event_type!r} "
+                f"consumer_group={consumer_group!r} already bound to handler "
+                f"{existing_path!r}"
+            )
 
         if event_type not in self._handlers:
             self._handlers[event_type] = []

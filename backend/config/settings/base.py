@@ -269,6 +269,22 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": "crontab(hour=22, minute=30)",
         "options": {"queue": "maintenance"},
     },
+    # Event bus poller — reads mirrored domain events back off Redis Streams
+    # and dispatches them to registered handlers. Scheduled every 2s, well
+    # inside its 10s soft_time_limit, so delivery latency stays sub-second.
+    "poll-event-streams": {
+        "task": "apps.eventbus.infrastructure.tasks.poll_event_streams",
+        "schedule": 2.0,
+        "options": {"queue": "maintenance"},
+    },
+    # Safety net — re-mirrors StoredEvent rows that never made it into Redis
+    # (mirrored_to_stream=False and older than 30s). Runs every 30s, matching
+    # the 30s soft_time_limit of replay_unpublished_events.
+    "replay-unpublished-events": {
+        "task": "apps.eventbus.infrastructure.tasks.replay_unpublished_events",
+        "schedule": 30.0,
+        "options": {"queue": "maintenance"},
+    },
 }
 
 LOGGING = {
