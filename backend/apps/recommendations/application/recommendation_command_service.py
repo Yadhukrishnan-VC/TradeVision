@@ -4,7 +4,8 @@ import uuid
 from decimal import Decimal
 from typing import Any
 
-from django.db import transaction
+from django.core.exceptions import ValidationError
+from django.db import IntegrityError, transaction
 
 from core.services import BaseService
 from apps.eventbus.domain.events import DomainEvent
@@ -44,11 +45,27 @@ class RecommendationCommandService(BaseService):
             provider=provider,
             correlation_id=correlation_id,
         )
-        with transaction.atomic():
-            recommendation.full_clean()
-            recommendation.save()
+        try:
+            with transaction.atomic():
+                recommendation.full_clean()
+                recommendation.save()
 
-            aggregate = self._to_aggregate(recommendation)
+                aggregate = self._to_aggregate(recommendation)
+        except (IntegrityError, ValidationError):
+            existing = None
+            if analysis_event_id is not None:
+                existing = self._repository.get_by_analysis_event_id(analysis_event_id)
+            if existing is None:
+                raise
+            self._logger.warning(
+                "duplicate_recommendation_creation",
+                extra={
+                    "analysis_event_id": str(analysis_event_id),
+                    "symbol": symbol,
+                    "direction": direction,
+                },
+            )
+            return self._to_aggregate(existing)
         self._publish_created(aggregate)
         return aggregate
 

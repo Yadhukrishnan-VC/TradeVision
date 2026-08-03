@@ -14,6 +14,18 @@ class RecommendationRepository(BaseRepository[Recommendation]):
         except Recommendation.DoesNotExist:
             return None
 
+    def get_by_analysis_event_id(self, analysis_event_id: uuid.UUID) -> Recommendation | None:
+        """Look up the single recommendation tied to an analysis event.
+
+        ``analysis_event_id`` is unique (``Recommendation.analysis_event_id``
+        has ``unique=True``), so at most one row can match. Used to resolve a
+        duplicate creation attempt back to the already-persisted row.
+        """
+        try:
+            return Recommendation.objects.get(analysis_event_id=analysis_event_id)
+        except Recommendation.DoesNotExist:
+            return None
+
     def list(self, **filters: Any) -> list[Recommendation]:
         return list(Recommendation.objects.filter(**filters))
 

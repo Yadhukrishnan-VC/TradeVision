@@ -41,12 +41,21 @@ def create_recommendation(
 
     score = Decimal(str(confidence_score))
 
+    analysis_event_uuid = uuid.UUID(analysis_event_id) if analysis_event_id else None
+    already_existed = False
+    if analysis_event_uuid is not None:
+        from apps.recommendations.infrastructure.models import Recommendation
+
+        already_existed = Recommendation.objects.filter(
+            analysis_event_id=analysis_event_uuid
+        ).exists()
+
     service = RecommendationCommandService()
     aggregate = service.create_from_ai_response(
         symbol=symbol,
         direction=direction,
         confidence_score=score,
-        analysis_event_id=uuid.UUID(analysis_event_id) if analysis_event_id else None,
+        analysis_event_id=analysis_event_uuid,
         strategy_id=uuid.UUID(strategy_id) if strategy_id else None,
         confidence_evaluation_id=uuid.UUID(confidence_evaluation_id) if confidence_evaluation_id else None,
         provider=provider,
@@ -60,16 +69,17 @@ def create_recommendation(
     }
     response_payload["recommendation_id"] = str(aggregate.id)
 
-    compose_explanation.delay(
-        validated_response=response_payload,
-        confidence_result={
-            "raw_confidence": float(score),
-            "adjusted_confidence": float(score),
-            "threshold_met": True,
-            "adjustment_reasons": [],
-        },
-        strategy_id=strategy_id,
-    )
+    if not already_existed:
+        compose_explanation.delay(
+            validated_response=response_payload,
+            confidence_result={
+                "raw_confidence": float(score),
+                "adjusted_confidence": float(score),
+                "threshold_met": True,
+                "adjustment_reasons": [],
+            },
+            strategy_id=strategy_id,
+        )
 
     return {
         "recommendation_id": str(aggregate.id),
