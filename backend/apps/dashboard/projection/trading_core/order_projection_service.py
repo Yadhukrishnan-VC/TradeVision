@@ -1,11 +1,14 @@
 from __future__ import annotations
 
-import uuid
 from decimal import Decimal
+from uuid import UUID
 
 from apps.dashboard.infrastructure.trading_core.models import OrderSnapshot
 from apps.dashboard.projection.base import BaseProjectionService
-from apps.dashboard.projection.internal_events import DashboardInternalEvent, publish_internal
+from apps.dashboard.projection.internal_events import (
+    DashboardInternalEvent,
+    publish_internal,
+)
 from apps.eventbus.domain.events import DomainEvent
 
 

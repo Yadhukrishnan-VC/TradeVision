@@ -19,6 +19,7 @@ QUEUE_ROUTES: dict[str, str] = {
     "apps.ai_reasoning": "ai_reasoning",
     "apps.decisions": "decisions",
     "apps.execution_engine": "execution",
+    "apps.execution": "execution",
     "apps.monitoring": "monitoring",
     "apps.portfolio": "portfolio",
     "apps.analytics": "analytics",

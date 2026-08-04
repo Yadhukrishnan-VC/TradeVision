@@ -61,6 +61,10 @@ LOCAL_APPS: list[str] = [
     "apps.risk_management",
     # M4 — Portfolio & Capital Management (authoritative portfolio state)
     "apps.portfolio",
+    # Milestone B — Safe Paper Execution Engine (RiskApproved -> PaperBroker
+    # -> Order lifecycle -> portfolio fills). Sits after portfolio because it
+    # drives PositionLedgerService.record_fill.
+    "apps.execution",
     # Ingestion — single front door for external webhook payloads
     # (TradingView alerts, Chartink scan results). Publishers the
     # ingestion.RawAlertReceived / ingestion.ScanResultReceived events that
@@ -219,6 +223,11 @@ CELERY_TASK_ROUTES = {
     "tradevision.rule_engine.publish_rule_firing": {"queue": "rule_engine"},
     # Risk Management — M3
     "tradevision.risk_management.evaluate_rule_firing": {"queue": "decisions"},
+    # Milestone B — Safe Paper Execution Engine. Request intake (RiskApproved
+    # -> ExecutionRequest -> Order) runs on decisions; the broker simulation
+    # (ExecutionEngine -> PaperBroker -> fills) runs on execution.
+    "tradevision.execution.handle_risk_approved": {"queue": "decisions"},
+    "tradevision.execution.process_order": {"queue": "execution"},
     # Recommendations
     "tradevision.recommendations.create_recommendation": {"queue": "ai_reasoning"},
     # Trader Memory

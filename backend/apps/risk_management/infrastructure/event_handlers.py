@@ -26,8 +26,27 @@ def handle_rule_fired(event: DomainEvent) -> None:
     )
 
 
+def handle_risk_approved(event: DomainEvent) -> None:
+    """Dispatch a ``risk_management.RiskApproved`` event to the executor.
+
+    The execution intake task is idempotent on ``risk_approved_event_id``
+    (the RiskApproved ``event_id``), so redelivered approvals produce at
+    most one ExecutionRequest / Order. Correlation/causation IDs travel
+    through to the order lifecycle so the full chain stays traceable.
+    """
+    from apps.execution.infrastructure.tasks import handle_risk_approved as enqueue
+
+    enqueue.delay(
+        payload=dict(event.payload),
+        correlation_id=str(event.correlation_id),
+        causation_id=str(event.causation_id) if event.causation_id else "",
+        risk_approved_event_id=str(event.event_id),
+    )
+
+
 SUBSCRIBED_EVENTS: dict[str, list[Callable[[DomainEvent], None]]] = {
     "rule_engine.RuleFired": [handle_rule_fired],
+    "risk_management.RiskApproved": [handle_risk_approved],
 }
 
 

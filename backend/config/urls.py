@@ -68,4 +68,8 @@ urlpatterns = [
 
     # Portfolio API — Batch M4
     path("api/v1/portfolio/", include("apps.portfolio.interfaces.api.urls")),
+
+    # Execution API — Milestone B: Safe Paper Execution Engine (read-only
+    # order/request visibility; submission happens via risk_management).
+    path("api/v1/execution/", include("apps.execution.interfaces.api.urls")),
 ]
