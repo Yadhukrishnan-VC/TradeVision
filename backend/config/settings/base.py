@@ -398,6 +398,9 @@ PROMPT_VERSIONING_PERSISTENCE_ENABLED: bool = config(
     "PROMPT_VERSIONING_PERSISTENCE_ENABLED", default=False, cast=bool
 )
 CONFIDENCE_ENGINE_V2_ENABLED: bool = config("CONFIDENCE_ENGINE_V2_ENABLED", default=False, cast=bool)
+EXECUTION_ENGINE_ENABLED: bool = config(
+    "EXECUTION_ENGINE_ENABLED", default=False, cast=bool
+)
 # Below this historical recommendation accuracy the numeric pattern feed applies a
 # percentage penalty to adjusted_confidence (mirrors the data-quality penalty block).
 CONFIDENCE_ENGINE_PATTERN_ACCURACY_FLOOR: float = config(

@@ -20,6 +20,18 @@ def _use_fake_event_bus() -> None:
 
 
 @pytest.fixture(autouse=True)
+def _execution_gate_enabled(settings) -> None:
+    """Integration tests exercise the activated execution path by default.
+
+    The production default for ``EXECUTION_ENGINE_ENABLED`` is ``False``
+    (safety gate). The pre-existing execution integration tests run the full
+    RiskApproved -> order chain, so they enable the gate explicitly here.
+    Dedicated gate tests override it per-case via ``override_settings``.
+    """
+    settings.EXECUTION_ENGINE_ENABLED = True
+
+
+@pytest.fixture(autouse=True)
 def _funded_default_account(db, django_user_model):
     """A default account with 1,000,000 in capital (M4 real gateway default)."""
     from apps.accounts.infrastructure.models import Account

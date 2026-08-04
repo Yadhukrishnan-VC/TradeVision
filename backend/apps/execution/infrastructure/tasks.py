@@ -32,7 +32,29 @@ def handle_risk_approved(
     Idempotent on ``risk_approved_event_id``: a redelivered approval is
     skipped (no second ExecutionRequest / Order). Accepted requests chain
     ``process_order`` for broker simulation.
+
+    Gated on ``EXECUTION_ENGINE_ENABLED``: when disabled (the default), the
+    task returns immediately and creates no ExecutionRequest, no Order, and
+    enqueues no ``process_order``. The event was still delivered by the
+    risk_management subscription — execution simply declines to act.
     """
+    from django.conf import settings
+
+    if not getattr(settings, "EXECUTION_ENGINE_ENABLED", False):
+        logger.info(
+            "execution_engine_disabled",
+            extra={
+                "risk_approved_event_id": risk_approved_event_id,
+                "correlation_id": correlation_id,
+            },
+        )
+        return {
+            "outcome": "EXECUTION_DISABLED",
+            "request_id": "",
+            "order_id": "",
+            "reason_message": "execution engine disabled (EXECUTION_ENGINE_ENABLED=False)",
+        }
+
     result = ExecutionRequestService().intake(
         payload=payload,
         correlation_id=uuid.UUID(correlation_id) if correlation_id else uuid.uuid4(),
