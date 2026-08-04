@@ -33,6 +33,7 @@ def _deserialize_enriched_packet(data: dict) -> EnrichedIntelligencePacket:
 
     from core.events.event_types import (
         BreadthContext,
+        CircuitStatus,
         DataQuality,
         IntelligencePacket,
         NewsContext,
@@ -75,7 +76,7 @@ def _deserialize_enriched_packet(data: dict) -> EnrichedIntelligencePacket:
         volume=int(price.get("volume", 0)),
         avg_volume_20d=int(price.get("avg_volume_20d", 0)),
         avg_volume_10d=opt_int(price.get("avg_volume_10d")),
-        circuit_status=type("CS", (), {"value": safe_str(price.get("circuit_status"), "NORMAL")})(),
+        circuit_status=CircuitStatus(safe_str(price.get("circuit_status"), "NORMAL")),
     )
 
     tech_ctx = TechnicalContext(
