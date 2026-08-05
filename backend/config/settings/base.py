@@ -78,6 +78,9 @@ LOCAL_APPS: list[str] = [
     "apps.market_data",
     # Batch AI-5 — Pattern Engine
     "apps.pattern_engine",
+    # Batch M3 — Historical Replay & Backtesting. Sits after execution so its
+    # replay drives the real RiskApproved -> PaperBroker -> fills pipeline.
+    "apps.backtesting",
 ]
 
 THIRD_PARTY_APPS = []
@@ -237,6 +240,9 @@ CELERY_TASK_ROUTES = {
     # analytics queue (same profile as backtesting/calibration per §9.2).
     "tradevision.pattern_engine.precompute_historical_vectors": {"queue": "analytics"},
     "tradevision.pattern_engine.run_pattern_analysis": {"queue": "analytics"},
+    # Backtesting — Batch M3 historical replay. Runs on the analytics queue
+    # and MUST execute eagerly (see BacktestRunnerService / core.clock).
+    "tradevision.backtesting.run_backtest": {"queue": "analytics"},
 }
 
 CELERY_TASK_QUEUES = [

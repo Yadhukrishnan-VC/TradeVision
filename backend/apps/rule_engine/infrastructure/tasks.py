@@ -78,6 +78,7 @@ def publish_rule_firing(
     from core.rules.base_rule import RuleSeverity
     from apps.rule_engine.domain.entities import RuleFiring
     from apps.rule_engine.application.rule_evaluation_service import RuleEvaluationService
+    from apps.backtesting.application.backtest_context import get_backtest_account_id
 
     firing = RuleFiring(
         rule_id=rule_id,
@@ -89,7 +90,7 @@ def publish_rule_firing(
         occurred_at=datetime.fromisoformat(occurred_at),
     )
     service = RuleEvaluationService()
-    published_id = service.publish_rule_firing(firing)
+    published_id = service.publish_rule_firing(firing, account_id=get_backtest_account_id())
     return {
         "rule_id": rule_id,
         "published_event_id": str(published_id) if published_id else None,

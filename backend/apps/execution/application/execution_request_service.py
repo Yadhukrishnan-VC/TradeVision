@@ -75,7 +75,7 @@ class ExecutionRequestService(BaseService):
         except UnknownRuleError as exc:
             return ExecutionIntakeResult(outcome="UNKNOWN_RULE", reason_message=exc.message)
 
-        account = self._default_account()
+        account = self._resolve_account(payload)
         if account is None:
             return ExecutionIntakeResult(
                 outcome="NO_DEFAULT_ACCOUNT",
@@ -156,6 +156,22 @@ class ExecutionRequestService(BaseService):
     @staticmethod
     def _default_account() -> Account | None:
         return Account.objects.filter(is_default=True).order_by("created_at", "id").first()
+
+    @staticmethod
+    def _resolve_account(payload: dict) -> Account | None:
+        """Route to the account pinned by ``RiskApproved`` when present.
+
+        Backtest replay threads an optional ``account_id`` through the
+        RuleFired/RiskApproved payloads. When absent (production) this falls
+        back to today's ``is_default`` lookup, so behavior is unchanged.
+        """
+        account_id = payload.get("account_id")
+        if account_id:
+            try:
+                return Account.objects.filter(id=uuid.UUID(str(account_id))).first()
+            except (ValueError, TypeError, AttributeError):
+                return None
+        return ExecutionRequestService._default_account()
 
     def _available_capital(self, account_id: uuid.UUID) -> Decimal:
         state = self._capital.get_state(account_id)

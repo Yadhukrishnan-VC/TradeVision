@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import datetime, timezone
 
 from celery import shared_task
 from django.db import transaction
@@ -22,9 +21,19 @@ from apps.risk_management.gateways.market_calendar_status_gateway import (
     MarketCalendarStatusGateway,
 )
 from apps.risk_management.infrastructure.repositories import RiskDecisionRepository
+from core.clock import get_clock
 from core.tasks.base import DEFAULT_MAX_RETRIES, DEFAULT_RETRY_DELAY, BaseTask
 
 logger = logging.getLogger(__name__)
+
+
+def _optional_account_id(account_id: str | None) -> uuid.UUID | None:
+    if not account_id:
+        return None
+    try:
+        return uuid.UUID(str(account_id))
+    except (ValueError, TypeError, AttributeError):
+        return None
 
 
 @shared_task(
@@ -44,6 +53,7 @@ def evaluate_rule_firing(
     analysis_event_id: str,
     occurred_at: str,
     rule_fired_event_id: str,
+    account_id: str = "",
 ) -> dict:
     """Evaluate a RuleFired payload into a risk decision and publish it.
 
@@ -53,15 +63,16 @@ def evaluate_rule_firing(
     """
     from apps.risk_management.application.risk_config import risk_config_from_settings
 
+    account_uuid = _optional_account_id(account_id)
     service = RiskEvaluationService(
-        capital_gateway=get_capital_gateway(),
-        portfolio_gateway=get_portfolio_state_gateway(),
+        capital_gateway=get_capital_gateway(account_uuid),
+        portfolio_gateway=get_portfolio_state_gateway(account_uuid),
         market_gateway=MarketCalendarStatusGateway(),
         kill_switch_service=KillSwitchService(),
         config=risk_config_from_settings(),
     )
 
-    reference_dt = datetime.now(timezone.utc)
+    reference_dt = get_clock().now()
     payload = {
         "symbol": symbol,
         "rule_id": rule_id,
@@ -87,7 +98,7 @@ def evaluate_rule_firing(
             )
             return {"status": "skipped_duplicate", "rule_id": rule_id}
 
-        event = _build_decision_event(decision, correlation_id, causation_id)
+        event = _build_decision_event(decision, correlation_id, causation_id, account_id=account_id)
         try:
             bus = get_event_bus()
             bus.publish(event)
@@ -113,6 +124,7 @@ def _build_decision_event(
     decision,
     correlation_id: uuid.UUID,
     causation_id: uuid.UUID | None,
+    account_id: str = "",
 ) -> DomainEvent:
     if decision.rejection is not None:
         payload_obj = RiskRejected.from_decision(decision)
@@ -121,9 +133,13 @@ def _build_decision_event(
         payload_obj = RiskApproved.from_decision(decision)
         event_type = "risk_management.RiskApproved"
 
+    payload = payload_obj.to_payload()
+    if account_id:
+        payload["account_id"] = str(account_id)
+
     return DomainEvent.create(
         event_type=event_type,
-        payload=payload_obj.to_payload(),
+        payload=payload,
         correlation_id=correlation_id,
         causation_id=causation_id,
     )

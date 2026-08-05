@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime
 from typing import Any
 
 from apps.technical_analysis.domain.entities import TASnapshot
@@ -67,6 +68,30 @@ class TASnapshotRepository:
             return self._to_domain(obj)
         except TASnapshotModel.DoesNotExist:
             return None
+
+    def find_in_range(
+        self,
+        symbol: str,
+        start: datetime,
+        end: datetime,
+        *,
+        timeframe: str | None = None,
+    ) -> list[TASnapshot]:
+        """Return historical snapshots for a symbol ordered chronologically.
+
+        Read-only range query used by backtest replay. ``start``/``end`` are
+        inclusive on ``snapshot_timestamp``; an optional ``timeframe`` narrows
+        the range to the run's chart timeframe.
+        """
+        qs = TASnapshotModel.objects.filter(
+            symbol=symbol.upper(),
+            snapshot_timestamp__gte=start,
+            snapshot_timestamp__lte=end,
+        )
+        if timeframe:
+            qs = qs.filter(timeframe=timeframe)
+        qs = qs.order_by("snapshot_timestamp")
+        return [self._to_domain(obj) for obj in qs]
 
     def count_by_symbol(self, symbol: str) -> int:
         """Return the number of snapshots for a given symbol."""

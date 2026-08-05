@@ -185,13 +185,14 @@ class FillRepository(BaseRepository[Fill]):
         sequence: int,
         quantity: Decimal,
         price: Decimal,
+        occurred_at: datetime | None = None,
     ) -> Fill:
         fill = Fill(
             order=order,
             sequence=sequence,
             quantity=quantize_money(quantity),
             price=quantize_money(price),
-            occurred_at=timezone.now(),
+            occurred_at=occurred_at or timezone.now(),
         )
         fill.full_clean()
         fill.save()

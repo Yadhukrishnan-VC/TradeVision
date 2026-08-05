@@ -72,4 +72,7 @@ urlpatterns = [
     # Execution API — Milestone B: Safe Paper Execution Engine (read-only
     # order/request visibility; submission happens via risk_management).
     path("api/v1/execution/", include("apps.execution.interfaces.api.urls")),
+
+    # Backtesting API — Batch M3: Historical Replay & Backtesting Engine.
+    path("api/v1/backtesting/", include("apps.backtesting.interfaces.api.urls")),
 ]

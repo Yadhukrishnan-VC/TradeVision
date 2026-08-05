@@ -20,6 +20,7 @@ from apps.execution.infrastructure.repositories import FillRepository, OrderRepo
 from apps.portfolio.application.position_ledger_service import PositionLedgerService
 from apps.portfolio.domain.exceptions import InsufficientAvailableCapitalError
 from apps.portfolio.domain.value_objects import Side
+from core.clock import Clock, get_clock
 from core.services import BaseService
 
 
@@ -53,6 +54,7 @@ class ExecutionEngine(BaseService):
         fill_repo: FillRepository | None = None,
         ledger: PositionLedgerService | None = None,
         events: ExecutionEventPublisher | None = None,
+        clock: Clock | None = None,
     ) -> None:
         super().__init__()
         self._broker = broker or PaperBroker(mode=FillMode.FULL_FILL)
@@ -60,6 +62,7 @@ class ExecutionEngine(BaseService):
         self._fills = fill_repo or FillRepository()
         self._ledger = ledger or PositionLedgerService()
         self._events = events or ExecutionEventPublisher()
+        self._clock = clock or get_clock()
 
     def execute_order(self, order_id: uuid.UUID) -> dict[str, str]:
         """Execute (or resume) the order; returns its final status."""
@@ -164,6 +167,7 @@ class ExecutionEngine(BaseService):
                     sequence=planned.sequence,
                     quantity=planned.quantity,
                     price=planned.price,
+                    occurred_at=self._clock.now(),
                 )
                 new_filled = order.filled_quantity + planned.quantity
                 order.filled_quantity = quantize_money(new_filled)

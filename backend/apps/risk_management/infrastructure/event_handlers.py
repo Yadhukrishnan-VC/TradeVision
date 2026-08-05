@@ -12,7 +12,9 @@ def handle_rule_fired(event: DomainEvent) -> None:
 
     ``causation_id`` is the RuleFired ``event_id``; the payload's
     ``analysis_event_id`` is the stable idempotency key consumed by the
-    (analysis_event_id, rule_id) UniqueConstraint downstream.
+    (analysis_event_id, rule_id) UniqueConstraint downstream. An optional
+    ``account_id`` (set by backtest replay) is threaded through so the risk
+    evaluation and the resulting approval target the run's isolated account.
     """
     data = event.payload
     evaluate_rule_firing.delay(
@@ -23,6 +25,7 @@ def handle_rule_fired(event: DomainEvent) -> None:
         analysis_event_id=data.get("analysis_event_id", ""),
         occurred_at=data.get("occurred_at", ""),
         rule_fired_event_id=str(event.event_id),
+        account_id=str(data.get("account_id", "")) or "",
     )
 
 

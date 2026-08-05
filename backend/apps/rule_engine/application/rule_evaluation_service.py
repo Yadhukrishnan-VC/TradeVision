@@ -72,18 +72,28 @@ class RuleEvaluationService(BaseService):
 
         return firings
 
-    def publish_rule_firing(self, firing: RuleFiring) -> uuid.UUID | None:
+    def publish_rule_firing(
+        self,
+        firing: RuleFiring,
+        account_id: uuid.UUID | None = None,
+    ) -> uuid.UUID | None:
+        payload = {
+            "symbol": firing.symbol,
+            "event_type": firing.event_type,
+            "rule_id": firing.rule_id,
+            "severity": firing.severity.value,
+            "trigger_data": firing.trigger_data,
+            "analysis_event_id": str(firing.analysis_event_id),
+            "occurred_at": firing.occurred_at.isoformat(),
+        }
+        # Backtest replay routes the whole chain to an isolated account via an
+        # optional, additive payload field; absent -> production is_default
+        # resolution downstream (zero behavior change).
+        if account_id is not None:
+            payload["account_id"] = str(account_id)
         event = DomainEvent.create(
             event_type="rule_engine.RuleFired",
-            payload={
-                "symbol": firing.symbol,
-                "event_type": firing.event_type,
-                "rule_id": firing.rule_id,
-                "severity": firing.severity.value,
-                "trigger_data": firing.trigger_data,
-                "analysis_event_id": str(firing.analysis_event_id),
-                "occurred_at": firing.occurred_at.isoformat(),
-            },
+            payload=payload,
             correlation_id=firing.analysis_event_id,
         )
         try:
