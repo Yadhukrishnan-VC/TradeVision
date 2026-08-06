@@ -1,4 +1,4 @@
-"""Backtest-run account routing context (M3).
+"""TradeVision AI — Execution account override context (M3 historical replay).
 
 Backtest replay runs the real event-driven pipeline, but orders must land on
 the run's isolated account rather than the ``is_default`` account that
@@ -10,8 +10,8 @@ through ``RuleFired`` -> ``RiskApproved`` -> ``ExecutionRequestService``.
 Like the simulation clock, the account id lives in a ContextVar so it only
 propagates within the current execution context (hence the
 ``CELERY_TASK_ALWAYS_EAGER`` requirement for backtests). When nothing is
-bound, ``get_backtest_account_id()`` returns ``None`` and every producer
-falls back to today's ``is_default`` behavior unchanged.
+bound, ``get_account_override()`` returns ``None`` and every producer falls
+back to today's ``is_default`` behavior unchanged.
 """
 
 from __future__ import annotations
@@ -20,21 +20,21 @@ import contextvars
 from contextlib import contextmanager
 from uuid import UUID
 
-_backtest_account_id: contextvars.ContextVar[UUID | None] = contextvars.ContextVar(
-    "tradevision_backtest_account_id", default=None
+_account_override: contextvars.ContextVar[UUID | None] = contextvars.ContextVar(
+    "tradevision_execution_account_override", default=None
 )
 
 
-def get_backtest_account_id() -> UUID | None:
-    """Return the active backtest account id, or ``None`` outside replay."""
-    return _backtest_account_id.get()
+def get_account_override() -> UUID | None:
+    """Return the active account override, or ``None`` outside replay."""
+    return _account_override.get()
 
 
 @contextmanager
-def bind_backtest_account(account_id: UUID) -> None:
+def bind_account_override(account_id: UUID) -> None:
     """Route the current execution context's order flow to ``account_id``."""
-    token = _backtest_account_id.set(account_id)
+    token = _account_override.set(account_id)
     try:
         yield
     finally:
-        _backtest_account_id.reset(token)
+        _account_override.reset(token)

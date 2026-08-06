@@ -23,7 +23,6 @@ from typing import Any
 
 from django.conf import settings
 
-from apps.backtesting.application.backtest_context import bind_backtest_account
 from apps.backtesting.models import BacktestRun, BacktestRunStatus
 from apps.backtesting.repository import BacktestRunRepository
 from apps.common.domain.value_objects import IdempotencyKey
@@ -31,6 +30,7 @@ from apps.eventbus.infrastructure.event_bus_factory import get_event_bus
 from apps.technical_analysis.application.services import TechnicalAnalysisIngestionService
 from apps.technical_analysis.infrastructure.repositories import TASnapshotRepository
 from core.clock import bind_simulated_time, get_clock
+from core.execution_context import bind_account_override
 from core.services import BaseService
 
 logger = logging.getLogger(__name__)
@@ -79,7 +79,7 @@ class BacktestRunnerService(BaseService):
             pending = self._pending_snapshots(run)
             for snapshot in pending:
                 correlation_id = _correlation_id_for(run.id, snapshot.id)
-                with bind_backtest_account(run.account_id), bind_simulated_time(
+                with bind_account_override(run.account_id), bind_simulated_time(
                     snapshot.snapshot_timestamp
                 ):
                     self._ingest(snapshot.raw_payload, correlation_id)
