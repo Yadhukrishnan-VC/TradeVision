@@ -262,3 +262,253 @@ class TestResumeAfterFailure:
             Fill.objects.filter(order__account_id=backtest_run.account_id).count()
             == orders_before_resume + 1
         )
+
+
+class TestMultiBarReplay:
+    def test_multi_bar_replay_produces_independent_chains(
+        self,
+        seed_session_facts,
+        register_all_handlers,
+        active_bus,
+        backtest_run,
+        default_account,
+        monkeypatch,
+    ) -> None:
+        from apps.backtesting.services import _correlation_id_for
+        from apps.backtesting.tests.conftest import _make_ta_payload
+        from apps.execution.infrastructure.models import ExecutionRequest, Fill, Order
+        from apps.portfolio.infrastructure.price_source import (
+            MarketDataCurrentPriceProvider,
+        )
+        from apps.technical_analysis.infrastructure.models import TASnapshot
+
+        register_all_handlers(active_bus)
+
+        # Deterministic mark-to-market: no cached quote means the exposure and
+        # unrealized-P&L math falls back to each position's average entry price
+        # (the production path when a quote is unavailable). Without this the
+        # exposure cap decision would depend on leftover quote keys in Redis.
+        monkeypatch.setattr(
+            MarketDataCurrentPriceProvider,
+            "get_current_price",
+            lambda self, symbol: None,
+        )
+
+        bars = (
+            datetime(2024, 6, 10, 5, 0, 0, tzinfo=timezone.utc),
+            datetime(2024, 6, 10, 6, 0, 0, tzinfo=timezone.utc),
+            datetime(2024, 6, 10, 7, 0, 0, tzinfo=timezone.utc),
+        )
+        snapshot_ids = []
+        for bar_time in bars:
+            snapshot = TASnapshot.objects.create(
+                symbol="RELIANCE",
+                exchange="NSE",
+                timeframe="1D",
+                pine_id="long_momentum@tv",
+                pine_version="5",
+                indicators={"vwap": "101.50", "ema_20": "102.00"},
+                raw_payload=_make_ta_payload(),
+                snapshot_timestamp=bar_time,
+            )
+            snapshot_ids.append(snapshot.id)
+
+        result = BacktestRunnerService().run(backtest_run.id)
+        assert result["status"] == "COMPLETED"
+        assert result["bars_processed"] == "3"
+
+        # One distinct RuleFired chain per bar, all routed to the run's account.
+        rule_fired = [
+            e
+            for e in active_bus.published_events
+            if e.event_type == "rule_engine.RuleFired"
+            and e.payload["rule_id"] == "long_momentum_v1"
+        ]
+        assert len(rule_fired) == 3
+        assert len({e.event_id for e in rule_fired}) == 3
+        assert len({e.correlation_id for e in rule_fired}) == 3
+        assert all(
+            e.payload["account_id"] == str(backtest_run.account_id)
+            for e in rule_fired
+        )
+
+        risk_approved = [
+            e
+            for e in active_bus.published_events
+            if e.event_type == "risk_management.RiskApproved"
+        ]
+        assert len(risk_approved) == 3
+        assert len({e.event_id for e in risk_approved}) == 3
+        assert all(
+            e.payload["account_id"] == str(backtest_run.account_id)
+            for e in risk_approved
+        )
+
+        # One attributable order + fill per bar. Each bar's intelligence
+        # packet carries the deterministic (run_id, snapshot_id) correlation
+        # id, and every order in the chain is traceable to exactly one bar's
+        # packet event.
+        packet_events = [
+            e
+            for e in active_bus.published_events
+            if e.event_type == "intelligence.PacketBuilt"
+        ]
+        assert len(packet_events) == 3
+        assert len({e.event_id for e in packet_events}) == 3
+        assert {e.correlation_id for e in packet_events} == {
+            _correlation_id_for(backtest_run.id, snapshot_id)
+            for snapshot_id in snapshot_ids
+        }
+
+        orders = list(
+            Order.objects.filter(account_id=backtest_run.account_id).order_by(
+                "created_at"
+            )
+        )
+        assert len(orders) == 3
+        assert {o.correlation_id for o in orders} == {
+            e.event_id for e in packet_events
+        }
+        assert {e.correlation_id for e in risk_approved} == {
+            e.event_id for e in packet_events
+        }
+        assert len({o.execution_request_id for o in orders}) == 3
+        assert all(o.status == "FILLED" for o in orders)
+        assert all(
+            o.execution_request.account_id == backtest_run.account_id for o in orders
+        )
+        for order in orders:
+            fill = Fill.objects.get(order_id=order.id)
+            assert fill.quantity == order.quantity
+
+        assert (
+            Fill.objects.filter(order__account_id=backtest_run.account_id).count()
+            == 3
+        )
+
+        # Isolation: the production default account is untouched by every bar.
+        assert Order.objects.filter(account_id=default_account.id).count() == 0
+        assert ExecutionRequest.objects.filter(account_id=default_account.id).count() == 0
+
+
+class TestReproducibility:
+    def test_reproducibility_across_independent_runs(
+        self,
+        seed_session_facts,
+        register_all_handlers,
+        active_bus,
+        historical_snapshot,
+        backtest_run,
+        default_account,
+        monkeypatch,
+        django_user_model,
+    ) -> None:
+        from datetime import datetime, timezone
+        from decimal import Decimal
+        from uuid import uuid4
+
+        from apps.accounts.infrastructure.models import Account
+        from apps.backtesting.models import BacktestRun
+        from apps.execution.infrastructure.models import ExecutionRequest, Fill, Order
+        from apps.portfolio.application.capital_service import CapitalService
+        from apps.portfolio.infrastructure.models import AccountCapitalState
+        from apps.portfolio.infrastructure.price_source import (
+            MarketDataCurrentPriceProvider,
+        )
+
+        register_all_handlers(active_bus)
+
+        monkeypatch.setattr(
+            MarketDataCurrentPriceProvider,
+            "get_current_price",
+            lambda self, symbol: None,
+        )
+
+        # ``BacktestRun.account_id`` is unique, so the second independent run
+        # needs its own identically-funded account.
+        second_user = django_user_model.objects.create_user(
+            username=f"bt_repro_{uuid4().hex[:8]}", password="p"
+        )
+        second_account = Account.objects.create(
+            name=f"Backtest {second_user.username}",
+            owner=second_user,
+            is_default=False,
+        )
+        CapitalService().deposit(second_account.id, Decimal("1000000"))
+
+        second_run = BacktestRun(
+            symbol="RELIANCE",
+            timeframe="1D",
+            range_start=datetime(2024, 6, 9, tzinfo=timezone.utc),
+            range_end=datetime(2024, 6, 11, tzinfo=timezone.utc),
+            account=second_account,
+            status="PENDING",
+        )
+        second_run.save()
+
+        first = BacktestRunnerService().run(backtest_run.id)
+        second = BacktestRunnerService().run(second_run.id)
+        assert first["status"] == "COMPLETED"
+        assert second["status"] == "COMPLETED"
+        assert first["bars_processed"] == second["bars_processed"] == "1"
+
+        def _long_momentum_fired(account_id):
+            return [
+                e
+                for e in active_bus.published_events
+                if e.event_type == "rule_engine.RuleFired"
+                and e.payload["rule_id"] == "long_momentum_v1"
+                and e.payload["account_id"] == str(account_id)
+            ]
+
+        first_fired = _long_momentum_fired(backtest_run.account_id)
+        second_fired = _long_momentum_fired(second_run.account_id)
+        assert len(first_fired) == len(second_fired) == 1
+        for key in ("entry_price", "stop_loss", "volume_ratio"):
+            assert first_fired[0].payload["trigger_data"][key] == second_fired[0].payload[
+                "trigger_data"
+            ][key]
+
+        def _risk_approved(account_id):
+            return [
+                e
+                for e in active_bus.published_events
+                if e.event_type == "risk_management.RiskApproved"
+                and e.payload["account_id"] == str(account_id)
+            ]
+
+        first_approved = _risk_approved(backtest_run.account_id)
+        second_approved = _risk_approved(second_run.account_id)
+        assert len(first_approved) == len(second_approved) == 1
+        for key in ("entry_price", "stop_loss", "position_size"):
+            assert first_approved[0].payload[key] == second_approved[0].payload[key]
+
+        first_order = Order.objects.get(account_id=backtest_run.account_id)
+        second_order = Order.objects.get(account_id=second_run.account_id)
+        assert first_order.side == second_order.side == "LONG"
+        assert first_order.quantity == second_order.quantity
+        assert first_order.entry_price == second_order.entry_price
+        assert first_order.avg_fill_price == second_order.avg_fill_price
+        assert first_order.filled_quantity == second_order.filled_quantity
+        assert first_order.execution_request.rule_id == "long_momentum_v1"
+        assert (
+            first_order.execution_request.rule_id
+            == second_order.execution_request.rule_id
+        )
+
+        first_fill = Fill.objects.get(order_id=first_order.id)
+        second_fill = Fill.objects.get(order_id=second_order.id)
+        assert first_fill.quantity == second_fill.quantity
+        assert first_fill.price == second_fill.price
+
+        first_capital = AccountCapitalState.objects.get(
+            account_id=backtest_run.account_id
+        )
+        second_capital = AccountCapitalState.objects.get(account_id=second_run.account_id)
+        assert first_capital.equity == second_capital.equity
+        assert first_capital.available_capital == second_capital.available_capital
+        assert first_capital.realized_pnl_today == second_capital.realized_pnl_today
+
+        # The production default account is untouched by either run.
+        assert Order.objects.filter(account_id=default_account.id).count() == 0
+        assert ExecutionRequest.objects.filter(account_id=default_account.id).count() == 0
