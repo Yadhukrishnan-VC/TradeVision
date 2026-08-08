@@ -1,14 +1,18 @@
 """
-Candle ⟷ Technical Analysis bridge (Batch M4).
+Candle ⟷ Technical Analysis bridge (Batch M4/M5).
 
 A small, synchronous adapter that turns freshly-persisted REST-polled
 ``Candle`` rows into the exact TradingView-style payload shape the existing
 ``TechnicalAnalysisIngestionService.ingest()`` consumes, and feeds that seam.
 
-This is the ONLY new TA consumption path this batch introduces. It deliberately
-does NOT compute indicators: the payload carries only OHLCV + prev-close-derived
-``change_pct`` so that REST-only rules (``price_movement_v1``, ``volume_spike_v1``)
-can fire while indicator-dependent rules fail closed (missing data → None).
+This is the ONLY new TA consumption path. The payload carries OHLCV +
+prev-close-derived ``change_pct`` plus, when enough history exists, four
+deterministic indicators computed from the same persisted candles — ``vwap``
+(session-sliced), ``ema_20``, ``atr_14`` and ``bb_upper`` (sample-σ Bollinger)
+— so that indicator-dependent rules (``long_momentum_v1``, ``short_sell_v1``,
+``volatility_breakout_v1``, ``breakout_v1``) can fire on real market data.
+With insufficient history those keys are simply omitted (never zero-filled),
+so the rules fail closed exactly as they did in M4.
 """
 
 from __future__ import annotations
@@ -21,12 +25,19 @@ from typing import Any
 
 from apps.common.domain.value_objects import IdempotencyKey
 from apps.eventbus.infrastructure.event_bus_factory import get_event_bus
+from apps.market_data.application.session_facts_service import SessionFactsService
 from apps.market_data.domain.entities import Candle
 from apps.market_data.infrastructure.repositories import (
     CandleRepository,
     InstrumentRepository,
 )
 from apps.technical_analysis.application.services import TechnicalAnalysisIngestionService
+from apps.technical_analysis.domain.indicators import (
+    compute_atr,
+    compute_bollinger_upper,
+    compute_ema,
+    compute_vwap,
+)
 from apps.technical_analysis.infrastructure.repositories import TASnapshotRepository
 from core.config import config
 from core.redis_client import get_redis_client
@@ -37,6 +48,13 @@ logger = logging.getLogger(__name__)
 _REDIS_KEY_PREFIX = "tradevision:market_data:poll_ta"
 
 _CHANGE_PCT_QUANT = Decimal("0.0001")
+
+# M5 warm-up gates. EMA20 is deliberately stricter (approved Decision C: the
+# value is only decision-grade once 3x the period of candles exist, avoiding
+# seed bias after a cold start). ATR/BB are well-defined at their fixed window.
+_MIN_CANDLES_EMA20 = 60
+_MIN_CANDLES_ATR14 = 15
+_MIN_CANDLES_BB = 20
 
 
 class CandleToTechnicalAnalysisBridge:
@@ -62,9 +80,11 @@ class CandleToTechnicalAnalysisBridge:
         ingestion_service: TechnicalAnalysisIngestionService | None = None,
         redis_client: Any | None = None,
         staleness_seconds: int | None = None,
+        session_facts: SessionFactsService | None = None,
     ) -> None:
         self._instrument_repo = instrument_repo or InstrumentRepository()
         self._candle_repo = candle_repo or CandleRepository()
+        self._session_facts = session_facts or SessionFactsService(candle_repo=self._candle_repo)
         self._redis = redis_client or get_redis_client()
         self._staleness_seconds = staleness_seconds or config.market_data_poll_staleness_seconds
         self._ingestion_service = ingestion_service or TechnicalAnalysisIngestionService(
@@ -131,8 +151,11 @@ class CandleToTechnicalAnalysisBridge:
         """Build the TA ingestion payload from one persisted candle.
 
         Returns a dict in the shape ``TechnicalAnalysisIngestionService``
-        accepts: ticker/close required, plus OHLCV + prev_close/change_pct.
-        No indicator keys are emitted — indicator-dependent rules fail safe.
+        accepts: ticker/close required, plus OHLCV + prev_close/change_pct AND,
+        when sufficient persisted history exists, indicator keys (``vwap``,
+        ``ema_20``, ``atr_14``, ``bb_upper``). Insufficient history omits the
+        corresponding keys (never ``0``, never fabricated) so indicator
+        rules fail closed.
         """
         instrument = self._instrument_repo.find_by_token(candle.instrument_token)
         if instrument is None:
@@ -142,6 +165,7 @@ class CandleToTechnicalAnalysisBridge:
             )
 
         prev_close, change_pct = self._prev_close_and_change(candle)
+        indicators = self._compute_indicators(candle)
 
         payload: dict[str, Any] = {
             "ticker": instrument.tradingsymbol,
@@ -158,6 +182,7 @@ class CandleToTechnicalAnalysisBridge:
             payload["prev_close"] = str(prev_close)
         if change_pct is not None:
             payload["change_pct"] = str(change_pct)
+        payload.update(indicators)
         return payload
 
     def ingest_fresh_candle(self, instrument_token: int, timeframe: str, candle_timestamp: datetime) -> Candle | None:
@@ -220,13 +245,6 @@ class CandleToTechnicalAnalysisBridge:
         return candles[0] if candles else None
 
     def _prev_close_and_change(self, candle: Candle) -> tuple[Decimal | None, Decimal | None]:
-        """Return ``(prev_close, change_pct)`` derived from persisted candles.
-
-        ``prev_close`` is the close of the candle immediately preceding the
-        target candle in the same (symbol, timeframe) series. ``change_pct``
-        is the target candle's intra-bar percentage move against that close,
-        precision-capped to 4 decimals so it survives JSON serialization.
-        """
         context = self._candle_repo.find_latest(candle.instrument_token, candle.timeframe, limit=20)
         prev_close: Decimal | None = None
         change_pct: Decimal | None = None
@@ -239,6 +257,66 @@ class CandleToTechnicalAnalysisBridge:
             change_pct = ((candle.close - prev_close) / prev_close) * Decimal("100")
             change_pct = change_pct.quantize(_CHANGE_PCT_QUANT, rounding=ROUND_HALF_UP)
         return prev_close, change_pct
+
+    def _compute_indicators(self, candle: Candle) -> dict[str, str]:
+        """Compute M5 indicator values for *candle* from persisted history.
+
+        Only keys with a decision-grade value are emitted (warm-up simply
+        omits the key — never zero-filled, never fabricated). Values are
+        stringified so they survive JSON serialization exactly like the
+        existing ``prev_close``/``change_pct`` fields.
+
+        The shared 60-candle fetch covers all three fixed-window indicators;
+        VWAP is sliced separately from the session-open boundary derived via
+        ``SessionFactsService``.
+        """
+        history = self._indicator_series(candle)
+        vwap = self._compute_vwap(candle)
+
+        indicators: dict[str, Any] = {}
+        if len(history) >= _MIN_CANDLES_EMA20:
+            ema_20 = compute_ema(history, period=20)
+            if ema_20 is not None:
+                indicators["ema_20"] = str(ema_20)
+        if len(history) >= _MIN_CANDLES_ATR14:
+            atr_14 = compute_atr(history, period=14)
+            if atr_14 is not None:
+                indicators["atr_14"] = str(atr_14)
+        if len(history) >= _MIN_CANDLES_BB:
+            bb_upper = compute_bollinger_upper(history, period=20)
+            if bb_upper is not None:
+                indicators["bb_upper"] = str(bb_upper)
+        if vwap is not None:
+            indicators["vwap"] = str(vwap)
+        return indicators
+
+    def _indicator_series(self, candle: Candle) -> list[Candle]:
+        """Most recent 60 candles for the shared indicator window."""
+        return self._candle_repo.find_latest(
+            candle.instrument_token, candle.timeframe, limit=_MIN_CANDLES_EMA20
+        )
+
+    def _compute_vwap(self, candle: Candle) -> Decimal | None:
+        """VWAP from the current session's candles (session-sliced).
+
+        Uses ``SessionFactsService`` to find the session boundary (09:15 IST
+        opening candle) for the candle's trading day, then scans the same
+        timeframe from that boundary up to and including *candle*. When the
+        session open cannot be determined, VWAP is unavailable (``None``).
+        """
+        opening = self._session_facts.get_opening_15m_candle(
+            candle.instrument_token, to_utc(candle.timestamp)
+        )
+        if opening is None:
+            return None
+        session_open_utc = to_utc(opening.timestamp)
+        session_candles = self._candle_repo.find_range(
+            candle.instrument_token,
+            candle.timeframe,
+            session_open_utc,
+            to_utc(candle.timestamp),
+        )
+        return compute_vwap(session_candles)
 
     def _last_ingested_timestamp(self, instrument_token: int, timeframe: str) -> datetime | None:
         raw = self._redis.get(self._marker_key(instrument_token, timeframe))

@@ -16,9 +16,15 @@ B) ``TestTail`` — drives the same real ``TechnicalAnalysisIngestionService``
    backtest replay already does) and proves the real event-driven tail
    reaches Order -> Fill exactly once, with full correlation traceability.
 
+C) ``TestIndicatorDrivenRESTPoll`` — M5 proof that the REST bridge itself now
+   computes real VWAP/EMA20/ATR14/Bollinger-Upper from seeded persisted
+   history, which lets the previously-REST-dead indicator rule
+   ``long_momentum_v1`` fire with real entry/stop levels and reach
+   RiskApproved -> Order -> Fill exactly once.
+
 Every consumer is the real production handler wired on the FakeEventBus.
 EXECUTION_ENGINE_ENABLED stays False in Test A (production default) and is
-enabled in Test B exactly like the other execution integration tests.
+enabled in Tests B and C exactly like the other execution integration tests.
 """
 
 from __future__ import annotations
@@ -247,6 +253,32 @@ def _make_account(db, django_user_model) -> Any:
     return account
 
 
+def _seed_minute_history(db, count: int = 60) -> None:
+    """Seed `count` 1-minute candles inside the current session (10:16 IST+).
+
+    Constant flat bars (close 100.00, volume 1000 each) so the shared
+    60-candle indicator window reaches the EMA20 warm-up gate *before* the
+    polled bars arrive via the FakeProvider.
+    """
+    from apps.market_data.infrastructure.models import Candle
+
+    session_day = NOW.astimezone(_IST).date()
+    start = datetime.combine(session_day, dtime(10, 16), tzinfo=_IST).astimezone(
+        timezone.utc
+    )
+    for idx in range(count):
+        Candle.objects.create(
+            instrument_id=1001,
+            timeframe="1min",
+            timestamp=start + timedelta(minutes=idx),
+            open=Decimal("100.00"),
+            high=Decimal("100.50"),
+            low=Decimal("99.50"),
+            close=Decimal("100.00"),
+            volume=1000,
+        )
+
+
 # ---------------------------------------------------------------------------
 # Test A — constrained REST bridge: full chain ends at RiskRejected
 # ---------------------------------------------------------------------------
@@ -300,13 +332,17 @@ class TestConstrainedRESTPoll:
         assert ta_event.payload["timeframe"] == "1min"
         assert Decimal(ta_event.payload["price"]["close"]) == Decimal("103.00")
         assert Decimal(ta_event.payload["price"]["change_pct"]) == Decimal("2.4876")
-        assert ta_event.payload["indicators"] == {}
+        # M5 bridge: VWAP is session-minimal (defined from a single candle) so
+        # it is emitted even here; the fixed-window indicators require seeded
+        # history (60/15/20 candles) and are correctly omitted -> fail-closed.
+        assert set(ta_event.payload["indicators"]) == {"vwap"}
+        assert Decimal(ta_event.payload["indicators"]["vwap"]) > 0
         assert TASnapshot.objects.filter(
             symbol="RELIANCE", timeframe="1min"
         ).count() == 1
 
         # ------------------------------------------------------------------
-        # Intelligence: packet built with REST-only facts (no indicators)
+        # Intelligence: packet built with REST facts (vwap, no fixed windows)
         # ------------------------------------------------------------------
         packet_events = [
             e for e in bus.published_events
@@ -590,3 +626,132 @@ class TestTail:
             analysis_event_id=uuid.UUID(fired_event.payload["analysis_event_id"]),
         ).count() == 1
         assert Order.objects.count() == 1
+
+
+# ---------------------------------------------------------------------------
+# Test C — M5 proof: real indicators from the REST bridge drive a real rule
+# ---------------------------------------------------------------------------
+
+
+class TestIndicatorDrivenRESTPoll:
+    """Run the FULL real polling path with seeded 1-minute history so the M5
+    bridge computes real VWAP/EMA20/ATR14/Bollinger-Upper. With all four
+    indicators present, ``long_momentum_v1`` — an indicator-dependent rule
+    that M4 could never fire on REST data — now fires with a real stop and
+    reaches RiskApproved -> Order -> Fill exactly once."""
+
+    def _setup(self, monkeypatch, settings, db, django_user_model):
+        from apps.eventbus.infrastructure.event_bus_factory import get_event_bus
+        from apps.intelligence.infrastructure.event_handlers import (
+            register_handlers as register_intelligence,
+        )
+        from apps.risk_management.infrastructure.event_handlers import (
+            register_handlers as register_risk,
+        )
+        from apps.rule_engine.infrastructure.event_handlers import (
+            register_handlers as register_rule,
+        )
+
+        _seed_session_and_facts(monkeypatch, db)
+        _seed_minute_history(db, count=60)
+        _configure_fake_bus_and_risk_gates(monkeypatch, db)
+        settings.EXECUTION_ENGINE_ENABLED = True
+        account = _make_account(db, django_user_model)
+
+        bridge = _poll_runtime(monkeypatch, settings)
+        bus = get_event_bus()
+        _register_handlers(bus, register_intelligence, register_rule, register_risk)
+        return bus, bridge, account
+
+    def test_real_bridge_indicators_fire_long_momentum_and_fill(
+        self, monkeypatch, settings, db, django_user_model
+    ) -> None:
+        from apps.execution.infrastructure.models import ExecutionRequest, Fill, Order
+        from apps.market_data.infrastructure.polling_tasks import (
+            poll_market_data_watchlist,
+        )
+        from apps.risk_management.infrastructure.models import RiskDecisionExecution
+
+        bus, _, account = self._setup(monkeypatch, settings, db, django_user_model)
+
+        poll_market_data_watchlist.apply().get()
+
+        # ------------------------------------------------------------------
+        # M5 bridge: all four indicators computed from seeded persisted history
+        # ------------------------------------------------------------------
+        ta_event = next(
+            e for e in bus.published_events
+            if e.event_type == "technical_analysis.TechnicalAnalysisCompleted"
+        )
+        assert set(ta_event.payload["indicators"]) == {"vwap", "ema_20", "atr_14", "bb_upper"}
+        for value in ta_event.payload["indicators"].values():
+            assert Decimal(value) > 0
+
+        packet_data = next(
+            e for e in bus.published_events
+            if e.event_type == "intelligence.PacketBuilt"
+        ).payload["packet_data"]
+        tech_ctx = packet_data["technical_context"]
+        assert Decimal(tech_ctx["vwap"]) == Decimal(ta_event.payload["indicators"]["vwap"])
+        assert Decimal(tech_ctx["ema_20"]) == Decimal(ta_event.payload["indicators"]["ema_20"])
+        assert tech_ctx["opening_15m_open"] is not None
+        assert tech_ctx["opening_15m_low"] is not None
+
+        # ------------------------------------------------------------------
+        # The indicator-dependent rule now fires with real entry/stop levels
+        # ------------------------------------------------------------------
+        fired_ids = {
+            e.payload["rule_id"]
+            for e in bus.published_events
+            if e.event_type == "rule_engine.RuleFired"
+        }
+        assert "long_momentum_v1" in fired_ids
+
+        long_fired = next(
+            e for e in bus.published_events
+            if e.event_type == "rule_engine.RuleFired"
+            and e.payload["rule_id"] == "long_momentum_v1"
+        )
+        entry = Decimal(long_fired.payload["trigger_data"]["entry_price"])
+        stop = Decimal(long_fired.payload["trigger_data"]["stop_loss"])
+        # entry=103 (> VWAP/EMA), stop = min(opening_low=100, vwap >100) => 100
+        assert entry == Decimal("103.00")
+        assert stop == Decimal("100.00")
+
+        # ------------------------------------------------------------------
+        # Risk: approved once; other fired rules rejected (no stop levels)
+        # ------------------------------------------------------------------
+        approved = [
+            e for e in bus.published_events
+            if e.event_type == "risk_management.RiskApproved"
+        ]
+        assert len(approved) == 1
+        assert approved[0].payload["rule_id"] == "long_momentum_v1"
+
+        rejected = [
+            e for e in bus.published_events
+            if e.event_type == "risk_management.RiskRejected"
+        ]
+        assert {e.payload["rule_id"] for e in rejected} == fired_ids - {"long_momentum_v1"}
+        assert all(e.payload["reason_code"] == "MISSING_STOP_LOSS" for e in rejected)
+
+        # ------------------------------------------------------------------
+        # Execution: exactly one order, filled once, priced at the rule entry
+        # ------------------------------------------------------------------
+        assert ExecutionRequest.objects.count() == 1
+        assert Order.objects.count() == 1
+        assert Fill.objects.count() >= 1
+
+        order = Order.objects.get()
+        assert order.status == "FILLED"
+        assert order.symbol == "RELIANCE"
+        assert order.avg_fill_price == entry
+        assert order.entry_price == entry
+        assert order.stop_loss == stop
+
+        request = ExecutionRequest.objects.get()
+        assert request.account_id == account.id
+        assert request.risk_approved_event_id == approved[0].event_id
+
+        # traceability threaded from the TA event to the fill bearer
+        assert order.correlation_id == request.correlation_id == approved[0].correlation_id
