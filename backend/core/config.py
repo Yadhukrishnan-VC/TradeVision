@@ -239,6 +239,45 @@ class TradeVisionConfig:
         return getattr(settings, "ZERODHA_ACCESS_TOKEN", "")
 
     # ---------------------------------------------------------------------------
+    # Batch M4 — REST polling bridge
+    # ---------------------------------------------------------------------------
+
+    @property
+    def market_data_poll_timeframe(self) -> str:
+        """Candle timeframe polled by the REST polling bridge (e.g. ``1min``)."""
+        from django.conf import settings
+
+        return str(getattr(settings, "MARKET_DATA_POLL_TIMEFRAME", "1min"))
+
+    @property
+    def market_data_poll_interval_seconds(self) -> int:
+        """Seconds between REST polling bridge beat executions."""
+        from django.conf import settings
+
+        return int(getattr(settings, "MARKET_DATA_POLL_INTERVAL_SECONDS", 60))
+
+    @property
+    def market_data_poll_staleness_seconds(self) -> int:
+        """Maximum age in seconds of a candle before the bridge skips it as stale."""
+        from django.conf import settings
+
+        return int(getattr(settings, "MARKET_DATA_POLL_STALENESS_SECONDS", 180))
+
+    @property
+    def market_data_poll_window_seconds(self) -> int:
+        """Historical window in seconds fetched per watchlist symbol on each poll."""
+        from django.conf import settings
+
+        return int(getattr(settings, "MARKET_DATA_POLL_WINDOW_SECONDS", 600))
+
+    @property
+    def market_data_poll_watchlist(self) -> list[tuple[str, str]]:
+        """Watchlist of ``(exchange, tradingsymbol)`` pairs polled by the bridge."""
+        from django.conf import settings
+
+        return list(getattr(settings, "MARKET_DATA_POLL_WATCHLIST", []) or [])
+
+    # ---------------------------------------------------------------------------
     # Market and exchange
     # ---------------------------------------------------------------------------
 

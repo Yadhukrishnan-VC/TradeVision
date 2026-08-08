@@ -261,6 +261,56 @@ CELERY_TASK_QUEUES = [
 ]
 
 # ---------------------------------------------------------------------------
+# Batch M4 — Real Market Data REST polling bridge
+#
+# One Celery Beat task polls the configured watchlist during market hours on
+# ``MARKET_DATA_POLL_INTERVAL_SECONDS``, reusing HistoricalSyncService for
+# candle persistence and a small candle->TA adapter to drive the existing
+# TechnicalAnalysisIngestionService seam. Every poll setting is operator
+# config here — nothing is hardcoded in application code.
+# ---------------------------------------------------------------------------
+VALID_MARKET_DATA_POLL_TIMEFRAMES: set[str] = {
+    "1min", "3min", "5min", "10min", "15min", "30min", "1hr", "2hr", "4hr", "1D",
+}
+
+
+def _parse_poll_watchlist(raw: str) -> list[tuple[str, str]]:
+    """Parse ``EXCHANGE:SYMBOL`` pairs from the env watchlist string.
+
+    Keeps the watchlist a plain config value (not a Python literal list) so
+    it can be supplied via environment variables in every deploy environment.
+    """
+    result: list[tuple[str, str]] = []
+    for token in raw.split(","):
+        token = token.strip()
+        if not token:
+            continue
+        exchange, sep, symbol = token.partition(":")
+        if not sep or not exchange.strip() or not symbol.strip():
+            raise ValueError(
+                f"Invalid MARKET_DATA_POLL_WATCHLIST entry {token!r}. "
+                "Expected 'EXCHANGE:SYMBOL' pairs separated by commas, "
+                "e.g. 'NSE:RELIANCE,NSE:TCS'."
+            )
+        result.append((exchange.strip().upper(), symbol.strip().upper()))
+    return result
+
+
+MARKET_DATA_POLL_TIMEFRAME: str = config("MARKET_DATA_POLL_TIMEFRAME", default="1min")
+MARKET_DATA_POLL_INTERVAL_SECONDS: int = config(
+    "MARKET_DATA_POLL_INTERVAL_SECONDS", default=60, cast=int
+)
+MARKET_DATA_POLL_STALENESS_SECONDS: int = config(
+    "MARKET_DATA_POLL_STALENESS_SECONDS", default=180, cast=int
+)
+MARKET_DATA_POLL_WINDOW_SECONDS: int = config(
+    "MARKET_DATA_POLL_WINDOW_SECONDS", default=600, cast=int
+)
+MARKET_DATA_POLL_WATCHLIST: list[tuple[str, str]] = _parse_poll_watchlist(
+    config("MARKET_DATA_POLL_WATCHLIST", default="")
+)
+
+# ---------------------------------------------------------------------------
 # Celery Beat schedule — market_data periodic tasks
 #
 # Only arg-free periodic tasks are scheduled here. ``refresh_candles`` and
@@ -275,6 +325,15 @@ CELERY_BEAT_SCHEDULE = {
     "detect-session-transitions": {
         "task": "apps.market_data.infrastructure.tasks.detect_session_transitions",
         "schedule": 30.0,
+        "options": {"queue": "market_data"},
+    },
+    # Batch M4 — REST polling bridge. Fetches the latest bars for the
+    # configured MARKET_DATA_POLL_WATCHLIST during market hours and drives the
+    # existing TA ingestion seam. No-ops when the watchlist is empty (the
+    # default) or outside market hours.
+    "poll-market-data-watchlist": {
+        "task": "apps.market_data.infrastructure.polling_tasks.poll_market_data_watchlist",
+        "schedule": MARKET_DATA_POLL_INTERVAL_SECONDS,
         "options": {"queue": "market_data"},
     },
     # Self-healing watchdog for the WebSocket tick manager.
