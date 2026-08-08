@@ -309,6 +309,15 @@ MARKET_DATA_POLL_WINDOW_SECONDS: int = config(
 MARKET_DATA_POLL_WATCHLIST: list[tuple[str, str]] = _parse_poll_watchlist(
     config("MARKET_DATA_POLL_WATCHLIST", default="")
 )
+# TTL of the Redis mutex guarding one ``poll_market_data_watchlist`` cycle
+# (batch M4 remediation). Celery hard-kills the task at
+# ``CELERY_TASK_TIME_LIMIT`` (60s); this is hard-kill time + safety margin, so
+# a worker killed mid-cycle can never hold the lock past the point Celery
+# would already have terminated it. Even in the worst case the lock
+# self-expires and polling self-recovers within this window.
+MARKET_DATA_POLL_LOCK_TTL_SECONDS: int = config(
+    "MARKET_DATA_POLL_LOCK_TTL_SECONDS", default=90, cast=int
+)
 
 # ---------------------------------------------------------------------------
 # Celery Beat schedule — market_data periodic tasks

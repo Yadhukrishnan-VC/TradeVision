@@ -25,9 +25,11 @@ Semantics (per the batch contract):
 from __future__ import annotations
 
 import logging
+import sys
 from datetime import timedelta
 from typing import Any
 
+import redis
 from celery import shared_task
 from django.conf import settings
 
@@ -36,11 +38,118 @@ from apps.market_data.application.candle_ta_bridge import get_candle_ta_bridge
 from apps.market_data.application.historical_sync_service import get_historical_sync_service
 from apps.market_data.domain.value_objects import Timeframe
 from apps.market_data.infrastructure.repositories import CandleRepository, InstrumentRepository
+from core.config import config
 from core.exceptions import DataProviderError
 from core.market_calendar import MarketSession, get_market_calendar
+from core.redis_client import get_redis_client
 from core.utils import get_ist_now, get_now, to_utc
 
 logger = logging.getLogger(__name__)
+
+# One global mutex for the whole watchlist cycle. There is a single
+# Beat-scheduled watchlist poller, and ``poll_watchlist_sync`` processes the
+# entire watchlist synchronously in one unit of work — there is no per-symbol
+# fan-out, so per-symbol locks would only add complexity, not safety.
+_POLL_LOCK_KEY = "tradevision:market_data:poll_watchlist:lock"
+
+
+def _poll_lock_ttl_seconds() -> int:
+    """TTL for the polling mutex; see ``MARKET_DATA_POLL_LOCK_TTL_SECONDS``."""
+    return int(config.market_data_poll_lock_ttl_seconds)
+
+
+def _acquire_poll_lock(
+    redis_client: redis.Redis, request_id: str
+) -> str:
+    """Try to acquire the global poll lock.
+
+    Returns one of:
+        ``"acquired"``  -> this cycle holds the lock and must release it.
+        ``"held"``      -> another cycle holds it; skip this run (O(1) exit).
+        ``"redis_error"`` -> the Redis client failed; proceed WITHOUT the lock
+                             (fail open, matching the circuit breaker's own
+                             fail-open philosophy — a Redis hiccup must never
+                             block market-data polling).
+
+    The lock stores the Celery request id as its value so observability can
+    identify which execution holds it. ``nx=True`` + ``ex=TTL`` mirrors the
+    exact acquire pattern established by ``CircuitBreaker._acquire_probe_lock``.
+    """
+    try:
+        lock_value = redis_client.set(
+            _POLL_LOCK_KEY, request_id, nx=True, ex=_poll_lock_ttl_seconds()
+        )
+    except redis.RedisError as exc:
+        logger.warning(
+            "market_data_poll_lock_redis_unavailable",
+            extra={"lock_key": _POLL_LOCK_KEY, "error": str(exc)},
+        )
+        return "redis_error"
+
+    if not lock_value:
+        logger.info(
+            "market_data_poll_skipped_overlap",
+            extra={"lock_key": _POLL_LOCK_KEY, "request_id": request_id},
+        )
+        return "held"
+
+    return "acquired"
+
+
+def _release_poll_lock(
+    redis_client: redis.Redis, request_id: str, *, on_exception: bool = False
+) -> None:
+    """Release the poll-cycle lock on every exit path.
+
+    ``delete`` is idempotent and, combined with the bounded TTL, guarantees
+    the lock can never deadlock the system even if this worker is killed
+    before reaching this block (the expired TTL is reaped by Redis itself).
+    """
+    try:
+        redis_client.delete(_POLL_LOCK_KEY)
+    except redis.RedisError as exc:
+        logger.warning(
+            "market_data_poll_lock_release_failed",
+            extra={"lock_key": _POLL_LOCK_KEY, "request_id": request_id, "error": str(exc)},
+        )
+        return
+
+    if on_exception:
+        logger.info(
+            "market_data_poll_lock_released_on_exception",
+            extra={"lock_key": _POLL_LOCK_KEY, "request_id": request_id},
+        )
+    else:
+        logger.info(
+            "market_data_poll_lock_released",
+            extra={"lock_key": _POLL_LOCK_KEY, "request_id": request_id},
+        )
+
+
+def _run_poll_cycle(watchlist: list[tuple[str, str]], request_id: str = "") -> int:
+    """Protected execution of one polling cycle under the global cycle lock.
+
+    Kept separate from the Celery task so the lock semantics are plain,
+    testable Python while ``poll_watchlist_sync`` stays a lock-free pure-ish
+    function (unit tests already drive it directly).
+    """
+    redis_client = get_redis_client()
+
+    lock_state = _acquire_poll_lock(redis_client, request_id)
+    if lock_state == "held":
+        return 0
+    if lock_state == "redis_error":
+        # Fail open — never block market-data polling because Redis hiccuped.
+        return poll_watchlist_sync(watchlist)
+
+    try:
+        return poll_watchlist_sync(watchlist)
+    finally:
+        _release_poll_lock(
+            redis_client,
+            request_id=request_id,
+            on_exception=sys.exc_info()[0] is not None,
+        )
 
 
 def _parse_watchlist(raw: str) -> list[tuple[str, str]]:
@@ -192,13 +301,25 @@ def poll_market_data_watchlist(self: Any) -> int:
     """Celery Beat entry point for the REST polling bridge.
 
     ``CELERY_BEAT_SCHEDULE`` fires this every ``MARKET_DATA_POLL_INTERVAL_SECONDS``
-    on the ``market_data`` queue. The task delegates to
-    :func:`poll_watchlist_sync` and re-raises transient provider outages as a
-    Celery retry; per-symbol failures are already isolated inside the cycle.
+    on the ``market_data`` queue. The task acquires the global cycle lock
+    (guard against overlapping cycles from a congested/duplicated beat), then
+    delegates to :func:`poll_watchlist_sync` and re-raises transient provider
+    outages as a Celery retry; per-symbol failures are already isolated inside
+    the cycle.
+
+    Lock semantics:
+        - The lock is held only around the actual cycle (release is a
+          ``finally`` on every exit path — success, per-symbol failures or a
+          provider-outage exception).
+        - Its TTL (90s default) exceeds ``CELERY_TASK_TIME_LIMIT`` (60s), so a
+          worker hard-killed mid-cycle can never hold the lock past the point
+          Celery would already have terminated it; polling self-recovers.
+        - A Redis outage fails OPEN (never blocks market-data polling); a
+          still-held lock skips the cycle without an error or a retry.
     """
     try:
         watchlist = list(getattr(settings, "MARKET_DATA_POLL_WATCHLIST", []) or [])
-        return poll_watchlist_sync(watchlist)
+        return _run_poll_cycle(watchlist, request_id=getattr(self.request, "id", "") or "")
     except DataProviderError as exc:
         logger.error("market_data_poll_retry", extra={"error": str(exc)})
         raise self.retry(exc=exc)

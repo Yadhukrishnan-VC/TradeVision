@@ -277,6 +277,19 @@ class TradeVisionConfig:
 
         return list(getattr(settings, "MARKET_DATA_POLL_WATCHLIST", []) or [])
 
+    @property
+    def market_data_poll_lock_ttl_seconds(self) -> int:
+        """TTL (seconds) of the Redis mutex guarding one polling cycle.
+
+        ``poll_market_data_watchlist`` hard-kills at ``CELERY_TASK_TIME_LIMIT``
+        (60s); this TTL adds a safety margin so a worker killed mid-cycle can
+        never hold the lock past the point Celery would already have terminated
+        it. The lock self-expires and polling self-recovers within this window.
+        """
+        from django.conf import settings
+
+        return int(getattr(settings, "MARKET_DATA_POLL_LOCK_TTL_SECONDS", 90))
+
     # ---------------------------------------------------------------------------
     # Market and exchange
     # ---------------------------------------------------------------------------
