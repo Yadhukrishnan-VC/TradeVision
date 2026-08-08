@@ -15,7 +15,9 @@ from unittest.mock import MagicMock
 import pytest
 from pytest import MonkeyPatch
 
-from apps.market_data.application.candle_ta_bridge import CandleToTechnicalAnalysisBridge
+from apps.market_data.application.candle_ta_bridge import (
+    CandleToTechnicalAnalysisBridge,
+)
 from apps.market_data.application.historical_sync_service import HistoricalSyncService
 from apps.market_data.domain.value_objects import Timeframe
 from apps.market_data.infrastructure.models import Candle as CandleModel
@@ -50,11 +52,15 @@ class FakeProvider:
     def fetch(self, request: Any) -> MarketDataResponse:
         if self.fail:
             raise DataProviderError(f"provider down for {request.symbol}")
+        # M5.1: the operating cycle is ``1min``; the 15m/1D session frames are
+        # exercised by the interval-aware provider in the E2E integration test,
+        # so this unit fake yields no bars for the supplementary frames.
+        bars = self._bars if request.interval == "1min" else []
         return MarketDataResponse(
             request_id=request.request_id,
             symbol=request.symbol,
             interval=request.interval,
-            bars=tuple(self._bars),
+            bars=tuple(bars),
             provider=self.provider_name,
             fetched_at=NOW,
         )
@@ -247,7 +253,9 @@ class TestPollWatchlistSync:
     def test_poll_persists_candles_and_publishes_ta_snapshot(
         self, db, monkeypatch, settings
     ) -> None:
-        from apps.market_data.application.candle_ta_bridge import CandleToTechnicalAnalysisBridge
+        from apps.market_data.application.candle_ta_bridge import (
+            CandleToTechnicalAnalysisBridge,
+        )
         from apps.technical_analysis.infrastructure.models import TASnapshot
 
         settings.MARKET_DATA_POLL_TIMEFRAME = "1min"
@@ -261,7 +269,6 @@ class TestPollWatchlistSync:
         _seed_instrument(1001, "RELIANCE", db)
         _historical_service(monkeypatch, FakeProvider(_bars(Decimal("103.00"))))
 
-        from apps.market_data.application.candle_ta_bridge import CandleToTechnicalAnalysisBridge
 
         bridge = CandleToTechnicalAnalysisBridge(
             redis_client=FakeRedis(), staleness_seconds=180
@@ -344,7 +351,11 @@ class TestPollWatchlistSync:
 
         # The healthy symbol still processed within the same cycle.
         assert TASnapshot.objects.filter(symbol="TCS").count() == 1
-        assert calls["RELIANCE"] == 1
+        # RELIANCE is attempted on every frame (1D, 15m and the operating 1min
+        # under M5.1); the supplementary-frame failures are isolated and only
+        # the operating-frame failure surfaces as the provider outage.
+        assert calls["RELIANCE"] == 3
+        assert calls["TCS"] == 3
 
     @pytest.mark.django_db
     def test_celery_task_retries_on_provider_outage(self, db, monkeypatch, settings) -> None:

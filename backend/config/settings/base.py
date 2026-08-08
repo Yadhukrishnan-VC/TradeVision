@@ -320,6 +320,24 @@ MARKET_DATA_POLL_LOCK_TTL_SECONDS: int = config(
 )
 
 # ---------------------------------------------------------------------------
+# Batch M5.1 — session-facts backfill frames
+#
+# Beyond the operating timeframe (MARKET_DATA_POLL_TIMEFRAME), the polling
+# bridge conditionally backfills two longer frames that SessionFactsService
+# derives session facts from (opening 15-minute candle, previous-day OHLC,
+# rolling average daily volume). The windows below are trailing calendar days
+# fetched for each symbol on the FIRST poll of a session (the backfill is
+# self-limiting: once the current session's opening 15m candle / previous
+# day's OHLC exist, the frame is skipped until the next session).
+# ---------------------------------------------------------------------------
+MARKET_DATA_POLL_15MIN_LOOKBACK_DAYS: int = config(
+    "MARKET_DATA_POLL_15MIN_LOOKBACK_DAYS", default=20, cast=int
+)
+MARKET_DATA_POLL_1D_LOOKBACK_DAYS: int = config(
+    "MARKET_DATA_POLL_1D_LOOKBACK_DAYS", default=30, cast=int
+)
+
+# ---------------------------------------------------------------------------
 # Celery Beat schedule — market_data periodic tasks
 #
 # Only arg-free periodic tasks are scheduled here. ``refresh_candles`` and

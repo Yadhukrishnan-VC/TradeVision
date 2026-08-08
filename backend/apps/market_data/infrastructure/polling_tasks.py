@@ -35,9 +35,15 @@ from django.conf import settings
 
 from apps.common.domain.value_objects import Symbol
 from apps.market_data.application.candle_ta_bridge import get_candle_ta_bridge
-from apps.market_data.application.historical_sync_service import get_historical_sync_service
+from apps.market_data.application.historical_sync_service import (
+    get_historical_sync_service,
+)
+from apps.market_data.application.session_facts_service import SessionFactsService
 from apps.market_data.domain.value_objects import Timeframe
-from apps.market_data.infrastructure.repositories import CandleRepository, InstrumentRepository
+from apps.market_data.infrastructure.repositories import (
+    CandleRepository,
+    InstrumentRepository,
+)
 from core.config import config
 from core.exceptions import DataProviderError
 from core.market_calendar import MarketSession, get_market_calendar
@@ -172,6 +178,144 @@ def _parse_watchlist(raw: str) -> list[tuple[str, str]]:
     return result
 
 
+def _session_facts_lookback_days() -> dict[Timeframe, int]:
+    """Return the trailing lookback window (calendar days) for each M5.1 frame."""
+    return {
+        Timeframe.MINUTE_15: int(config.market_data_poll_15min_lookback_days),
+        Timeframe.DAY_1: int(config.market_data_poll_1d_lookback_days),
+    }
+
+
+def _backfill_session_frames(
+    *,
+    service: Any,
+    session_facts: SessionFactsService,
+    instrument_token: int,
+    reference_dt: Any,
+) -> None:
+    """Best-effort, conditional backfill of the 15-minute and 1D frames.
+
+    Batch M5.1 — the polling cycle additionally backfills the two longer
+    frames ``SessionFactsService`` derives session facts from (opening
+    15-minute candle, previous-day OHLC, rolling average daily volume) so the
+    deterministic setups read real persisted history instead of a cold start.
+
+    Cadence (self-limiting per session):
+        * ``DAY_1`` — backfilled when the previous trading day's OHLC is not
+          yet discoverable (i.e. at most once per session). Evaluated first
+          so the 1D frame is persisted before any 15-minute history exists
+          (previous-day OHLC is otherwise derivable from intraday bars).
+        * ``MINUTE_15`` — backfilled when the current session's opening
+          15-minute candle is not yet persisted (i.e. at most once per trading
+          session: once it exists, subsequent polls skip the frame).
+
+    Failure isolation: each frame is wrapped in its own ``try/except`` so a
+    15-minute backfill failure can never skip the 1D frame (or the operating
+    timeframe backfill, which is handled separately by the caller). Failures
+    are logged and skipped — a supplementary frame must not fail the cycle
+    the way an operating-frame provider outage does.
+    """
+    prev = _session_previous_day_ohlc_safe(
+        session_facts, instrument_token, reference_dt
+    )
+    if prev == (None, None):
+        _backfill_frame(
+            service=service,
+            timeframe=Timeframe.DAY_1,
+            from_offset_days=_session_facts_lookback_days()[Timeframe.DAY_1],
+            instrument_token=instrument_token,
+            reference_dt=reference_dt,
+            reason="missing previous day OHLC",
+        )
+
+    if _session_facts_gate_missing(
+        gate=lambda: session_facts.get_opening_15m_candle(
+            instrument_token, reference_dt
+        ),
+        instrument_token=instrument_token,
+        frame=Timeframe.MINUTE_15,
+    ):
+        _backfill_frame(
+            service=service,
+            timeframe=Timeframe.MINUTE_15,
+            from_offset_days=_session_facts_lookback_days()[Timeframe.MINUTE_15],
+            instrument_token=instrument_token,
+            reference_dt=reference_dt,
+            reason="missing opening 15m candle",
+        )
+
+
+def _session_facts_gate_missing(
+    *,
+    gate: Any,
+    instrument_token: int,
+    frame: Timeframe,
+) -> bool:
+    """Evaluate an M5.1 freshness gate, treating lookup errors as ``False``.
+
+    A session-facts frame should be skipped (not backfilled) whenever the gate
+    lookup itself errors — backfills are supplementary and must never make the
+    polling cycle less robust.
+    """
+    try:
+        return gate() is None
+    except Exception:  # noqa: BLE001 — best-effort freshness read
+        logger.warning(
+            "market_data_poll_facts_gate_error",
+            extra={"instrument_token": instrument_token, "frame": frame.value},
+        )
+        return False
+
+
+def _session_previous_day_ohlc_safe(
+    session_facts: SessionFactsService,
+    instrument_token: int,
+    reference_dt: Any,
+) -> tuple[Any, Any]:
+    """Read previous-day OHLC tolerantly; ``(None, None)`` on lookup failure."""
+    try:
+        high, low = session_facts.get_previous_day_ohlc(
+            instrument_token, reference_dt
+        )
+        return high, low
+    except Exception:  # noqa: BLE001 — best-effort; treat as "skip the frame"
+        logger.warning(
+            "market_data_poll_facts_gate_error",
+            extra={"instrument_token": instrument_token, "frame": Timeframe.DAY_1.value},
+        )
+        return None, None
+
+
+def _backfill_frame(
+    *,
+    service: Any,
+    timeframe: Timeframe,
+    from_offset_days: int,
+    instrument_token: int,
+    reference_dt: Any,
+    reason: str,
+) -> None:
+    """Backfill *timeframe* over the trailing lookback window, tolerantly."""
+    from_timestamp = reference_dt - timedelta(days=from_offset_days)
+    try:
+        service.backfill(
+            instrument_token=instrument_token,
+            timeframe=timeframe,
+            from_timestamp=from_timestamp,
+            to_timestamp=reference_dt,
+        )
+    except Exception as exc:  # noqa: BLE001 — per-frame isolation contract
+        logger.warning(
+            "market_data_poll_facts_backfill_failed",
+            extra={
+                "instrument_token": instrument_token,
+                "timeframe": timeframe.value,
+                "reason": reason,
+                "error": str(exc),
+            },
+        )
+
+
 def poll_watchlist_sync(watchlist: list[tuple[str, str]]) -> int:
     """Synchronously poll one watchlist cycle.
 
@@ -219,6 +363,7 @@ def poll_watchlist_sync(watchlist: list[tuple[str, str]]) -> int:
     bridge = get_candle_ta_bridge()
     instrument_repo = InstrumentRepository()
     candle_repo = CandleRepository()
+    session_facts = SessionFactsService(candle_repo=candle_repo)
 
     published = 0
     provider_outage = False
@@ -234,6 +379,17 @@ def poll_watchlist_sync(watchlist: list[tuple[str, str]]) -> int:
                     extra={"exchange": exchange, "symbol": symbol},
                 )
                 continue
+
+            # Batch M5.1 — conditionally backfill the 15-minute and 1D frames
+            # SessionFactsService derives session facts from, so the setups read
+            # real persisted history. Runs before the operating-frame ingest so
+            # the bridge's VWAP / packet enrichment see the session data.
+            _backfill_session_frames(
+                service=service,
+                session_facts=session_facts,
+                instrument_token=instrument.instrument_token,
+                reference_dt=now,
+            )
 
             persisted = service.backfill(
                 instrument_token=instrument.instrument_token,

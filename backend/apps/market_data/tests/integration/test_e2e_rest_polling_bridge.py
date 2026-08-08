@@ -1,4 +1,4 @@
-"""E2E tests for the REST polling bridge (Batch M4).
+"""E2E tests for the REST polling bridge (Batches M4 + M5.1).
 
 Two complementary proofs (per the approved plan):
 
@@ -22,6 +22,14 @@ C) ``TestIndicatorDrivenRESTPoll`` — M5 proof that the REST bridge itself now
    ``long_momentum_v1`` fire with real entry/stop levels and reach
    RiskApproved -> Order -> Fill exactly once.
 
+M5.1 (multi-timeframe session facts): the 15-minute and 1D frames are NO
+LONGER fixture-seeded. ``FakeProvider`` is interval-aware and the real
+``HistoricalSyncService.backfill`` path (driven from inside each poll) persists
+them, so ``SessionFactsService`` reads genuinely real pipeline rows exactly as
+production would. ``NOW`` is derived from the real current date (at a fixed
+12:00 IST instant), keeping fixtures aligned with the wall-clock
+``occurred_at`` used by the event bus regardless of which day the suite runs.
+
 Every consumer is the real production handler wired on the FakeEventBus.
 EXECUTION_ENGINE_ENABLED stays False in Test A (production default) and is
 enabled in Tests B and C exactly like the other execution integration tests.
@@ -30,7 +38,8 @@ enabled in Tests B and C exactly like the other execution integration tests.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, time as dtime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
+from datetime import time as dtime
 from decimal import Decimal
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -41,7 +50,24 @@ from core.market_calendar import MarketSession
 from core.market_data.base_provider import MarketDataResponse, OHLCVBar
 
 _IST = ZoneInfo("Asia/Kolkata")
-NOW = datetime(2026, 8, 8, 7, 0, 0, tzinfo=timezone.utc)
+
+
+def _fixed_clock_now() -> datetime:
+    """A reproducible "now" on the CURRENT trading day at 12:00 IST.
+
+    Production event timestamps come from the real wall clock
+    (``DomainEvent.occurred_at``); fixtures and the polling clock are pinned to
+    ``NOW``. Deriving ``NOW`` from the same wall-clock date keeps every session
+    fact (opening 15m candle, previous-day OHLC) on the same IST trading day
+    reggedardless of the real date the suite is run — fixing the M5 date-flake.
+    """
+    today_ist = datetime.now(timezone.utc).astimezone(_IST).date()
+    return datetime.combine(today_ist, dtime(12, 0), tzinfo=_IST).astimezone(
+        timezone.utc
+    )
+
+
+NOW = _fixed_clock_now()
 
 pytestmark = pytest.mark.django_db
 
@@ -65,37 +91,105 @@ class FakeCalendar:
         return self._session
 
 
+def _day_open_utc(day: datetime.date) -> datetime:
+    """09:15 IST session-open instant for *day* (UTC)."""
+    return datetime.combine(day, dtime(9, 15), tzinfo=_IST).astimezone(timezone.utc)
+
+
 class FakeProvider:
+    """Interval-aware deterministic provider for the FULL polling path.
+
+    ``HistoricalSyncService`` requests bars for every timeframe the bridge
+    polls — the operating window (``1min``) plus, under M5.1, the session
+    frames ``15min`` and ``1D``. Each interval returns bars on its natural
+    boundaries so the persisted doubles are real, session-aligned history:
+        * ``1min``  — the M4 two-bar intraday snapshot (prior + fresh).
+        * ``15min`` — a 09:15 IST opening bar for every calendar day in the
+          requested range (opening 15-min candle + prior sessions).
+        * ``1D``    — an end-of-last-30-sessions bar per day (prev-day OHLC
+          + rolling average volume).
+    """
+
     provider_name = "fake"
 
     def fetch(self, request: Any) -> MarketDataResponse:
-        prior_ts = NOW - timedelta(seconds=240)
-        fresh_ts = NOW - timedelta(seconds=60)
+        interval = request.interval
+        if interval == "15min":
+            bars = self._bars_15m(request)
+        elif interval == "1D":
+            bars = self._bars_1d()
+        else:
+            bars = self._bars_1m()
         return MarketDataResponse(
             request_id=request.request_id,
             symbol=request.symbol,
-            interval=request.interval,
-            bars=(
-                OHLCVBar(
-                    timestamp=prior_ts,
-                    open_price=Decimal("100.00"),
-                    high=Decimal("100.50"),
-                    low=Decimal("99.50"),
-                    close_price=Decimal("100.50"),
-                    volume=90_000,
-                ),
-                OHLCVBar(
-                    timestamp=fresh_ts,
-                    open_price=Decimal("103.00"),
-                    high=Decimal("104.00"),
-                    low=Decimal("102.00"),
-                    close_price=Decimal("103.00"),
-                    volume=1_000_000,
-                ),
-            ),
+            interval=interval,
+            bars=tuple(bars),
             provider=self.provider_name,
             fetched_at=NOW,
         )
+
+    def _bars_1m(self) -> list[OHLCVBar]:
+        prior_ts = NOW - timedelta(seconds=240)
+        fresh_ts = NOW - timedelta(seconds=60)
+        return [
+            OHLCVBar(
+                timestamp=prior_ts,
+                open_price=Decimal("100.00"),
+                high=Decimal("100.50"),
+                low=Decimal("99.50"),
+                close_price=Decimal("100.50"),
+                volume=90_000,
+            ),
+            OHLCVBar(
+                timestamp=fresh_ts,
+                open_price=Decimal("103.00"),
+                high=Decimal("104.00"),
+                low=Decimal("102.00"),
+                close_price=Decimal("103.00"),
+                volume=1_000_000,
+            ),
+        ]
+
+    def _bars_15m(self, request: Any) -> list[OHLCVBar]:
+        barras: list[OHLCVBar] = []
+        today = NOW.astimezone(_IST).date()
+        first_day = (request.from_timestamp.astimezone(_IST).date() if request.from_timestamp else today)
+        for offset in range(25):
+            day = today - timedelta(days=offset)
+            if day < first_day:
+                break
+            ts = _day_open_utc(day)
+            if ts < NOW:
+                barras.append(
+                    OHLCVBar(
+                        timestamp=ts,
+                        open_price=Decimal("100.00"),
+                        high=Decimal("100.00"),
+                        low=Decimal("100.00"),
+                        close_price=Decimal("100.00"),
+                        volume=500_000,
+                    )
+                )
+        bars = sorted(barras, key=lambda b: b.timestamp)
+        return [b for b in bars if b.timestamp >= request.from_timestamp]
+
+    def _bars_1d(self) -> list[OHLCVBar]:
+        barras: list[OHLCVBar] = []
+        today = NOW.astimezone(_IST).date()
+        for offset in range(1, 31):
+            day = today - timedelta(days=offset)
+            barras.append(
+                OHLCVBar(
+                    timestamp=_day_open_utc(day),
+                    open_price=Decimal("100.00"),
+                    high=Decimal("110.00"),
+                    low=Decimal("99.00"),
+                    close_price=Decimal("103.00"),
+                    volume=100_000,
+                )
+            )
+        return barras
 
     def validate_connection(self) -> bool:
         return True
@@ -108,27 +202,16 @@ class FakeProvider:
 
 
 # ---------------------------------------------------------------------------
-# Deterministic market-data seeding (mirrors the execution E2E conftest)
+# Deterministic market-data seeding
 # ---------------------------------------------------------------------------
 
 
-def _seed_session_and_facts(monkeypatch, db) -> None:
-    """Instrument + session facts consumed by the intelligence enrichment.
-
-    - a RELIANCE instrument row (token 1001),
-    - the current session's opening 15-minute candle (09:15 IST, open=low=100),
-    - 30 trailing days of 1D candles with volume 100_000 -> avg_volume_10d/20d.
-    """
-    from apps.market_data.infrastructure.models import Candle, Instrument
+def _seed_instrument(monkeypatch, db) -> None:
+    """Instrument row + all-days-trading calendar (remove pragmatic seeding)."""
+    from apps.market_data.infrastructure.models import Instrument
     from core.market_calendar import MarketCalendar
 
     monkeypatch.setattr(MarketCalendar, "is_trading_day", lambda self, day: True)
-
-    session_day = NOW.astimezone(_IST).date()
-    opening_utc = datetime.combine(
-        session_day, dtime(9, 15), tzinfo=_IST
-    ).astimezone(timezone.utc)
-
     Instrument.objects.create(
         instrument_token=1001,
         exchange="NSE",
@@ -139,33 +222,6 @@ def _seed_session_and_facts(monkeypatch, db) -> None:
         tick_size=Decimal("0.05"),
         instrument_type="EQ",
     )
-
-    Candle.objects.create(
-        instrument_id=1001,
-        timeframe="15min",
-        timestamp=opening_utc,
-        open=Decimal("100.00"),
-        high=Decimal("100.00"),
-        low=Decimal("100.00"),
-        close=Decimal("100.00"),
-        volume=500_000,
-    )
-
-    for offset in range(1, 31):
-        day = session_day - timedelta(days=offset)
-        day_open_utc = datetime.combine(
-            day, dtime(9, 15), tzinfo=_IST
-        ).astimezone(timezone.utc)
-        Candle.objects.create(
-            instrument_id=1001,
-            timeframe="1D",
-            timestamp=day_open_utc,
-            open=Decimal("100.00"),
-            high=Decimal("110.00"),
-            low=Decimal("99.00"),
-            close=Decimal("103.00"),
-            volume=100_000,
-        )
 
 
 def _configure_fake_bus_and_risk_gates(monkeypatch, db) -> None:
@@ -189,8 +245,12 @@ def _poll_runtime(monkeypatch, settings) -> Any:
     """Configure the deterministic polling runtime; returns the live bridge."""
     from unittest.mock import MagicMock
 
-    from apps.market_data.application.candle_ta_bridge import CandleToTechnicalAnalysisBridge
-    from apps.market_data.application.historical_sync_service import HistoricalSyncService
+    from apps.market_data.application.candle_ta_bridge import (
+        CandleToTechnicalAnalysisBridge,
+    )
+    from apps.market_data.application.historical_sync_service import (
+        HistoricalSyncService,
+    )
 
     settings.MARKET_DATA_POLL_TIMEFRAME = "1min"
     settings.MARKET_DATA_POLL_WINDOW_SECONDS = 600
@@ -236,6 +296,52 @@ def _poll_runtime(monkeypatch, settings) -> Any:
     return bridge
 
 
+def _backfill_session_frames_direct(monkeypatch, db) -> None:
+    """Persist 15m + 1D session rows via the REAL provider->sync path.
+
+    Used by Test B (crafted payload) which bypasses the polling cycle but still
+    needs the same real session history. Mirrors exactly what
+    ``poll_watchlist_sync`` does under M5.1: request the 15-minute and 1D frames
+    through ``HistoricalSyncService.backfill`` with the interval-aware provider
+    and the same circuit-breaker bypass used by ``_poll_runtime``.
+    """
+    from unittest.mock import MagicMock
+
+    from apps.market_data.application.historical_sync_service import (
+        HistoricalSyncService,
+    )
+    from apps.market_data.domain.value_objects import Timeframe
+
+    service = HistoricalSyncService()
+    breaker = MagicMock()
+    breaker.call.side_effect = lambda func, *args, **kwargs: func(*args, **kwargs)
+    factory = MagicMock()
+    factory.get_or_create.return_value = breaker
+    service._circuit_factory = factory
+    monkeypatch.setattr(
+        "apps.market_data.application.historical_sync_service.MarketDataProviderFactory.get_provider",
+        lambda: FakeProvider(),
+    )
+
+    service.backfill(
+        instrument_token=1001,
+        timeframe=Timeframe.MINUTE_15,
+        from_timestamp=NOW - timedelta(days=20),
+        to_timestamp=NOW,
+    )
+    service.backfill(
+        instrument_token=1001,
+        timeframe=Timeframe.DAY_1,
+        from_timestamp=NOW - timedelta(days=30),
+        to_timestamp=NOW,
+    )
+
+
+def _configure_fake_bus_and_risk_gates_b(monkeypatch, db) -> None:
+    """Alias kept for the Tail test (same risk gates; no poll)."""
+    _configure_fake_bus_and_risk_gates(monkeypatch, db)
+
+
 def _register_handlers(bus, *register_handlers) -> None:
     for register in register_handlers:
         register(bus)
@@ -258,7 +364,7 @@ def _seed_minute_history(db, count: int = 60) -> None:
 
     Constant flat bars (close 100.00, volume 1000 each) so the shared
     60-candle indicator window reaches the EMA20 warm-up gate *before* the
-    polled bars arrive via the FakeProvider.
+    polled bars arrive via the IntervalAwareProvider.
     """
     from apps.market_data.infrastructure.models import Candle
 
@@ -297,7 +403,7 @@ class TestConstrainedRESTPoll:
             register_handlers as register_rule,
         )
 
-        _seed_session_and_facts(monkeypatch, db)
+        _seed_instrument(monkeypatch, db)
         _configure_fake_bus_and_risk_gates(monkeypatch, db)
         bridge = _poll_runtime(monkeypatch, settings)
 
@@ -320,7 +426,7 @@ class TestConstrainedRESTPoll:
         poll_market_data_watchlist.apply().get()
 
         # ------------------------------------------------------------------
-        # Ingestion layer: exactly one candle published
+        # Ingestion layer: exactly one candle pachado / via seam
         # ------------------------------------------------------------------
         ta_events = [
             e for e in bus.published_events
@@ -332,14 +438,33 @@ class TestConstrainedRESTPoll:
         assert ta_event.payload["timeframe"] == "1min"
         assert Decimal(ta_event.payload["price"]["close"]) == Decimal("103.00")
         assert Decimal(ta_event.payload["price"]["change_pct"]) == Decimal("2.4876")
-        # M5 bridge: VWAP is session-minimal (defined from a single candle) so
-        # it is emitted even here; the fixed-window indicators require seeded
-        # history (60/15/20 candles) and are correctly omitted -> fail-closed.
+        # M5 bridge: only the session-minimal VWAP is emitted here because the
+        # 1-min history is too shallow for the 60/15/20 fixed windows.
         assert set(ta_event.payload["indicators"]) == {"vwap"}
         assert Decimal(ta_event.payload["indicators"]["vwap"]) > 0
         assert TASnapshot.objects.filter(
             symbol="RELIANCE", timeframe="1min"
         ).count() == 1
+
+        # ------------------------------------------------------------------
+        # M5.1 — the 15m + 1D session frames are now genuinely persisted by
+        # the pipeline (interval-aware provider) and read by SessionFacts.
+        # ------------------------------------------------------------------
+        from apps.market_data.application.session_facts_service import (
+            SessionFactsService,
+        )
+        from apps.market_data.infrastructure.models import Candle as CandleModel
+
+        assert CandleModel.objects.filter(
+            instrument_id=1001, timeframe="15min"
+        ).exists()
+        assert CandleModel.objects.filter(
+            instrument_id=1001, timeframe="1D"
+        ).exists()
+        facts = SessionFactsService()
+        assert facts.get_opening_15m_candle(1001, NOW) is not None
+        assert facts.get_previous_day_ohlc(1001, NOW) != (None, None)
+        assert facts.get_avg_daily_volume(1001, NOW, days=10) == Decimal(100000)
 
         # ------------------------------------------------------------------
         # Intelligence: packet built with REST facts (vwap, no fixed windows)
@@ -429,6 +554,16 @@ class TestConstrainedRESTPoll:
             "risk": RiskDecisionExecution.objects.count(),
         }
         assert counts_after_first["ta"] == 1
+        # M5.1 gate cadence: once the 15m opening candle + prev-day OHLC exist,
+        # the second poll skips both frames (self-limiting per session).
+        from apps.market_data.infrastructure.models import Candle as CandleModel
+
+        first_15m = CandleModel.objects.filter(
+            instrument_id=1001, timeframe="15min"
+        ).count()
+        first_1d = CandleModel.objects.filter(
+            instrument_id=1001, timeframe="1D"
+        ).count()
 
         poll_market_data_watchlist.apply().get()
 
@@ -442,6 +577,13 @@ class TestConstrainedRESTPoll:
         assert RiskDecisionExecution.objects.count() == counts_after_first["risk"]
         assert ExecutionRequest.objects.count() == 0
         assert Order.objects.count() == 0
+        # Frames stay stable across repoll (idempotent upsert + gate skip).
+        assert CandleModel.objects.filter(
+            instrument_id=1001, timeframe="15min"
+        ).count() == first_15m
+        assert CandleModel.objects.filter(
+            instrument_id=1001, timeframe="1D"
+        ).count() == first_1d
 
 
 # ---------------------------------------------------------------------------
@@ -471,10 +613,17 @@ class TestTail:
         from apps.technical_analysis.application.services import (
             TechnicalAnalysisIngestionService,
         )
-        from apps.technical_analysis.infrastructure.repositories import TASnapshotRepository
+        from apps.technical_analysis.infrastructure.repositories import (
+            TASnapshotRepository,
+        )
 
         settings.EXECUTION_ENGINE_ENABLED = True
-        _seed_session_and_facts(monkeypatch, db)
+        # Real session-history frames (no fixture Candle.create), plus the
+        # instrument. Test B bypasses the poll cycle by design (it crafts a
+        # payload through the TA seam), so it navigates the same backfill path
+        # directly through the real provider+sync service.
+        _seed_instrument(monkeypatch, db)
+        _backfill_session_frames_direct(monkeypatch, db)
         _configure_fake_bus_and_risk_gates(monkeypatch, db)
         account = _make_account(db, django_user_model)
 
@@ -494,7 +643,7 @@ class TestTail:
             "time": int(fresh_ts.timestamp() * 1000),
             "prev_close": "100.50",
             "change_pct": "2.4876",
-            # Backtest-replay-style indicators that make Setup-1 fire:
+            # Crafted indicator values that make Setup-1 fire:
             "vwap": "101.50",
             "ema_20": "102.00",
         }
@@ -563,7 +712,10 @@ class TestTail:
         price_ctx = packet_data["price_context"]
         assert Decimal(tech_ctx["vwap"]) == Decimal("101.50")
         assert Decimal(tech_ctx["ema_20"]) == Decimal("102.00")
-        assert Decimal(price_ctx["avg_volume_20d"]) == Decimal("100000")
+        assert Decimal(price_ctx["avg_volume_20d"]) == Decimal(100000)
+        # M5.1: real framework fact — opening candle / previous day via the
+        # session-frames backfill.
+        assert tech_ctx["opening_15m_open"] is not None
 
         assert ExecutionRequest.objects.count() == 1
         assert Order.objects.count() == 1
@@ -638,7 +790,11 @@ class TestIndicatorDrivenRESTPoll:
     bridge computes real VWAP/EMA20/ATR14/Bollinger-Upper. With all four
     indicators present, ``long_momentum_v1`` — an indicator-dependent rule
     that M4 could never fire on REST data — now fires with a real stop and
-    reaches RiskApproved -> Order -> Fill exactly once."""
+    reaches RiskApproved -> Order -> Fill exactly once.
+
+    M5.1: the 15m/1D session facts are produced by the polling pipeline itself
+    (not seeded), proving the session-facts -> rule input contract end to end.
+    """
 
     def _setup(self, monkeypatch, settings, db, django_user_model):
         from apps.eventbus.infrastructure.event_bus_factory import get_event_bus
@@ -652,7 +808,7 @@ class TestIndicatorDrivenRESTPoll:
             register_handlers as register_rule,
         )
 
-        _seed_session_and_facts(monkeypatch, db)
+        _seed_instrument(monkeypatch, db)
         _seed_minute_history(db, count=60)
         _configure_fake_bus_and_risk_gates(monkeypatch, db)
         settings.EXECUTION_ENGINE_ENABLED = True
@@ -670,7 +826,6 @@ class TestIndicatorDrivenRESTPoll:
         from apps.market_data.infrastructure.polling_tasks import (
             poll_market_data_watchlist,
         )
-        from apps.risk_management.infrastructure.models import RiskDecisionExecution
 
         bus, _, account = self._setup(monkeypatch, settings, db, django_user_model)
 
@@ -694,8 +849,11 @@ class TestIndicatorDrivenRESTPoll:
         tech_ctx = packet_data["technical_context"]
         assert Decimal(tech_ctx["vwap"]) == Decimal(ta_event.payload["indicators"]["vwap"])
         assert Decimal(tech_ctx["ema_20"]) == Decimal(ta_event.payload["indicators"]["ema_20"])
+        # M5.1 session facts read from the REAL pipeline rows.
         assert tech_ctx["opening_15m_open"] is not None
         assert tech_ctx["opening_15m_low"] is not None
+        assert tech_ctx["prev_day_high"] is not None
+        assert tech_ctx["prev_day_low"] is not None
 
         # ------------------------------------------------------------------
         # The indicator-dependent rule now fires with real entry/stop levels

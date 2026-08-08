@@ -18,7 +18,6 @@ Never scatter ``from django.conf import settings`` throughout the codebase.
 """
 
 import logging
-from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -289,6 +288,24 @@ class TradeVisionConfig:
         from django.conf import settings
 
         return int(getattr(settings, "MARKET_DATA_POLL_LOCK_TTL_SECONDS", 90))
+
+    @property
+    def market_data_poll_15min_lookback_days(self) -> int:
+        """Trailing calendar days of 15-minute candles fetched for session facts
+        (Batch M5.1). Backfilled once per session when the opening 15m candle
+        is missing; skipped on subsequent polls for the same session."""
+        from django.conf import settings
+
+        return int(getattr(settings, "MARKET_DATA_POLL_15MIN_LOOKBACK_DAYS", 20))
+
+    @property
+    def market_data_poll_1d_lookback_days(self) -> int:
+        """Trailing calendar days of daily (1D) candles fetched for session facts
+        (Batch M5.1). Backfilled once per session when the previous day's OHLC
+        is missing; skipped on subsequent polls for the same session."""
+        from django.conf import settings
+
+        return int(getattr(settings, "MARKET_DATA_POLL_1D_LOOKBACK_DAYS", 30))
 
     # ---------------------------------------------------------------------------
     # Market and exchange
