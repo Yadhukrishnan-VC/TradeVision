@@ -111,6 +111,8 @@ class PositionRepository(BaseRepository[Position]):
         quantity: Decimal,
         avg_entry_price: Decimal,
         opened_at: datetime,
+        *,
+        stop_loss: Decimal | None = None,
     ) -> Position:
         position = Position(
             account_id=account_id,
@@ -119,6 +121,7 @@ class PositionRepository(BaseRepository[Position]):
             quantity=quantize_money(quantity),
             avg_entry_price=quantize_money(avg_entry_price),
             opened_at=opened_at,
+            stop_loss=quantize_money(stop_loss) if stop_loss is not None else None,
         )
         position.full_clean()
         position.save()

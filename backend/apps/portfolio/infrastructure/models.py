@@ -75,6 +75,16 @@ class Position(BaseModel):
     quantity = models.DecimalField(**MONEY_DECIMAL_KWARGS)
     avg_entry_price = models.DecimalField(**MONEY_DECIMAL_KWARGS)
     opened_at = models.DateTimeField()
+    stop_loss = models.DecimalField(
+        null=True,
+        blank=True,
+        **MONEY_DECIMAL_KWARGS,
+        help_text=(
+            "Stop-loss price captured at position open time (nullable for "
+            "positions opened before this batch shipped). Not updated on "
+            "same-direction add-on fills (pyramiding)."
+        ),
+    )
 
     class Meta:
         db_table = "portfolio_position"

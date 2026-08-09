@@ -913,3 +913,192 @@ class TestIndicatorDrivenRESTPoll:
 
         # traceability threaded from the TA event to the fill bearer
         assert order.correlation_id == request.correlation_id == approved[0].correlation_id
+
+
+# ---------------------------------------------------------------------------
+# Test D — M3.6 parity: the stop-loss exit fires through the real LIVE poll
+# cycle (zero backtest-specific code). Poll 1 opens the position with a stop;
+# poll 2's newer candle breaches it and the same portfolio exit handler that
+# backtest replay exercises closes it — proving the "one exit path" claim.
+# ---------------------------------------------------------------------------
+
+
+class MutableClock:
+    """A module-level-clock stand-in that the test advances between polls."""
+
+    def __init__(self, start: datetime) -> None:
+        self.value = start
+
+    def now(self) -> datetime:
+        return self.value
+
+
+class LiveExitProvider(FakeProvider):
+    """Illuminated + live-exit provider.
+
+    ``_bars_1m`` returns the M4 entry snapshot (prior + fresh entry bar) and,
+    on every call AFTER the first, also emits a NEWER exit bar whose low
+    breaches the long stop. The exit bar carries modest volume and a close
+    below the session open so no entry rule re-fires on poll 2 — exactly the
+    exit-bar design of the backtest-parity sibling (test #8).
+    """
+
+    def __init__(self, clock: MutableClock) -> None:
+        super().__init__()
+        self._clock = clock
+        self._calls = 0
+
+    def _bars_1m(self) -> list[OHLCVBar]:
+        self._calls += 1
+        now = self._clock.value
+        entry_bars = [
+            OHLCVBar(
+                timestamp=now - timedelta(seconds=240),
+                open_price=Decimal("100.00"),
+                high=Decimal("100.50"),
+                low=Decimal("99.50"),
+                close_price=Decimal("100.50"),
+                volume=90_000,
+            ),
+            OHLCVBar(
+                timestamp=now - timedelta(seconds=60),
+                open_price=Decimal("103.00"),
+                high=Decimal("104.00"),
+                low=Decimal("102.00"),
+                close_price=Decimal("103.00"),
+                volume=1_000_000,
+            ),
+        ]
+        if self._calls <= 1:
+            return entry_bars
+        exit_bar = OHLCVBar(
+            timestamp=now - timedelta(seconds=30),
+            open_price=Decimal("102.00"),
+            high=Decimal("102.50"),
+            low=Decimal("94.00"),
+            close_price=Decimal("101.00"),
+            volume=10_000,
+        )
+        return [*entry_bars, exit_bar]
+
+
+class TestStopLossExitThroughLivePoll:
+    """M3.6 — prove the stop-loss exit fires via the unmodified live poll path."""
+
+    def _setup(self, monkeypatch, settings, db, django_user_model):
+        from apps.eventbus.infrastructure.event_bus_factory import get_event_bus
+        from apps.intelligence.infrastructure.event_handlers import (
+            register_handlers as register_intelligence,
+        )
+        from apps.market_data.application.candle_ta_bridge import (
+            CandleToTechnicalAnalysisBridge,
+        )
+        from apps.portfolio.infrastructure.event_handlers import (
+            register_handlers as register_portfolio,
+        )
+        from apps.risk_management.infrastructure.event_handlers import (
+            register_handlers as register_risk,
+        )
+        from apps.rule_engine.infrastructure.event_handlers import (
+            register_handlers as register_rule,
+        )
+
+        _seed_instrument(monkeypatch, db)
+        _seed_minute_history(db, count=60)
+        _configure_fake_bus_and_risk_gates(monkeypatch, db)
+        settings.EXECUTION_ENGINE_ENABLED = True
+        settings.MARKET_DATA_POLL_TIMEFRAME = "1min"
+        settings.MARKET_DATA_POLL_WINDOW_SECONDS = 600
+        settings.MARKET_DATA_POLL_STALENESS_SECONDS = 180
+        settings.MARKET_DATA_POLL_WATCHLIST = [("NSE", "RELIANCE")]
+        account = _make_account(db, django_user_model)
+
+        clock = MutableClock(NOW)
+        provider = LiveExitProvider(clock)
+        monkeypatch.setattr(
+            "apps.market_data.application.historical_sync_service.MarketDataProviderFactory.get_provider",
+            lambda: provider,
+        )
+
+        now_fn = lambda: clock.now()
+        monkeypatch.setattr(
+            "apps.market_data.infrastructure.polling_tasks.get_now", now_fn
+        )
+        monkeypatch.setattr(
+            "apps.market_data.infrastructure.polling_tasks.get_ist_now", now_fn
+        )
+        monkeypatch.setattr(
+            "apps.market_data.application.candle_ta_bridge.get_now", now_fn
+        )
+        monkeypatch.setattr(
+            "apps.market_data.infrastructure.polling_tasks.get_market_calendar",
+            lambda: FakeCalendar(MarketSession.MARKET_HOURS),
+        )
+
+        # The execution engine freezes the position's ``opened_at`` from the
+        # clock: pin it to the mutable clock so poll-2's bar is strictly
+        # newer than the fill (Decision B guard, deterministic on any date).
+        from core.clock import SystemClock
+
+        monkeypatch.setattr(SystemClock, "now", lambda self: clock.now())
+
+        bridge = CandleToTechnicalAnalysisBridge(
+            redis_client=FakeRedis(), staleness_seconds=180
+        )
+        monkeypatch.setattr(
+            "apps.market_data.infrastructure.polling_tasks.get_candle_ta_bridge",
+            lambda: bridge,
+        )
+
+        bus = get_event_bus()
+        _register_handlers(bus, register_intelligence, register_rule, register_risk, register_portfolio)
+        return bus, bridge, clock, account
+
+    def test_live_poll_opens_and_stop_exits_position(
+        self, monkeypatch, settings, db, django_user_model
+    ) -> None:
+        from apps.eventbus.domain.events import DomainEvent
+        from apps.eventbus.infrastructure.event_bus_factory import get_event_bus
+        from apps.execution.infrastructure.models import Order
+        from apps.market_data.infrastructure import polling_tasks
+        from apps.portfolio.infrastructure.models import AccountCapitalState, Position
+
+        _, _, clock, account = self._setup(monkeypatch, settings, db, django_user_model)
+
+        # Poll 1 — the real watchlist cycle opens the position with a stop.
+        polling_tasks.poll_market_data_watchlist.apply().get()
+
+        order = Order.objects.get(account_id=account.id)
+        assert order.status == "FILLED"
+        assert order.symbol == "RELIANCE"
+        assert order.stop_loss == Decimal("100.00")
+
+        position = Position.objects.get(account_id=account.id)
+        assert position.side.upper() == "LONG"
+        assert position.stop_loss == Decimal("100.00")
+
+        # Advance the clock so the next poll's candle is genuinely NEWER than
+        # the fill's ``opened_at`` (same-bar guard would otherwise skip it).
+        clock.value = clock.value + timedelta(minutes=3)
+
+        # Poll 2 — UNCHANGED production cycle, just later in the session.
+        polling_tasks.poll_market_data_watchlist.apply().get()
+
+        # The stop triggered and the position was closed.
+        assert Position.objects.filter(account_id=account.id).count() == 0
+
+        closed_events = [
+            e
+            for e in get_event_bus().published_events
+            if isinstance(e, DomainEvent)
+            and e.event_type == "positions.PositionClosed"
+        ]
+        assert len(closed_events) == 1
+        payload = closed_events[0].payload
+        assert payload["symbol"] == "RELIANCE"
+        assert Decimal(payload["exit_price"]) == Decimal("94.00")
+
+        # Long entry at 103 stopped at 94 -> correctly-signed realized loss.
+        state = AccountCapitalState.objects.get(account=account)
+        assert state.realized_pnl_today != Decimal(0)
+        assert state.realized_pnl_today < Decimal(0)

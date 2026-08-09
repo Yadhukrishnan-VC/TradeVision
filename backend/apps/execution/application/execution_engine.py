@@ -199,6 +199,7 @@ class ExecutionEngine(BaseService):
                     quantity=planned.quantity,
                     price=planned.price,
                     occurred_at=fill.occurred_at,
+                    stop_loss=order.stop_loss,
                     source_fill_id=fill.id,
                     correlation_id=order.correlation_id,
                     causation_id=order.causation_id,

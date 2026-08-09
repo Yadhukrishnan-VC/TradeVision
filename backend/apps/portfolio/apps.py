@@ -10,3 +10,4 @@ class PortfolioConfig(AppConfig):
 
     def ready(self) -> None:
         from apps.portfolio.infrastructure import account_signals  # noqa: F401
+        from apps.portfolio.infrastructure import event_handlers  # noqa: F401,F811

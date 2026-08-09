@@ -67,6 +67,7 @@ class PositionLedgerService(BaseService):
         price: Decimal,
         occurred_at: datetime | None = None,
         *,
+        stop_loss: Decimal | None = None,
         source_fill_id: uuid.UUID | None = None,
         correlation_id: uuid.UUID | None = None,
         causation_id: uuid.UUID | None = None,
@@ -109,6 +110,7 @@ class PositionLedgerService(BaseService):
 
             position = self._apply_fill(
                 account_id, symbol, side, quantity, price, occurred_at,
+                stop_loss=stop_loss,
                 correlation_id=correlation_id, causation_id=causation_id,
             )
 
@@ -210,6 +212,7 @@ class PositionLedgerService(BaseService):
         price: Decimal,
         occurred_at: datetime,
         *,
+        stop_loss: Decimal | None = None,
         correlation_id: uuid.UUID,
         causation_id: uuid.UUID | None,
     ) -> Position | None:
@@ -217,7 +220,8 @@ class PositionLedgerService(BaseService):
 
         if existing is None:
             position = self._positions.create_open(
-                account_id, symbol, side, quantity, price, occurred_at
+                account_id, symbol, side, quantity, price, occurred_at,
+                stop_loss=stop_loss,
             )
             self._capital.reserve_margin(
                 account_id, quantity * price,
