@@ -6,13 +6,12 @@ A small, synchronous adapter that turns freshly-persisted REST-polled
 ``TechnicalAnalysisIngestionService.ingest()`` consumes, and feeds that seam.
 
 This is the ONLY new TA consumption path. The payload carries OHLCV +
-prev-close-derived ``change_pct`` plus, when enough history exists, four
+prev-close-derived ``change_pct`` plus, when enough history exists, five
 deterministic indicators computed from the same persisted candles — ``vwap``
-(session-sliced), ``ema_20``, ``atr_14`` and ``bb_upper`` (sample-σ Bollinger)
-— so that indicator-dependent rules (``long_momentum_v1``, ``short_sell_v1``,
-``volatility_breakout_v1``, ``breakout_v1``) can fire on real market data.
-With insufficient history those keys are simply omitted (never zero-filled),
-so the rules fail closed exactly as they did in M4.
+(session-sliced), ``ema_20``, ``atr_14``, ``bb_upper`` (sample-σ Bollinger) and
+``rsi_14`` (Wilder) — so that indicator-dependent rules can fire on real
+market data. With insufficient history those keys are simply omitted (never
+zero-filled), so the rules fail closed exactly as they did in M4.
 """
 
 from __future__ import annotations
@@ -36,6 +35,7 @@ from apps.technical_analysis.domain.indicators import (
     compute_atr,
     compute_bollinger_upper,
     compute_ema,
+    compute_rsi,
     compute_vwap,
 )
 from apps.technical_analysis.infrastructure.repositories import TASnapshotRepository
@@ -55,6 +55,10 @@ _CHANGE_PCT_QUANT = Decimal("0.0001")
 _MIN_CANDLES_EMA20 = 60
 _MIN_CANDLES_ATR14 = 15
 _MIN_CANDLES_BB = 20
+
+# TA-2: RSI14 needs 14 price changes + a seed close (period + 1), the same
+# warm-up contract as ATR14.
+_MIN_CANDLES_RSI14 = 15
 
 
 class CandleToTechnicalAnalysisBridge:
@@ -153,9 +157,9 @@ class CandleToTechnicalAnalysisBridge:
         Returns a dict in the shape ``TechnicalAnalysisIngestionService``
         accepts: ticker/close required, plus OHLCV + prev_close/change_pct AND,
         when sufficient persisted history exists, indicator keys (``vwap``,
-        ``ema_20``, ``atr_14``, ``bb_upper``). Insufficient history omits the
-        corresponding keys (never ``0``, never fabricated) so indicator
-        rules fail closed.
+        ``ema_20``, ``atr_14``, ``bb_upper``, ``rsi_14``). Insufficient history
+        omits the corresponding keys (never ``0``, never fabricated) so
+        indicator rules fail closed.
         """
         instrument = self._instrument_repo.find_by_token(candle.instrument_token)
         if instrument is None:
@@ -266,7 +270,7 @@ class CandleToTechnicalAnalysisBridge:
         stringified so they survive JSON serialization exactly like the
         existing ``prev_close``/``change_pct`` fields.
 
-        The shared 60-candle fetch covers all three fixed-window indicators;
+        The shared 60-candle fetch covers all fixed-window indicators;
         VWAP is sliced separately from the session-open boundary derived via
         ``SessionFactsService``.
         """
@@ -282,6 +286,10 @@ class CandleToTechnicalAnalysisBridge:
             atr_14 = compute_atr(history, period=14)
             if atr_14 is not None:
                 indicators["atr_14"] = str(atr_14)
+        if len(history) >= _MIN_CANDLES_RSI14:
+            rsi_14 = compute_rsi(history, period=14)
+            if rsi_14 is not None:
+                indicators["rsi_14"] = str(rsi_14)
         if len(history) >= _MIN_CANDLES_BB:
             bb_upper = compute_bollinger_upper(history, period=20)
             if bb_upper is not None:

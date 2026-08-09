@@ -142,6 +142,57 @@ class TestGetAvgDailyVolume:
         service = _service([])
         assert service.get_avg_daily_volume(_TOKEN, _D0, days=10) is None
 
+    def test_five_day_average(self) -> None:
+        # Five trailing trading sessions (Mon 27, Fri 24, Thu 23, Wed 22,
+        # Tue 21) each with a distinct 1D volume.
+        service = _service(
+            [
+                _candle("1D", _D1, volume=1_000_000),            # Mon 27
+                _candle("1D", datetime(2026, 7, 24, 4, 0, tzinfo=timezone.utc), volume=2_000_000),
+                _candle("1D", datetime(2026, 7, 23, 4, 0, tzinfo=timezone.utc), volume=3_000_000),
+                _candle("1D", datetime(2026, 7, 22, 4, 0, tzinfo=timezone.utc), volume=4_000_000),
+                _candle("1D", datetime(2026, 7, 21, 4, 0, tzinfo=timezone.utc), volume=5_000_000),
+            ]
+        )
+        avg = service.get_avg_daily_volume(_TOKEN, _D0, days=5)
+        assert avg is not None
+        assert avg == 3_000_000
+
+    def test_five_day_average_with_insufficient_sessions(self) -> None:
+        # Only 3 of the trailing 5 days have candles: returns the average of
+        # the available sessions, never None and never a fabricated 0.
+        service = _service(
+            [
+                _candle("1D", _D1, volume=1_000_000),            # Mon 27
+                _candle("1D", datetime(2026, 7, 24, 4, 0, tzinfo=timezone.utc), volume=3_000_000),
+                _candle("1D", datetime(2026, 7, 23, 4, 0, tzinfo=timezone.utc), volume=5_000_000),
+            ]
+        )
+        avg = service.get_avg_daily_volume(_TOKEN, _D0, days=5)
+        assert avg is not None
+        assert avg == 3_000_000
+
+    def test_five_day_average_returns_none_with_no_day_candles(self) -> None:
+        service = _service([])
+        assert service.get_avg_daily_volume(_TOKEN, _D0, days=5) is None
+
+    def test_ten_day_average_unchanged_with_five_day_data(self) -> None:
+        # Same data regardless of days=5/10: 10-day must be the trailing-10 avg.
+        service = _service(
+            [
+                _candle("1D", _D1, volume=1_000_000),            # Mon 27
+                _candle("1D", datetime(2026, 7, 24, 4, 0, tzinfo=timezone.utc), volume=2_000_000),
+                _candle("1D", datetime(2026, 7, 23, 4, 0, tzinfo=timezone.utc), volume=3_000_000),
+                _candle("1D", datetime(2026, 7, 22, 4, 0, tzinfo=timezone.utc), volume=4_000_000),
+                _candle("1D", datetime(2026, 7, 21, 4, 0, tzinfo=timezone.utc), volume=5_000_000),
+            ]
+        )
+        five = service.get_avg_daily_volume(_TOKEN, _D0, days=5)
+        ten = service.get_avg_daily_volume(_TOKEN, _D0, days=10)
+        twenty = service.get_avg_daily_volume(_TOKEN, _D0, days=20)
+        # All five candles are within the trailing 10/20 windows, so all agree.
+        assert five == ten == twenty == 3_000_000
+
 
 class TestGetAvgOpening15mVolume:
     def test_averages_opening_candles(self) -> None:

@@ -17,6 +17,7 @@ from apps.technical_analysis.domain.indicators import (
     compute_atr,
     compute_bollinger_upper,
     compute_ema,
+    compute_rsi,
     compute_vwap,
 )
 
@@ -184,6 +185,89 @@ class TestComputeBollingerUpper:
 
 
 # ---------------------------------------------------------------------------
+# RSI14
+# ---------------------------------------------------------------------------
+
+
+class TestComputeRsi:
+    @staticmethod
+    def _bars(closes: list[str]) -> list[Bar]:
+        """Build ``Bar`` rows from a list of close prices."""
+        return [Bar(high=c, low=c, close=c, volume=1000) for c in closes]
+
+    def test_known_value_reference(self) -> None:
+        # 7 gains (+3) and 7 losses (-2) over the 14 seed changes:
+        # avg_gain = (7*3)/14 = 1.5, avg_loss = (7*2)/14 = 1.0
+        # RS = 1.5 -> RSI = 100 - 100 / (1 + 1.5) = 60.
+        bars = self._bars(
+            ["100", "103", "101", "104", "102", "105", "103",
+             "106", "104", "107", "105", "108", "106", "109", "107"]
+        )
+        assert compute_rsi(bars) == Decimal("60")
+
+    def test_less_than_period_plus_one_returns_none(self) -> None:
+        assert compute_rsi(self._bars(["100"] * 14)) is None
+
+    def test_empty_series_is_none(self) -> None:
+        assert compute_rsi([]) is None
+
+    def test_exactly_period_plus_one_produces_value(self) -> None:
+        # 15 candles, 14 changes all +1: avg_loss = 0 -> RSI = 100.
+        bars = self._bars([str(100 + i) for i in range(15)])
+        assert compute_rsi(bars) == Decimal("100")
+
+    def test_all_gains_is_100(self) -> None:
+        bars = self._bars([str(100 + i) for i in range(30)])
+        assert compute_rsi(bars) == Decimal("100")
+
+    def test_all_losses_is_zero(self) -> None:
+        bars = self._bars([str(200 - i) for i in range(30)])
+        assert compute_rsi(bars) == Decimal("0")
+
+    def test_zero_loss_denominator_is_safe(self) -> None:
+        # avg_loss == 0 (all gains) must not raise ZeroDivisionError.
+        bars = self._bars([str(100 + i) for i in range(25)])
+        assert compute_rsi(bars) == Decimal("100")
+
+    def test_zero_gain_case_returns_zero(self) -> None:
+        bars = self._bars([str(100 - i) for i in range(25)])
+        assert compute_rsi(bars) == Decimal("0")
+
+    def test_mixed_gains_and_losses_in_bounds(self) -> None:
+        # Oscillating series: gains and losses both present -> 0 < RSI < 100.
+        closes = ["100"]
+        for idx in range(29):
+            step = 3.0 if idx % 2 == 0 else -2.0
+            closes.append(str(float(closes[-1]) + step))
+        value = compute_rsi(self._bars(closes))
+        assert value is not None
+        assert Decimal("0") < value < Decimal("100")
+
+    def test_wilder_smoothing_is_applied(self) -> None:
+        # 30 mixed candles (both gains and losses) in a deterministic pattern.
+        closes = [str(100 + ((i * 7) % 13)) for i in range(30)]
+        value = compute_rsi(self._bars(closes))
+        assert value is not None
+        assert Decimal("0") < value < Decimal("100")
+
+    def test_order_sensitive(self) -> None:
+        # Reversing the same closes flips gains/losses, changing RSI.
+        closes = [str(100 + (i % 5)) for i in range(30)]
+        forward = compute_rsi(self._bars(closes))
+        backward = compute_rsi(self._bars(list(reversed(closes))))
+        assert forward is not None and backward is not None
+        assert forward != backward
+
+    def test_deterministic_repeat(self) -> None:
+        closes = [str(100 + ((i * 7) % 11)) for i in range(30)]
+        assert compute_rsi(self._bars(closes)) == compute_rsi(self._bars(closes))
+
+    def test_flat_series_is_none_not_fabricated(self) -> None:
+        # avg_gain == avg_loss == 0 (0/0) is None per the TA-2 convention.
+        assert compute_rsi(self._bars(["100"] * 20)) is None
+
+
+# ---------------------------------------------------------------------------
 # Cross-cutting: no fabricated zeroes under insufficient data
 # ---------------------------------------------------------------------------
 
@@ -195,6 +279,7 @@ class TestWarmupFailSafe:
         assert compute_ema(bars, period=20) is None
         assert compute_atr(bars, period=14) is None
         assert compute_bollinger_upper(bars) is None
+        assert compute_rsi(bars) is None
 
     def test_never_returns_zero_as_substitute(self) -> None:
         bars = _bars(*[("100", "100", "100", 1000)] * 5)
@@ -202,6 +287,7 @@ class TestWarmupFailSafe:
             compute_ema(bars, period=20),
             compute_atr(bars, period=14),
             compute_bollinger_upper(bars),
+            compute_rsi(bars),
         ):
             assert value is None
 
@@ -212,8 +298,9 @@ class TestWarmupFailSafe:
             lambda: compute_ema([], period=20),
             lambda: compute_atr([], period=14),
             lambda: compute_bollinger_upper([]),
+            lambda: compute_rsi([]),
         ],
-        ids=["vwap", "ema", "atr", "bb"],
+        ids=["vwap", "ema", "atr", "bb", "rsi"],
     )
     def test_empty_series_is_none_not_zero(self, builder) -> None:
         assert builder() is None

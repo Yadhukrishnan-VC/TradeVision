@@ -422,8 +422,70 @@ class TestM5Indicators:
     def test_insufficient_history_omits_indicator_keys(self, db) -> None:
         ts = _seed_m5_history(db, count=14)
         payload = _bridge().build_payload_for_candle(_seed_m5_candle(ts))
-        for key in ("ema_20", "atr_14", "bb_upper"):
+        for key in ("ema_20", "atr_14", "bb_upper", "rsi_14"):
             assert key not in payload, f"{key!r} must be omitted on insufficient history"
+
+    def test_rsi_boundary_14_absent_15_present(self, db) -> None:
+        day = NOW.astimezone(_IST).date()
+        _seed_instrument(db)
+        closes = [str(100.0 + i) for i in range(14)]
+        for i, c in enumerate(closes):
+            CandleModel.objects.create(
+                instrument_id=1001,
+                timeframe="1min",
+                timestamp=_utc_from_ist(day, 9, 16) + timedelta(minutes=i),
+                open=Decimal(c),
+                high=Decimal(c),
+                low=Decimal(c),
+                close=Decimal(c),
+                volume=1000,
+            )
+        ts_14 = _utc_from_ist(day, 9, 16) + timedelta(minutes=13)
+        payload_14 = _bridge().build_payload_for_candle(_seed_m5_candle(ts_14))
+        assert "rsi_14" not in payload_14
+
+        CandleModel.objects.create(
+            instrument_id=1001,
+            timeframe="1min",
+            timestamp=_utc_from_ist(day, 9, 16) + timedelta(minutes=14),
+            open=Decimal("114"),
+            high=Decimal("114"),
+            low=Decimal("114"),
+            close=Decimal("114"),
+            volume=1000,
+        )
+        ts_15 = _utc_from_ist(day, 9, 16) + timedelta(minutes=14)
+        payload_15 = _bridge().build_payload_for_candle(_seed_m5_candle(ts_15))
+        assert "rsi_14" in payload_15
+        assert Decimal(payload_15["rsi_14"]) == Decimal("100")
+
+    def test_rsi_absent_on_flat_series(self, db) -> None:
+        # 60 candles all flat: RSI is the undefined 0/0 reading -> None,
+        # so the key must be omitted (never a fabricated zero/50).
+        ts = _seed_m5_history(db, 60)
+        payload = _bridge().build_payload_for_candle(_seed_m5_candle(ts))
+        assert "rsi_14" not in payload
+
+    def test_rsi_payload_key_and_serialization(self, db) -> None:
+        day = NOW.astimezone(_IST).date()
+        _seed_instrument(db)
+        for i in range(60):
+            close = Decimal("100") + Decimal(i) * Decimal("1")
+            CandleModel.objects.create(
+                instrument_id=1001,
+                timeframe="1min",
+                timestamp=_utc_from_ist(day, 9, 16) + timedelta(minutes=i),
+                open=close,
+                high=close,
+                low=close,
+                close=close,
+                volume=1000,
+            )
+        last_ts = _utc_from_ist(day, 9, 16) + timedelta(minutes=59)
+        payload = _bridge().build_payload_for_candle(_seed_m5_candle(last_ts))
+        assert "rsi_14" in payload
+        # stringified exact Decimal, never a fabricated 0
+        assert payload["rsi_14"] == str(Decimal("100"))
 
     def test_ema_decision_c_waits_for_sixty(self, db) -> None:
         # 20 candles satisfy the math seed but Decision C guards at 60.

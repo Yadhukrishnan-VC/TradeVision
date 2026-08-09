@@ -22,10 +22,11 @@ number of candles:
 Indicator     Minimum candles     Behavior below the minimum
 ============= ==================  ===========================================
 VWAP          1                   ``None`` when the session slice is empty
-                                  or carries zero total volume
+                                 or carries zero total volume
 EMA20         20                  ``None`` (SMA seed needs ``period`` closes)
-ATR14         15                  ``None`` (14 true ranges + 1 prior close)
+ATR14         15                  ``None`` (14 true ranges + prior close)
 Bollinger U.  20                  ``None`` (full sampling window required)
+RSI14         15                  ``None`` (14 price changes + seed close)
 ============= ==================  ===========================================
 
 These are the pure-function minima from the approved warm-up table. The
@@ -143,3 +144,53 @@ def compute_bollinger_upper(
     variance = sum((close - mean) ** 2 for close in closes) / denominator
     stddev = variance.sqrt()
     return mean + Decimal(num_std) * stddev
+
+
+def compute_rsi(candles: Sequence[Bar], period: int = 14) -> Decimal | None:
+    """Wilder relative strength index over *candles*.
+
+    ``RS = avg_gain / avg_loss`` where the averages come from a Wilder
+    smoothing run: the change list is reduced to gains (``max(Δclose, 0)``)
+    and losses (``max(-Δclose, 0)``), the first *period* of each are averaged
+    as an SMA seed, then each subsequent change is folded in via the Wilder
+    decay ``avg = (avg * (period-1) + value) / period``. RSI is then given by
+    ``100 - 100 / (1 + RS)``.
+
+    Edge conventions (approved TA-2 package):
+
+    * ``None`` unless at least ``period + 1`` candles exist (the seed needs
+      *period* price changes, i.e. a preceding close — identical to ATR).
+    * All gains (``avg_loss == 0``, ``avg_gain > 0``) → ``100`` — the RS
+      ratio is infinite but bounded, taken as the most-gained reading.
+    * All losses (``avg_gain == 0``, ``avg_loss > 0``) → ``0``.
+    * Fully flat series (``avg_gain == 0`` and ``avg_loss == 0``) → ``None``:
+      RSI is the undefined ``0/0`` reading, and ``None`` (never a fabricated
+      ``50``/``0``) is the repository's missing-value contract.
+
+    The result is the RSI at the *last* candle.
+    """
+    if len(candles) < period + 1:
+        return None
+
+    gains: list[Decimal] = []
+    losses: list[Decimal] = []
+    for idx in range(1, len(candles)):
+        delta = Decimal(candles[idx].close) - Decimal(candles[idx - 1].close)
+        gains.append(delta if delta > 0 else Decimal("0"))
+        losses.append(-delta if delta < 0 else Decimal("0"))
+
+    avg_gain = sum(gains[:period]) / Decimal(period)
+    avg_loss = sum(losses[:period]) / Decimal(period)
+    for gain, loss in zip(gains[period:], losses[period:]):
+        avg_gain = (avg_gain * Decimal(period - 1) + gain) / Decimal(period)
+        avg_loss = (avg_loss * Decimal(period - 1) + loss) / Decimal(period)
+
+    if avg_gain == 0 and avg_loss == 0:
+        return None
+    if avg_loss == 0:
+        return Decimal("100")
+    if avg_gain == 0:
+        return Decimal("0")
+    return Decimal("100") - Decimal("100") / (
+        Decimal("1") + avg_gain / avg_loss
+    )

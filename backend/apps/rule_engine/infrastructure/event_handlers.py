@@ -76,6 +76,7 @@ def _deserialize_enriched_packet(data: dict) -> EnrichedIntelligencePacket:
         volume=int(price.get("volume", 0)),
         avg_volume_20d=int(price.get("avg_volume_20d", 0)),
         avg_volume_10d=opt_int(price.get("avg_volume_10d")),
+        avg_volume_5d=opt_int(price.get("avg_volume_5d")),
         circuit_status=CircuitStatus(safe_str(price.get("circuit_status"), "NORMAL")),
     )
 

@@ -30,13 +30,18 @@ EXIT_BAR_TIME = datetime(2024, 6, 10, 8, 0, 0, tzinfo=timezone.utc)
 pytestmark = pytest.mark.django_db
 
 
-def _seed_instrument_and_facts(db) -> None:
+def _seed_instrument_and_facts(db, monkeypatch) -> None:
     """Instrument + session-facts rows the intelligence enrichment reads."""
     from apps.market_data.infrastructure.models import Candle, Instrument
     from core.market_calendar import MarketCalendar
 
     # Force every day to be a trading day (deterministic regardless of clock).
-    MarketCalendar.is_trading_day = lambda self, day: True  # type: ignore[method-assign]
+    # Use monkeypatch so the class-level default is restored after the test —
+    # a bare attribute assignment would leak the all-days-trading flag into
+    # every later test in the same process.
+    monkeypatch.setattr(
+        MarketCalendar, "is_trading_day", lambda self, day: True
+    )
 
     Instrument.objects.create(
         instrument_token=1002,
@@ -157,7 +162,7 @@ class TestBacktestStopExit:
             lambda self, symbol: None,
         )
 
-        _seed_instrument_and_facts(db)
+        _seed_instrument_and_facts(db, monkeypatch)
         account = _make_account(db, django_user_model)
         run = _make_run(account)
         bus = get_event_bus()

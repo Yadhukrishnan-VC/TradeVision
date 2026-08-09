@@ -285,6 +285,9 @@ def _enrich_with_session_facts(packet: IntelligencePacket) -> IntelligencePacket
         prev_high, prev_low = facts.get_previous_day_ohlc(
             instrument.instrument_token, packet.timestamp
         )
+        avg_volume_5d = facts.get_avg_daily_volume(
+            instrument.instrument_token, packet.timestamp, days=5
+        )
         avg_volume_10d = facts.get_avg_daily_volume(
             instrument.instrument_token, packet.timestamp, days=10
         )
@@ -303,6 +306,7 @@ def _enrich_with_session_facts(packet: IntelligencePacket) -> IntelligencePacket
 
     new_price = replace(
         price,
+        avg_volume_5d=price.avg_volume_5d or avg_volume_5d,
         avg_volume_10d=price.avg_volume_10d or avg_volume_10d,
         avg_volume_20d=price.avg_volume_20d or (avg_volume_20d or 0),
     )

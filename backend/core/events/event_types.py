@@ -98,6 +98,11 @@ class PriceContext:
     """Average daily volume over the trailing 10 sessions (0 or None when
     unavailable). Populated from persisted market-data candles at packet
     assembly; deterministic setups use it for volume-ratio conditions."""
+    avg_volume_5d: int | None = None
+    """Average daily volume over the trailing 5 sessions (None when fewer
+    than 5 trailing day-candle sessions exist). Populated from persisted
+    market-data candles at packet assembly via ``SessionFactsService``;
+    follows the same optional-int convention as ``avg_volume_10d``."""
 
 
 @dataclass(frozen=True)

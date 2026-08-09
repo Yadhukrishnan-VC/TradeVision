@@ -838,7 +838,9 @@ class TestIndicatorDrivenRESTPoll:
             e for e in bus.published_events
             if e.event_type == "technical_analysis.TechnicalAnalysisCompleted"
         )
-        assert set(ta_event.payload["indicators"]) == {"vwap", "ema_20", "atr_14", "bb_upper"}
+        assert set(ta_event.payload["indicators"]) == {
+            "vwap", "ema_20", "atr_14", "bb_upper", "rsi_14",
+        }
         for value in ta_event.payload["indicators"].values():
             assert Decimal(value) > 0
 
@@ -849,6 +851,11 @@ class TestIndicatorDrivenRESTPoll:
         tech_ctx = packet_data["technical_context"]
         assert Decimal(tech_ctx["vwap"]) == Decimal(ta_event.payload["indicators"]["vwap"])
         assert Decimal(tech_ctx["ema_20"]) == Decimal(ta_event.payload["indicators"]["ema_20"])
+        assert Decimal(tech_ctx["rsi_14"]) == Decimal(ta_event.payload["indicators"]["rsi_14"])
+        # TA-2: 5-day average volume carried through the packet (seeded 1D
+        # rows via the real pipeline) — every 1D bar volumes 100,000.
+        price_ctx = packet_data["price_context"]
+        assert price_ctx["avg_volume_5d"] == 100_000
         # M5.1 session facts read from the REAL pipeline rows.
         assert tech_ctx["opening_15m_open"] is not None
         assert tech_ctx["opening_15m_low"] is not None
