@@ -9,8 +9,10 @@ from apps.execution.domain.exceptions import UnknownRuleError
 from apps.portfolio.domain.value_objects import Side
 
 # Rule -> direction mapping. Mirrors the M3 risk engine's rule sets
-# (_LONG_RULES / _SHORT_RULES) so execution derives the position side from
-# the rule that fired; the RiskApproved payload carries no side field.
+# (_LONG_RULES / _SHORT_RULES) as a static fallback used when the
+# RiskApproved payload carries no direction (backward compatibility:
+# pre-EXEC-1 events / external producers). When the payload does carry an
+# explicit direction, :func:`resolve_side` prefers it.
 _LONG_RULES: frozenset[str] = frozenset({"long_momentum_v1", "volatility_breakout_v1"})
 _SHORT_RULES: frozenset[str] = frozenset({"short_sell_v1"})
 
@@ -22,6 +24,22 @@ def side_for_rule(rule_id: str) -> Side:
     if rule_id in _SHORT_RULES:
         return Side.SHORT
     raise UnknownRuleError(rule_id)
+
+
+def resolve_side(rule_id: str, payload_direction: str | None) -> Side:
+    """Resolve the position side for a RiskApproved intake.
+
+    The direction computed by the risk engine is authoritative: an explicit
+    ``"long"``/``"short"`` payload value wins. Any other value (missing,
+    empty or unrecognised) falls back to the static rule sets via
+    :func:`side_for_rule`, keeping pre-EXEC-1 behaviour — including
+    ``UnknownRuleError`` when the rule id is not configured.
+    """
+    if payload_direction == "long":
+        return Side.LONG
+    if payload_direction == "short":
+        return Side.SHORT
+    return side_for_rule(rule_id)
 
 
 class OrderStatus(str, Enum):

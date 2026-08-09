@@ -68,6 +68,77 @@ def _ta_payload(symbol: str = "RELIANCE") -> dict:
     }
 
 
+def _ta_short_breakdown_payload(symbol: str = "RELIANCE") -> dict:
+    """A real TA payload on which VolatilityBreakoutRule fires short.
+
+    - prev-day candle low 108.00 (seeded by the test) with a wide range
+    - current price 103.00 < prev-day low -> direction "short"
+    - session range (104.00 - 99.00 = 5.00) >= 1.5 x ATR (3.00)
+    - Supertrend(10,2) value 104.50 > entry -> decision-grade stop for a short
+    - volume far below every average-volume threshold, so no other rule fires
+    """
+    return {
+        "symbol": symbol,
+        "snapshot_id": str(uuid.uuid4()),
+        "exchange": "NSE",
+        "timeframe": "1D",
+        "snapshot_timestamp": datetime.now(timezone.utc).isoformat(),
+        "indicators": {
+            "atr_14": "3.00",
+            "supertrend_value": "104.50",
+            "supertrend_direction": "down",
+            "vwap": "105.00",
+            "ema_20": "104.00",
+        },
+        "price": {
+            "close": "103.00",
+            "open": "103.50",
+            "high": "104.00",
+            "low": "99.00",
+            "volume": 100_000,
+            "avg_volume_10d": 1_000_000,
+        },
+        "pine_id": "e2e_paper",
+        "pine_version": "5",
+    }
+
+
+def _seed_previous_day_candle(monkeypatch) -> None:
+    """Create the previous trading day's 1D candle (high/low for the VS rule).
+
+    The session-facts enrichment fills ``prev_day_high``/``prev_day_low``
+    from persisted candles; without a previous-day candle the
+    VolatilityBreakoutRule cannot fire. Uses the same IST/UTC and
+    always-trading-day conventions as ``seed_session_facts``.
+    """
+    from datetime import datetime, time, timedelta, timezone
+    from decimal import Decimal
+    from zoneinfo import ZoneInfo
+
+    from apps.market_data.infrastructure.models import Candle
+    from core.market_calendar import MarketCalendar
+
+    _IST = ZoneInfo("Asia/Kolkata")
+    monkeypatch.setattr(MarketCalendar, "is_trading_day", lambda self, day: True)
+
+    session_day = datetime.now(timezone.utc).astimezone(_IST).date()
+    prev_day = session_day - timedelta(days=1)
+    prev_start_utc = datetime.combine(
+        prev_day, time(0, 0), tzinfo=_IST
+    ).astimezone(timezone.utc)
+
+    Candle.objects.create(
+        instrument_id=1002,
+        timeframe="1D",
+        timestamp=prev_start_utc,
+        open=Decimal("112.00"),
+        high=Decimal("112.00"),
+        low=Decimal("108.00"),
+        close=Decimal("110.00"),
+        volume=1_000_000,
+    )
+
+
 def _register_pipeline(bus, *handler_fixtures) -> None:
     for register in handler_fixtures:
         register(bus)
@@ -77,6 +148,18 @@ def _publish_ta_event(bus, *, correlation_id: uuid.UUID | None = None) -> Domain
     event = DomainEvent.create(
         event_type="technical_analysis.TechnicalAnalysisCompleted",
         payload=_ta_payload(),
+        correlation_id=correlation_id or uuid.uuid4(),
+    )
+    bus.publish(event)
+    return event
+
+
+def _publish_ta_short_breakdown_event(
+    bus, *, correlation_id: uuid.UUID | None = None
+) -> DomainEvent:
+    event = DomainEvent.create(
+        event_type="technical_analysis.TechnicalAnalysisCompleted",
+        payload=_ta_short_breakdown_payload(),
         correlation_id=correlation_id or uuid.uuid4(),
     )
     bus.publish(event)
@@ -252,6 +335,110 @@ class TestE2EPaperTradingPipeline:
                     if e.event_type == "ai_engine.RecommendationIssued"]
         assert not [e for e in bus.published_events
                     if e.event_type.startswith("pattern_engine.")]
+
+    def test_short_breakdown_drives_short_order_to_fill(
+        self,
+        account,
+        monkeypatch,
+        register_intelligence_handlers,
+        register_rule_engine_handlers,
+        register_risk_handlers,
+        seed_session_facts,
+    ) -> None:
+        from apps.execution.infrastructure.models import ExecutionRequest, Fill, Order
+        from apps.risk_management.infrastructure.models import RiskDecisionExecution
+        from apps.rule_engine.infrastructure.models import RuleExecution
+
+        _seed_previous_day_candle(monkeypatch)
+
+        bus = get_event_bus()
+        _register_pipeline(
+            bus,
+            register_intelligence_handlers,
+            register_rule_engine_handlers,
+            register_risk_handlers,
+        )
+
+        correlation_id = uuid.uuid4()
+        _publish_ta_short_breakdown_event(bus, correlation_id=correlation_id)
+
+        # ------------------------------------------------------------------
+        # Stage 1: VolatilityBreakoutRule fires the short breakdown once
+        # ------------------------------------------------------------------
+        fired_events = [
+            e for e in bus.published_events
+            if e.event_type == "rule_engine.RuleFired"
+        ]
+        assert len(fired_events) == 1
+        fired_event = fired_events[0]
+        assert fired_event.payload["rule_id"] == "volatility_breakout_v1"
+        assert fired_event.payload["event_type"] == "breakdown"
+        assert fired_event.payload["trigger_data"]["direction"] == "short"
+        assert Decimal(fired_event.payload["trigger_data"]["entry_price"]) == Decimal("103.00")
+        assert fired_event.payload["trigger_data"]["stop_loss"] == "104.50"
+
+        analysis_event_id = uuid.UUID(fired_event.payload["analysis_event_id"])
+        execution = RuleExecution.objects.get(
+            analysis_event_id=analysis_event_id,
+            rule_id="volatility_breakout_v1",
+        )
+        assert execution.trigger_data["direction"] == "short"
+
+        # ------------------------------------------------------------------
+        # Stage 2: Risk Management approves with direction short
+        # ------------------------------------------------------------------
+        approved_events = [
+            e for e in bus.published_events
+            if e.event_type == "risk_management.RiskApproved"
+        ]
+        assert len(approved_events) == 1
+        approved_event = approved_events[0]
+        assert approved_event.payload["rule_id"] == "volatility_breakout_v1"
+        assert approved_event.payload["event_type"] == "breakdown"
+        assert approved_event.payload["direction"] == "short"
+        assert approved_event.payload["entry_price"] == "103.00"
+
+        decision = RiskDecisionExecution.objects.get(
+            analysis_event_id=analysis_event_id,
+            rule_id="volatility_breakout_v1",
+        )
+        assert decision.status == "APPROVED"
+        assert decision.position_size > 0
+
+        # ------------------------------------------------------------------
+        # Stage 3: Execution opens a SHORT order filled by the paper broker
+        # ------------------------------------------------------------------
+        assert ExecutionRequest.objects.count() == 1
+        assert Order.objects.count() == 1
+
+        request = ExecutionRequest.objects.get()
+        order = Order.objects.get()
+
+        assert request.status == "ORDER_CREATED"
+        assert request.risk_approved_event_id == approved_event.event_id
+        assert request.rule_id == "volatility_breakout_v1"
+        assert request.side == "SHORT"
+
+        assert order.status == "FILLED"
+        assert order.symbol == "RELIANCE"
+        assert order.side == "SHORT"
+        assert order.order_type == "market"
+        assert order.filled_quantity == order.quantity
+        assert order.avg_fill_price == Decimal("103.00")
+        assert order.entry_price == Decimal("103.00")
+        assert order.stop_loss == Decimal("104.50")
+
+        assert Fill.objects.count() >= 1
+
+        # ------------------------------------------------------------------
+        # Correlation traceability through the short chain
+        # ------------------------------------------------------------------
+        packet_event = next(
+            e for e in bus.published_events if e.event_type == "intelligence.PacketBuilt"
+        )
+        assert fired_event.correlation_id == packet_event.event_id
+        assert approved_event.causation_id == fired_event.event_id
+        assert request.correlation_id == approved_event.correlation_id
 
     def test_rule_and_risk_layers_are_idempotent_on_redelivery(
         self,

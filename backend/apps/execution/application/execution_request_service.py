@@ -14,7 +14,7 @@ from apps.execution.domain.exceptions import (
 from apps.execution.domain.value_objects import (
     ExecutionIntakeResult,
     ExecutionRequestStatus,
-    side_for_rule,
+    resolve_side,
 )
 from apps.execution.infrastructure.repositories import (
     ExecutionRequestRepository,
@@ -59,8 +59,8 @@ class ExecutionRequestService(BaseService):
     ) -> ExecutionIntakeResult:
         """Ingest one RiskApproved event; returns a deterministic outcome."""
         try:
-            symbol, rule_id, event_type, entry_price, stop_loss, quantity = self._extract(
-                payload
+            symbol, rule_id, event_type, entry_price, stop_loss, quantity, direction = (
+                self._extract(payload)
             )
         except ExecutionRequestValidationError as exc:
             return ExecutionIntakeResult(outcome="INVALID_PAYLOAD", reason_message=exc.message)
@@ -71,7 +71,7 @@ class ExecutionRequestService(BaseService):
             )
 
         try:
-            side = side_for_rule(rule_id)
+            side = resolve_side(rule_id, direction)
         except UnknownRuleError as exc:
             return ExecutionIntakeResult(outcome="UNKNOWN_RULE", reason_message=exc.message)
 
@@ -132,11 +132,13 @@ class ExecutionRequestService(BaseService):
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _extract(payload: dict) -> tuple[str, str, str, Decimal, Decimal, Decimal]:
+    def _extract(payload: dict) -> tuple[str, str, str, Decimal, Decimal, Decimal, str | None]:
         """Validate and normalise the RiskApproved payload shape."""
         symbol = str(payload.get("symbol", "")).strip().upper()
         rule_id = str(payload.get("rule_id", "")).strip()
         event_type = str(payload.get("event_type", "")).strip()
+        raw_direction = str(payload.get("direction", "")).strip().lower()
+        direction: str | None = raw_direction or None
         entry_price = Decimal(str(payload.get("entry_price", "")))
         stop_loss = Decimal(str(payload.get("stop_loss", "")))
         quantity = Decimal(str(payload.get("position_size", "")))
@@ -151,7 +153,7 @@ class ExecutionRequestService(BaseService):
             raise ExecutionRequestValidationError("stop_loss must be positive")
         if quantity <= 0:
             raise ExecutionRequestValidationError("position_size must be positive")
-        return symbol, rule_id, event_type, entry_price, stop_loss, quantity
+        return symbol, rule_id, event_type, entry_price, stop_loss, quantity, direction
 
     @staticmethod
     def _default_account() -> Account | None:

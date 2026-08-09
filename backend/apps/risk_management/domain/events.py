@@ -26,6 +26,10 @@ class RiskApproved:
     risk_amount: Decimal
     risk_pct_of_capital: Decimal
     risk_reward_ratio: Decimal
+    # Risk-engine computed direction ("long"/"short"). "" means "not carried"
+    # (legacy/external producers); execution falls back to the static rule
+    # sets in that case, preserving pre-EXEC-1 behavior.
+    direction: str = ""
     portfolio_gateway_impl: str = "stub"
 
     def to_payload(self) -> dict[str, Any]:
@@ -33,6 +37,7 @@ class RiskApproved:
             "symbol": self.symbol,
             "rule_id": self.rule_id,
             "event_type": self.event_type,
+            "direction": self.direction,
             "entry_price": str(self.entry_price),
             "stop_loss": str(self.stop_loss),
             "position_size": self.position_size,
@@ -48,6 +53,7 @@ class RiskApproved:
             symbol=decision.symbol,
             rule_id=decision.rule_id,
             event_type=decision.event_type,
+            direction=decision.direction,
             entry_price=decision.entry_price,
             stop_loss=decision.stop_loss,
             position_size=decision.position_size,

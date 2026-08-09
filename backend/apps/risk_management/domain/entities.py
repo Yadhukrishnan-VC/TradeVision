@@ -50,6 +50,7 @@ class RiskDecision:
         symbol:                 Instrument symbol the rule fired for.
         rule_id:                Identifier of the originating rule.
         event_type:             Origin event type (BREAKOUT/BREAKDOWN).
+        direction:              Position direction the rule opened (long/short).
         analysis_event_id:      Idempotency key, equal to the RuleFired
                                 ``analysis_event_id`` (stable per stream entry).
         occurred_at:            When the decision was made (UTC).
@@ -73,6 +74,7 @@ class RiskDecision:
     analysis_event_id: UUID
     occurred_at: datetime
     status: RiskDecisionStatus
+    direction: str = "long"
     entry_price: Decimal = Decimal(0)
     stop_loss: Decimal = Decimal(0)
     position_size: int = 0

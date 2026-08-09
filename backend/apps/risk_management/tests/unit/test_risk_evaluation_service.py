@@ -155,6 +155,66 @@ class TestRiskDecisionOutcomes:
         assert decision.rejection.code == RejectionReason.KILL_SWITCH_ACTIVE
 
 
+class TestDecisionDirection:
+    def test_decision_carries_long_direction_for_long_rule(self) -> None:
+        decision = build_service().evaluate_rule_firing(
+            make_payload(rule_id="long_momentum_v1", direction="long")
+        )
+        assert decision.status.value == "APPROVED"
+        assert decision.direction == "long"
+
+    def test_decision_carries_short_direction_from_trigger_data(self) -> None:
+        # The bidirectional volatility rule derives its direction from the
+        # explicit trigger_data direction (short-breakdown case).
+        decision = build_service().evaluate_rule_firing(
+            make_payload(
+                rule_id="volatility_breakout_v1",
+                direction="short",
+                stop_loss="105.00",  # above entry -> correct side for a short
+            )
+        )
+        assert decision.status.value == "APPROVED"
+        assert decision.direction == "short"
+
+    def test_direction_defaults_to_long_when_payload_omits_it(self) -> None:
+        decision = build_service().evaluate_rule_firing(
+            make_payload(direction=None)
+        )
+        assert decision.status.value == "APPROVED"
+        assert decision.direction == "long"
+
+    def test_short_direction_survives_a_rejected_decision(self) -> None:
+        decision = build_service().evaluate_rule_firing(
+            make_payload(
+                rule_id="volatility_breakout_v1",
+                direction="short",
+                stop_loss="101.00",  # below entry -> wrong side for a short
+            )
+        )
+        assert decision.status.value == "REJECTED"
+        assert decision.direction == "short"
+
+
+class TestRiskApprovedDirectionPayload:
+    def test_published_payload_contains_direction(self) -> None:
+        from apps.risk_management.domain.events import RiskApproved
+
+        decision = build_service().evaluate_rule_firing(
+            make_payload(rule_id="volatility_breakout_v1", direction="short")
+        )
+        payload = RiskApproved.from_decision(decision).to_payload()
+        assert payload["direction"] == "short"
+
+    def test_published_payload_defaults_direction_to_long(self) -> None:
+        from apps.risk_management.domain.events import RiskApproved
+
+        decision = build_service().evaluate_rule_firing(
+            make_payload(direction=None)
+        )
+        payload = RiskApproved.from_decision(decision).to_payload()
+        assert payload["direction"] == "long"
+
+
 class TestSizingPrecision:
     def test_position_size_uses_decimal_floor_not_float(self) -> None:
         decision = build_service(
