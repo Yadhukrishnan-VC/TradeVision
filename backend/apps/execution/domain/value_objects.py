@@ -119,6 +119,8 @@ class OrderPlacementRequest:
     price: Decimal
     correlation_id: uuid.UUID
     causation_id: uuid.UUID | None = None
+    commission_rate: Decimal = Decimal("0")
+    slippage_bps: Decimal = Decimal("0")
 
 
 @dataclass(frozen=True)
@@ -155,6 +157,8 @@ class SimulatedFill:
     sequence: int
     quantity: Decimal
     price: Decimal
+    commission_fee: Decimal = Decimal("0")
+    slippage_impact: Decimal = Decimal("0")
 
 
 @dataclass(frozen=True)

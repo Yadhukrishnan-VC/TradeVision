@@ -9,6 +9,7 @@ pipeline while an injected simulation clock freezes evaluation time.
 from __future__ import annotations
 
 import uuid
+from decimal import Decimal
 
 from django.db import models
 
@@ -50,6 +51,46 @@ class BacktestRun(BaseModel):
         default=BacktestRunStatus.PENDING,
         db_index=True,
     )
+    commission_rate = models.DecimalField(
+        max_digits=10,
+        decimal_places=6,
+        default=Decimal("0.0003"),
+        help_text="Brokerage/commission rate as a decimal (e.g. 0.0003 for 30 bps).",
+    )
+    slippage_bps = models.DecimalField(
+        max_digits=10,
+        decimal_places=4,
+        default=Decimal("5.0"),
+        help_text="Execution slippage in basis points (e.g. 5.0 for 5 bps).",
+    )
+    in_sample_ratio = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=Decimal("0.70"),
+        help_text="Fraction of date range reserved for In-Sample training/observation.",
+    )
+    net_pnl = models.DecimalField(
+        max_digits=20, decimal_places=4, null=True, blank=True
+    )
+    expectancy = models.DecimalField(
+        max_digits=20, decimal_places=4, null=True, blank=True
+    )
+    profit_factor = models.DecimalField(
+        max_digits=20, decimal_places=4, null=True, blank=True
+    )
+    max_drawdown = models.DecimalField(
+        max_digits=10, decimal_places=4, null=True, blank=True
+    )
+    sharpe_ratio = models.DecimalField(
+        max_digits=10, decimal_places=4, null=True, blank=True
+    )
+    sortino_ratio = models.DecimalField(
+        max_digits=10, decimal_places=4, null=True, blank=True
+    )
+    benchmark_return = models.DecimalField(
+        max_digits=10, decimal_places=4, null=True, blank=True
+    )
+    risk_rejected_count = models.IntegerField(default=0)
     last_processed_snapshot_id = models.UUIDField(null=True, blank=True)
     failure_reason = models.TextField(default="", blank=True)
     started_at = models.DateTimeField(null=True, blank=True)
