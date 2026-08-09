@@ -13,6 +13,7 @@ from apps.rule_engine.domain.entities import RuleFiring
 from apps.rule_engine.domain.exceptions import RuleEvaluationError
 from apps.rule_engine.domain.rules import (
     BreakoutRule,
+    HighBetaBreakoutRule,
     LongMomentumRule,
     PriceMovementRule,
     ShortSellRule,
@@ -36,6 +37,7 @@ class RuleEvaluationService(BaseService):
         self._registry.register(LongMomentumRule())
         self._registry.register(ShortSellRule())
         self._registry.register(VolatilityBreakoutRule())
+        self._registry.register(HighBetaBreakoutRule())
 
     def evaluate_enriched_packet(
         self,

@@ -8,6 +8,7 @@ import pytest
 
 from apps.eventbus.infrastructure.event_bus_factory import get_event_bus, reset_event_bus
 from apps.rule_engine.infrastructure.models import RuleExecution
+from core.rules.base_rule import RuleSeverity
 
 pytestmark = pytest.mark.django_db
 
@@ -33,6 +34,7 @@ def _build_enriched_data(
     resistance_levels: list[str] | None = None,
     freshness_validated: bool = True,
     avg_volume_10d: int | None = None,
+    avg_volume_5d: int | None = None,
     technical_extra: dict | None = None,
 ) -> dict:
     if resistance_levels is None:
@@ -48,6 +50,7 @@ def _build_enriched_data(
         "volume": volume,
         "avg_volume_20d": avg_volume_20d,
         "avg_volume_10d": avg_volume_10d,
+        "avg_volume_5d": avg_volume_5d,
         "circuit_status": "NORMAL",
     }
     technical_context = {
@@ -293,6 +296,109 @@ class TestRuleLifecycle:
         )
 
         assert len(firings) == 0
+
+    def _setup4_enriched(self) -> dict:
+        """A packet satisfying every High Beta Breakout condition."""
+        return _build_enriched_data(
+            change_pct="1.00",
+            volume=1_200_000,
+            avg_volume_20d=5_000_000,  # suppress VolumeSpikeRule
+            avg_volume_5d=500_000,
+            current_price="103.00",
+            bb_upper="102.00",
+            resistance_levels=None,
+            technical_extra={
+                "rsi_14": "70.00",
+            },
+        )
+
+    def test_setup4_fires_via_real_pipeline(self) -> None:
+        reset_event_bus()
+        get_event_bus()
+
+        from apps.rule_engine.infrastructure.event_handlers import _deserialize_enriched_packet
+        from apps.rule_engine.application.rule_evaluation_service import RuleEvaluationService
+
+        enriched = _deserialize_enriched_packet(self._setup4_enriched())
+
+        analysis_event_id = uuid.uuid4()
+        service = RuleEvaluationService()
+        firings = service.evaluate_enriched_packet(
+            enriched,
+            analysis_event_id=analysis_event_id,
+        )
+
+        firing = next(
+            (f for f in firings if f.rule_id == "high_beta_breakout_v1"),
+            None,
+        )
+        assert firing is not None
+        assert firing.event_type == "breakout"
+        assert firing.severity == RuleSeverity.HIGH
+        assert firing.trigger_data["volume_ratio"] == "2.4"
+
+        execution = RuleExecution.objects.get(
+            analysis_event_id=analysis_event_id,
+            rule_id="high_beta_breakout_v1",
+        )
+        assert execution.symbol == "RELIANCE"
+        assert "entry_price" in execution.trigger_data
+        assert "stop_loss" not in execution.trigger_data
+
+    def test_setup4_rule_fired_event_published(self) -> None:
+        reset_event_bus()
+        bus = get_event_bus()
+
+        from apps.rule_engine.infrastructure.event_handlers import _deserialize_enriched_packet
+        from apps.rule_engine.application.rule_evaluation_service import RuleEvaluationService
+
+        enriched = _deserialize_enriched_packet(self._setup4_enriched())
+
+        analysis_event_id = uuid.uuid4()
+        service = RuleEvaluationService()
+        firings = service.evaluate_enriched_packet(
+            enriched,
+            analysis_event_id=analysis_event_id,
+        )
+
+        rule_firing = next(
+            (f for f in firings if f.rule_id == "high_beta_breakout_v1"),
+            None,
+        )
+        assert rule_firing is not None
+
+        service.publish_rule_firing(rule_firing)
+
+        fired_event = next(
+            e for e in bus.published_events
+            if e.event_type == "rule_engine.RuleFired"
+            and e.payload["rule_id"] == "high_beta_breakout_v1"
+        )
+        assert fired_event.payload["event_type"] == "breakout"
+        assert fired_event.payload["symbol"] == "RELIANCE"
+        assert fired_event.correlation_id == analysis_event_id
+
+    def test_setup4_does_not_fire_when_rsi_at_boundary(self) -> None:
+        reset_event_bus()
+        get_event_bus()
+
+        from apps.rule_engine.infrastructure.event_handlers import _deserialize_enriched_packet
+        from apps.rule_engine.application.rule_evaluation_service import RuleEvaluationService
+
+        data = self._setup4_enriched()
+        data["packet"]["technical_context"]["rsi_14"] = "65.00"
+        enriched = _deserialize_enriched_packet(data)
+
+        service = RuleEvaluationService()
+        firings = service.evaluate_enriched_packet(
+            enriched,
+            analysis_event_id=uuid.uuid4(),
+        )
+
+        assert "high_beta_breakout_v1" not in {f.rule_id for f in firings}
+        assert RuleExecution.objects.filter(
+            rule_id="high_beta_breakout_v1",
+        ).count() == 0
 
     def test_idempotent_evaluation(self) -> None:
         reset_event_bus()

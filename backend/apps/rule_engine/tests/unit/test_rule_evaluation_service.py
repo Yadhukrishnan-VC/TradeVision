@@ -234,3 +234,9 @@ class TestRuleEvaluationService:
         trigger = breakout_firings[0].trigger_data
         assert "bb_upper_break" in trigger
         assert "resistance_break" in trigger
+
+    def test_high_beta_breakout_is_registered_and_discoverable(self) -> None:
+        service = RuleEvaluationService()
+        rule_ids = [r.rule_id for r in service._registry.get_registered_rules()]
+
+        assert "high_beta_breakout_v1" in rule_ids

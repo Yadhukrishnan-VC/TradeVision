@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 from apps.rule_engine.domain.rules import (
+    HighBetaBreakoutRule,
     LongMomentumRule,
     ShortSellRule,
     VolatilityBreakoutRule,
@@ -37,6 +38,8 @@ _RULE_MODULES = (
     / "short_sell_rule.py",
     pathlib.Path(inspect.getfile(VolatilityBreakoutRule)).parent
     / "volatility_breakout_rule.py",
+    pathlib.Path(inspect.getfile(HighBetaBreakoutRule)).parent
+    / "high_beta_breakout_rule.py",
 )
 
 
@@ -47,9 +50,12 @@ def _make_packet(
     low: Decimal = Decimal("99.50"),
     volume: int = 3_000_000,
     avg_volume_10d: int | None = 900_000,
+    avg_volume_5d: int | None = 500_000,
     vwap: Decimal | None = Decimal("102.00"),
     ema_20: Decimal | None = Decimal("101.00"),
     atr_14: Decimal | None = None,
+    bb_upper: Decimal | None = None,
+    rsi_14: Decimal | None = None,
     prev_day_high: Decimal | None = None,
     prev_day_low: Decimal | None = None,
     opening_15m_open: Decimal | None = Decimal("100.00"),
@@ -76,12 +82,15 @@ def _make_packet(
             volume=volume,
             avg_volume_20d=900_000,
             avg_volume_10d=avg_volume_10d,
+            avg_volume_5d=avg_volume_5d,
             circuit_status=CircuitStatus.NORMAL,
         ),
         technical_context=TechnicalContext(
             vwap=vwap,
             ema_20=ema_20,
             atr_14=atr_14,
+            bb_upper=bb_upper,
+            rsi_14=rsi_14,
             prev_day_high=prev_day_high,
             prev_day_low=prev_day_low,
             opening_15m_open=opening_15m_open,
@@ -414,10 +423,150 @@ class TestVolatilityBreakoutRule:
         assert rule.evaluate(packet) is None
 
 
+class TestHighBetaBreakoutRule:
+    """SETUP 4 — Intraday High Beta Breakout.
+
+    Fires long only when ALL of: volume > 2x avg_volume_5d, close > bb_upper,
+    rsi_14 > 65 — each strictly, and failing safe on any missing input.
+    """
+
+    def _breakout_packet(self, **kwargs):
+        defaults = {
+            "current_price": Decimal("103.00"),
+            "volume": 1_200_000,
+            "avg_volume_5d": 500_000,
+            "bb_upper": Decimal("102.00"),
+            "rsi_14": Decimal("70.00"),
+        }
+        defaults.update(kwargs)
+        return _make_packet(**defaults)
+
+    def test_fires_on_valid_setup(self) -> None:
+        rule = HighBetaBreakoutRule()
+        result = rule.evaluate(self._breakout_packet())
+
+        assert result is not None
+        assert result.rule_id == "high_beta_breakout_v1"
+        assert result.event_type == EventType.BREAKOUT
+        assert result.severity == RuleSeverity.HIGH
+        assert result.trigger_data["setup"] == "high_beta_breakout_v1"
+
+    def test_trigger_data_contains_expected_values(self) -> None:
+        rule = HighBetaBreakoutRule()
+        result = rule.evaluate(self._breakout_packet())
+
+        assert result is not None
+        assert result.trigger_data["entry_price"] == "103.00"
+        assert result.trigger_data["volume"] == 1_200_000
+        assert result.trigger_data["avg_volume_5d"] == 500_000
+        assert result.trigger_data["volume_ratio"] == "2.4"
+        assert result.trigger_data["bb_upper"] == "102.00"
+        assert result.trigger_data["rsi_14"] == "70.00"
+
+    def test_does_not_fire_at_exactly_two_x_volume(self) -> None:
+        rule = HighBetaBreakoutRule()
+        packet = self._breakout_packet(
+            current_price=Decimal("103.00"),
+            volume=1_000_000,
+            avg_volume_5d=500_000,
+            bb_upper=Decimal("102.00"),
+            rsi_14=Decimal("70.00"),
+        )
+
+        assert rule.evaluate(packet) is None
+
+    def test_does_not_fire_below_two_x_volume(self) -> None:
+        rule = HighBetaBreakoutRule()
+        packet = self._breakout_packet(volume=999_999)
+
+        assert rule.evaluate(packet) is None
+
+    def test_does_not_fire_at_exactly_bb_upper(self) -> None:
+        rule = HighBetaBreakoutRule()
+        packet = self._breakout_packet(current_price=Decimal("102.00"))
+
+        assert rule.evaluate(packet) is None
+
+    def test_does_not_fire_below_bb_upper(self) -> None:
+        rule = HighBetaBreakoutRule()
+        packet = self._breakout_packet(current_price=Decimal("101.99"))
+
+        assert rule.evaluate(packet) is None
+
+    def test_does_not_fire_at_exactly_rsi_65(self) -> None:
+        rule = HighBetaBreakoutRule()
+        packet = self._breakout_packet(rsi_14=Decimal("65.00"))
+
+        assert rule.evaluate(packet) is None
+
+    def test_does_not_fire_below_rsi_65(self) -> None:
+        rule = HighBetaBreakoutRule()
+        packet = self._breakout_packet(rsi_14=Decimal("64.99"))
+
+        assert rule.evaluate(packet) is None
+
+    def test_does_not_fire_when_rsi_missing(self) -> None:
+        rule = HighBetaBreakoutRule()
+        packet = self._breakout_packet(rsi_14=None)
+
+        assert rule.evaluate(packet) is None
+
+    def test_does_not_fire_when_avg_volume_5d_missing(self) -> None:
+        rule = HighBetaBreakoutRule()
+        packet = self._breakout_packet(avg_volume_5d=None)
+
+        assert rule.evaluate(packet) is None
+
+    def test_does_not_fire_when_avg_volume_5d_is_zero(self) -> None:
+        rule = HighBetaBreakoutRule()
+        packet = self._breakout_packet(avg_volume_5d=0)
+
+        assert rule.evaluate(packet) is None
+
+    def test_does_not_fire_when_bb_upper_missing(self) -> None:
+        rule = HighBetaBreakoutRule()
+        packet = self._breakout_packet(bb_upper=None)
+
+        assert rule.evaluate(packet) is None
+
+    def test_volume_boundary_fails_independently(self) -> None:
+        """Only condition A fails — proves AND, not OR semantics."""
+        rule = HighBetaBreakoutRule()
+        packet = self._breakout_packet(volume=999_999)
+
+        assert rule.evaluate(packet) is None
+
+    def test_bollinger_boundary_fails_independently(self) -> None:
+        """Only condition B fails — proves AND, not OR semantics."""
+        rule = HighBetaBreakoutRule()
+        packet = self._breakout_packet(current_price=Decimal("101.50"))
+
+        assert rule.evaluate(packet) is None
+
+    def test_rsi_boundary_fails_independently(self) -> None:
+        """Only condition C fails — proves AND, not OR semantics."""
+        rule = HighBetaBreakoutRule()
+        packet = self._breakout_packet(rsi_14=Decimal("60.00"))
+
+        assert rule.evaluate(packet) is None
+
+    def test_stop_loss_is_absent_no_fabrication(self) -> None:
+        rule = HighBetaBreakoutRule()
+        result = rule.evaluate(self._breakout_packet())
+
+        assert result is not None
+        assert "stop_loss" not in result.trigger_data
+
+
 class TestCrossCutting:
     def test_repeated_evaluation_is_identical(self) -> None:
         packet = _make_packet()
-        for rule in (LongMomentumRule(), ShortSellRule(), VolatilityBreakoutRule()):
+        for rule in (
+            LongMomentumRule(),
+            ShortSellRule(),
+            VolatilityBreakoutRule(),
+            HighBetaBreakoutRule(),
+        ):
             first = rule.evaluate(packet)
             second = rule.evaluate(packet)
             assert first == second
