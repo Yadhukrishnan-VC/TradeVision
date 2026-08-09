@@ -16,6 +16,7 @@ from apps.rule_engine.domain.rules import (
     HighBetaBreakoutRule,
     LongMomentumRule,
     PriceMovementRule,
+    ShortBreakdownRule,
     ShortSellRule,
     VolatilityBreakoutRule,
     VolumeSpikeRule,
@@ -38,6 +39,7 @@ class RuleEvaluationService(BaseService):
         self._registry.register(ShortSellRule())
         self._registry.register(VolatilityBreakoutRule())
         self._registry.register(HighBetaBreakoutRule())
+        self._registry.register(ShortBreakdownRule())
 
     def evaluate_enriched_packet(
         self,

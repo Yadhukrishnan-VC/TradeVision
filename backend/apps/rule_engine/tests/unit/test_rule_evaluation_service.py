@@ -240,3 +240,9 @@ class TestRuleEvaluationService:
         rule_ids = [r.rule_id for r in service._registry.get_registered_rules()]
 
         assert "high_beta_breakout_v1" in rule_ids
+
+    def test_short_breakdown_is_registered_and_discoverable(self) -> None:
+        service = RuleEvaluationService()
+        rule_ids = [r.rule_id for r in service._registry.get_registered_rules()]
+
+        assert "short_breakdown_v1" in rule_ids

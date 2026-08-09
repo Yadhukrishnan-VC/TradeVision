@@ -16,6 +16,7 @@ from decimal import Decimal
 from apps.rule_engine.domain.rules import (
     HighBetaBreakoutRule,
     LongMomentumRule,
+    ShortBreakdownRule,
     ShortSellRule,
     VolatilityBreakoutRule,
 )
@@ -40,6 +41,8 @@ _RULE_MODULES = (
     / "volatility_breakout_rule.py",
     pathlib.Path(inspect.getfile(HighBetaBreakoutRule)).parent
     / "high_beta_breakout_rule.py",
+    pathlib.Path(inspect.getfile(ShortBreakdownRule)).parent
+    / "short_breakdown_rule.py",
 )
 
 
@@ -558,6 +561,143 @@ class TestHighBetaBreakoutRule:
         assert "stop_loss" not in result.trigger_data
 
 
+class TestShortBreakdownRule:
+    """SETUP 6 — Short Breakdown.
+
+    Fires short only when ALL of: close < VWAP, rsi_14 < 35,
+    volume > 3x avg_volume_10d — each strictly, and failing safe on any
+    missing input.
+    """
+
+    def _breakdown_packet(self, **kwargs):
+        defaults = {
+            "current_price": Decimal("98.00"),
+            "volume": 3_000_000,
+            "avg_volume_10d": 900_000,
+            "vwap": Decimal("101.00"),
+            "rsi_14": Decimal("30.00"),
+        }
+        defaults.update(kwargs)
+        return _make_packet(**defaults)
+
+    def test_fires_on_valid_setup(self) -> None:
+        rule = ShortBreakdownRule()
+        result = rule.evaluate(self._breakdown_packet())
+
+        assert result is not None
+        assert result.rule_id == "short_breakdown_v1"
+        assert result.event_type == EventType.BREAKDOWN
+        assert result.severity == RuleSeverity.HIGH
+        assert result.trigger_data["setup"] == "short_breakdown_v1"
+        assert result.trigger_data["direction"] == "short"
+
+    def test_trigger_data_contains_expected_values(self) -> None:
+        rule = ShortBreakdownRule()
+        result = rule.evaluate(self._breakdown_packet())
+
+        assert result is not None
+        assert result.trigger_data["entry_price"] == "98.00"
+        assert result.trigger_data["volume"] == 3_000_000
+        assert result.trigger_data["avg_volume_10d"] == 900_000
+        assert result.trigger_data["volume_ratio"] == "3.333333333333333333333333333"
+        assert result.trigger_data["vwap"] == "101.00"
+        assert result.trigger_data["rsi_14"] == "30.00"
+
+    def test_does_not_fire_at_exactly_three_x_volume(self) -> None:
+        rule = ShortBreakdownRule()
+        packet = self._breakdown_packet(
+            current_price=Decimal("98.00"),
+            volume=2_700_000,
+            avg_volume_10d=900_000,
+            vwap=Decimal("101.00"),
+            rsi_14=Decimal("30.00"),
+        )
+
+        assert rule.evaluate(packet) is None
+
+    def test_does_not_fire_below_three_x_volume(self) -> None:
+        rule = ShortBreakdownRule()
+        packet = self._breakdown_packet(volume=2_699_999)
+
+        assert rule.evaluate(packet) is None
+
+    def test_does_not_fire_at_exactly_rsi_35(self) -> None:
+        rule = ShortBreakdownRule()
+        packet = self._breakdown_packet(rsi_14=Decimal("35.00"))
+
+        assert rule.evaluate(packet) is None
+
+    def test_does_not_fire_above_rsi_35(self) -> None:
+        rule = ShortBreakdownRule()
+        packet = self._breakdown_packet(rsi_14=Decimal("35.01"))
+
+        assert rule.evaluate(packet) is None
+
+    def test_does_not_fire_at_or_above_vwap(self) -> None:
+        rule = ShortBreakdownRule()
+        packet = self._breakdown_packet(current_price=Decimal("101.00"))
+
+        assert rule.evaluate(packet) is None
+
+    def test_does_not_fire_above_vwap(self) -> None:
+        rule = ShortBreakdownRule()
+        packet = self._breakdown_packet(current_price=Decimal("102.00"))
+
+        assert rule.evaluate(packet) is None
+
+    def test_does_not_fire_when_vwap_missing(self) -> None:
+        rule = ShortBreakdownRule()
+        packet = self._breakdown_packet(vwap=None)
+
+        assert rule.evaluate(packet) is None
+
+    def test_does_not_fire_when_rsi_missing(self) -> None:
+        rule = ShortBreakdownRule()
+        packet = self._breakdown_packet(rsi_14=None)
+
+        assert rule.evaluate(packet) is None
+
+    def test_does_not_fire_when_avg_volume_10d_missing(self) -> None:
+        rule = ShortBreakdownRule()
+        packet = self._breakdown_packet(avg_volume_10d=None)
+
+        assert rule.evaluate(packet) is None
+
+    def test_does_not_fire_when_avg_volume_10d_is_zero(self) -> None:
+        rule = ShortBreakdownRule()
+        packet = self._breakdown_packet(avg_volume_10d=0)
+
+        assert rule.evaluate(packet) is None
+
+    def test_close_above_vwap_fails_independently(self) -> None:
+        """Only the VWAP condition fails — proves AND, not OR semantics."""
+        rule = ShortBreakdownRule()
+        packet = self._breakdown_packet(current_price=Decimal("105.00"))
+
+        assert rule.evaluate(packet) is None
+
+    def test_rsi_boundary_fails_independently(self) -> None:
+        """Only the RSI condition fails — proves AND, not OR semantics."""
+        rule = ShortBreakdownRule()
+        packet = self._breakdown_packet(rsi_14=Decimal("45.00"))
+
+        assert rule.evaluate(packet) is None
+
+    def test_volume_boundary_fails_independently(self) -> None:
+        """Only the volume condition fails — proves AND, not OR semantics."""
+        rule = ShortBreakdownRule()
+        packet = self._breakdown_packet(volume=1_000_000)
+
+        assert rule.evaluate(packet) is None
+
+    def test_stop_loss_is_absent_no_fabrication(self) -> None:
+        rule = ShortBreakdownRule()
+        result = rule.evaluate(self._breakdown_packet())
+
+        assert result is not None
+        assert "stop_loss" not in result.trigger_data
+
+
 class TestCrossCutting:
     def test_repeated_evaluation_is_identical(self) -> None:
         packet = _make_packet()
@@ -566,6 +706,7 @@ class TestCrossCutting:
             ShortSellRule(),
             VolatilityBreakoutRule(),
             HighBetaBreakoutRule(),
+            ShortBreakdownRule(),
         ):
             first = rule.evaluate(packet)
             second = rule.evaluate(packet)

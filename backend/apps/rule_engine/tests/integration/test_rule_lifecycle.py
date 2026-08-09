@@ -400,6 +400,110 @@ class TestRuleLifecycle:
             rule_id="high_beta_breakout_v1",
         ).count() == 0
 
+    def _setup6_enriched(self) -> dict:
+        """A packet satisfying every Short Breakdown condition."""
+        return _build_enriched_data(
+            change_pct="1.00",
+            volume=3_000_000,
+            avg_volume_20d=5_000_000,  # suppress VolumeSpikeRule
+            avg_volume_10d=900_000,
+            current_price="98.00",
+            bb_upper=None,
+            resistance_levels=None,
+            technical_extra={
+                "vwap": "101.00",
+                "rsi_14": "30.00",
+            },
+        )
+
+    def test_setup6_fires_via_real_pipeline(self) -> None:
+        reset_event_bus()
+        get_event_bus()
+
+        from apps.rule_engine.infrastructure.event_handlers import _deserialize_enriched_packet
+        from apps.rule_engine.application.rule_evaluation_service import RuleEvaluationService
+
+        enriched = _deserialize_enriched_packet(self._setup6_enriched())
+
+        analysis_event_id = uuid.uuid4()
+        service = RuleEvaluationService()
+        firings = service.evaluate_enriched_packet(
+            enriched,
+            analysis_event_id=analysis_event_id,
+        )
+
+        firing = next(
+            (f for f in firings if f.rule_id == "short_breakdown_v1"),
+            None,
+        )
+        assert firing is not None
+        assert firing.event_type == "breakdown"
+        assert firing.severity == RuleSeverity.HIGH
+        assert firing.trigger_data["direction"] == "short"
+        assert "stop_loss" not in firing.trigger_data
+
+        execution = RuleExecution.objects.get(
+            analysis_event_id=analysis_event_id,
+            rule_id="short_breakdown_v1",
+        )
+        assert execution.symbol == "RELIANCE"
+        assert "entry_price" in execution.trigger_data
+
+    def test_setup6_rule_fired_event_published(self) -> None:
+        reset_event_bus()
+        bus = get_event_bus()
+
+        from apps.rule_engine.infrastructure.event_handlers import _deserialize_enriched_packet
+        from apps.rule_engine.application.rule_evaluation_service import RuleEvaluationService
+
+        enriched = _deserialize_enriched_packet(self._setup6_enriched())
+
+        analysis_event_id = uuid.uuid4()
+        service = RuleEvaluationService()
+        firings = service.evaluate_enriched_packet(
+            enriched,
+            analysis_event_id=analysis_event_id,
+        )
+
+        rule_firing = next(
+            (f for f in firings if f.rule_id == "short_breakdown_v1"),
+            None,
+        )
+        assert rule_firing is not None
+
+        service.publish_rule_firing(rule_firing)
+
+        fired_event = next(
+            e for e in bus.published_events
+            if e.event_type == "rule_engine.RuleFired"
+            and e.payload["rule_id"] == "short_breakdown_v1"
+        )
+        assert fired_event.payload["event_type"] == "breakdown"
+        assert fired_event.payload["symbol"] == "RELIANCE"
+        assert fired_event.correlation_id == analysis_event_id
+
+    def test_setup6_does_not_fire_when_rsi_at_boundary(self) -> None:
+        reset_event_bus()
+        get_event_bus()
+
+        from apps.rule_engine.infrastructure.event_handlers import _deserialize_enriched_packet
+        from apps.rule_engine.application.rule_evaluation_service import RuleEvaluationService
+
+        data = self._setup6_enriched()
+        data["packet"]["technical_context"]["rsi_14"] = "35.00"
+        enriched = _deserialize_enriched_packet(data)
+
+        service = RuleEvaluationService()
+        firings = service.evaluate_enriched_packet(
+            enriched,
+            analysis_event_id=uuid.uuid4(),
+        )
+
+        assert "short_breakdown_v1" not in {f.rule_id for f in firings}
+        assert RuleExecution.objects.filter(
+            rule_id="short_breakdown_v1",
+        ).count() == 0
+
     def test_idempotent_evaluation(self) -> None:
         reset_event_bus()
         get_event_bus()
