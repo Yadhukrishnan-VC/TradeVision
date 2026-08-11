@@ -78,4 +78,8 @@ urlpatterns = [
 
     # Watchlist API — WATCH-1: Per-account User Watchlist.
     path("api/v1/watchlist/", include("apps.watchlist.interfaces.api.urls")),
+
+    # Pipeline Health API — PIPELINE-HEALTH-1: Forward paper-trading
+    # pipeline health & staleness monitoring (operator-facing, read-only).
+    path("api/v1/pipeline-health/", include("apps.pipeline_health.interfaces.api.urls")),
 ]

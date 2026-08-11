@@ -183,3 +183,25 @@ EVENT_CONSUMED_TOTAL = Counter(
     "Total number of events consumed and acknowledged through the EventBus",
     ["stream", "group"],
 )
+
+# ---------------------------------------------------------------------------
+# Pipeline Health — forward paper-trading pipeline staleness monitor
+# ---------------------------------------------------------------------------
+
+PIPELINE_HEALTH_STATUS = Gauge(
+    "tradevision_pipeline_health_status",
+    "Current health of a pipeline stage (0=HEALTHY, 1=DEGRADED, 2=STALLED)",
+    ["stage"],
+)
+
+PIPELINE_STAGE_STALENESS_SECONDS = Gauge(
+    "tradevision_pipeline_stage_staleness_seconds",
+    "Age in seconds of the latest heartbeat for a pipeline stage and scope",
+    ["stage", "symbol_scope"],
+)
+
+PIPELINE_STALLED_TOTAL = Counter(
+    "tradevision_pipeline_stalled_total",
+    "Total number of HEALTHY-to-STALLED transitions observed per stage",
+    ["stage"],
+)

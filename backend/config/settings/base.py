@@ -84,6 +84,10 @@ LOCAL_APPS: list[str] = [
     # WATCH-1 — Per-account User Watchlist. Consumes market_data (read-only)
     # for best-effort quote enrichment.
     "apps.watchlist",
+    # PIPELINE-HEALTH-1 — Forward paper-trading pipeline health & staleness
+    # monitoring. Observability-only: consumes upstream events (read-only)
+    # and publishes pipeline_health.StageStalled on HEALTHY->STALLED.
+    "apps.pipeline_health",
 ]
 
 THIRD_PARTY_APPS = []
@@ -246,6 +250,8 @@ CELERY_TASK_ROUTES = {
     # Backtesting — Batch M3 historical replay. Runs on the analytics queue
     # and MUST execute eagerly (see BacktestRunnerService / core.clock).
     "tradevision.backtesting.run_backtest": {"queue": "analytics"},
+    # PIPELINE-HEALTH-1 — forward-pipeline health/staleness evaluation.
+    "apps.pipeline_health.infrastructure.tasks.evaluate_pipeline_health": {"queue": "maintenance"},
 }
 
 CELERY_TASK_QUEUES = [
@@ -341,6 +347,29 @@ MARKET_DATA_POLL_1D_LOOKBACK_DAYS: int = config(
 )
 
 # ---------------------------------------------------------------------------
+# PIPELINE-HEALTH-1 — per-stage max-silence expectations (seconds).
+#
+# A stage is considered stalled when it has produced no heartbeat for
+# longer than its expectation during market hours. MARKET_DATA is derived
+# from the poll cadence (3x — two missed poll cycles plus a heartbeat-cycle
+# delay); the downstream stages are operator-configurable with sensible
+# defaults matched to their natural cadence (TA is webhook-driven, the
+# rule engine fires per evaluation, execution only on fills).
+# ---------------------------------------------------------------------------
+TECHNICAL_ANALYSIS_MAX_SILENCE_SECONDS: int = config(
+    "TECHNICAL_ANALYSIS_MAX_SILENCE_SECONDS", default=300, cast=int
+)
+INTELLIGENCE_MAX_SILENCE_SECONDS: int = config(
+    "INTELLIGENCE_MAX_SILENCE_SECONDS", default=300, cast=int
+)
+RULE_ENGINE_MAX_SILENCE_SECONDS: int = config(
+    "RULE_ENGINE_MAX_SILENCE_SECONDS", default=300, cast=int
+)
+EXECUTION_MAX_SILENCE_SECONDS: int = config(
+    "EXECUTION_MAX_SILENCE_SECONDS", default=600, cast=int
+)
+
+# ---------------------------------------------------------------------------
 # Celery Beat schedule — market_data periodic tasks
 #
 # Only arg-free periodic tasks are scheduled here. ``refresh_candles`` and
@@ -391,6 +420,14 @@ CELERY_BEAT_SCHEDULE = {
     # the 30s soft_time_limit of replay_unpublished_events.
     "replay-unpublished-events": {
         "task": "apps.eventbus.infrastructure.tasks.replay_unpublished_events",
+        "schedule": 30.0,
+        "options": {"queue": "maintenance"},
+    },
+    # PIPELINE-HEALTH-1 — evaluates forward-pipeline health every 30s during
+    # market hours and publishes pipeline_health.StageStalled only on a
+    # HEALTHY->STALLED transition. No-ops outside market hours.
+    "evaluate-pipeline-health": {
+        "task": "apps.pipeline_health.infrastructure.tasks.evaluate_pipeline_health",
         "schedule": 30.0,
         "options": {"queue": "maintenance"},
     },
