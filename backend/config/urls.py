@@ -75,4 +75,7 @@ urlpatterns = [
 
     # Backtesting API — Batch M3: Historical Replay & Backtesting Engine.
     path("api/v1/backtesting/", include("apps.backtesting.interfaces.api.urls")),
+
+    # Watchlist API — WATCH-1: Per-account User Watchlist.
+    path("api/v1/watchlist/", include("apps.watchlist.interfaces.api.urls")),
 ]

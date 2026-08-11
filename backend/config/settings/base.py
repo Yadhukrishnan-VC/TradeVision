@@ -81,6 +81,9 @@ LOCAL_APPS: list[str] = [
     # Batch M3 — Historical Replay & Backtesting. Sits after execution so its
     # replay drives the real RiskApproved -> PaperBroker -> fills pipeline.
     "apps.backtesting",
+    # WATCH-1 — Per-account User Watchlist. Consumes market_data (read-only)
+    # for best-effort quote enrichment.
+    "apps.watchlist",
 ]
 
 THIRD_PARTY_APPS = []

@@ -33,3 +33,5 @@ class Scope(enum.Enum):
     DASHBOARD_READ_PNL_ANALYTICS = "dashboard:read:pnl_analytics"
     DASHBOARD_READ_PERFORMANCE_METRICS = "dashboard:read:performance_metrics"
     DASHBOARD_READ_RISK = "dashboard:read:risk"
+    READ_WATCHLIST = "read:watchlist"
+    MANAGE_WATCHLIST = "manage:watchlist"
