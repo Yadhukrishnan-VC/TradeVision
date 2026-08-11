@@ -5,6 +5,9 @@ import pytest
 
 from apps.backtesting.models import BacktestRun
 from apps.backtesting.services import BacktestRunnerService, BacktestStatsService
+from apps.backtesting.tests.conftest import _make_ta_payload
+from apps.execution.infrastructure.models import Fill, Order
+from apps.portfolio.infrastructure.price_source import MarketDataCurrentPriceProvider
 from apps.technical_analysis.infrastructure.models import TASnapshot
 
 
@@ -103,3 +106,81 @@ def test_strategy_edge_validation_e2e(funded_account, multi_bar_ta_snapshots, se
     run.refresh_from_db()
     assert run.net_pnl is not None
     assert run.expectancy is not None
+
+
+@pytest.mark.django_db
+def test_multi_bar_fills_defer_to_next_bar_open(
+    seed_session_facts,
+    register_all_handlers,
+    active_bus,
+    funded_account,
+    settings,
+    monkeypatch,
+):
+    """A bar-N signal must fill at bar-(N+1)'s real open, never at its own close.
+
+    Proves the M3.8-FIX look-ahead guarantee end to end: the deferred order's
+    fill price and timestamp come from the following bar, and the first bar's
+    entry (103.00) is NOT used as the fill price.
+    """
+    settings.CELERY_TASK_ALWAYS_EAGER = True
+    settings.EXECUTION_ENGINE_ENABLED = True
+    monkeypatch.setattr(
+        MarketDataCurrentPriceProvider,
+        "get_current_price",
+        lambda self, symbol: None,
+    )
+    register_all_handlers(active_bus)
+
+    t1 = datetime(2024, 6, 10, 5, 0, 0, tzinfo=timezone.utc)
+    t2 = datetime(2024, 6, 10, 6, 0, 0, tzinfo=timezone.utc)
+    for bar_ts, overrides in (
+        (t1, {"open": "100.00", "close": "103.00"}),
+        (t2, {"open": "110.00", "close": "108.00"}),
+    ):
+        TASnapshot.objects.create(
+            symbol="RELIANCE",
+            exchange="NSE",
+            timeframe="1D",
+            pine_id="long_momentum@tv",
+            pine_version="5",
+            indicators={"vwap": "101.50", "ema_20": "102.00"},
+            raw_payload=_make_ta_payload(**overrides),
+            snapshot_timestamp=bar_ts,
+        )
+
+    run = BacktestRun.objects.create(
+        symbol="RELIANCE",
+        timeframe="1D",
+        range_start=datetime(2024, 6, 9, tzinfo=timezone.utc),
+        range_end=datetime(2024, 6, 11, tzinfo=timezone.utc),
+        account=funded_account,
+        status="PENDING",
+        commission_rate=Decimal("0.0003"),
+        slippage_bps=Decimal("5.0"),
+    )
+
+    result = BacktestRunnerService().run(run.id)
+    assert result["status"] == "COMPLETED"
+    assert result["bars_processed"] == "2"
+
+    orders = list(
+        Order.objects.filter(account_id=funded_account.id).order_by("created_at")
+    )
+    assert len(orders) == 2
+    assert orders[0].status == "FILLED"
+    assert orders[0].entry_price == Decimal("103.00")
+
+    first_fill = Fill.objects.get(order=orders[0])
+    assert first_fill.quantity == orders[0].quantity
+    # Bar-1 signal filled at bar-2 OPEN (110.00) + 5bps slippage = 110.055,
+    # NOT at bar-1's close/entry (103.00) — chronological causality preserved.
+    assert first_fill.price == Decimal("110.055")
+    assert orders[0].avg_fill_price == first_fill.price
+    assert first_fill.occurred_at == t2
+
+    stats = BacktestStatsService().run_stats(run)
+    assert stats["trade_count"] == 2
+    assert stats["fill_count"] == 2
+    assert stats["trades"][0]["entry_price"] == "103.00000000"
+    assert stats["trades"][0]["avg_fill_price"] == "110.05500000"

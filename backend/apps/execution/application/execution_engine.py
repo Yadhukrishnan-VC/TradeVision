@@ -21,6 +21,7 @@ from apps.portfolio.application.position_ledger_service import PositionLedgerSer
 from apps.portfolio.domain.exceptions import InsufficientAvailableCapitalError
 from apps.portfolio.domain.value_objects import Side
 from core.clock import Clock, get_clock
+from core.execution_context import get_backtest_defer_fills, get_next_bar_open
 from core.services import BaseService
 
 
@@ -45,6 +46,13 @@ class ExecutionEngine(BaseService):
     deterministic fill plan; already-applied fills (rows in the ``Fill``
     journal) are skipped and terminal orders are left untouched, so task
     redelivery never double-publishes or double-fills.
+
+    Backtest deferral (M3.8): while ``get_backtest_defer_fills()`` is bound
+    and no ``next_bar_open`` is available, ``_execute`` acknowledges the
+    order and stops before filling, so the fill is deferred to the following
+    bar's real open price by the backtest runner. When a deferred order is
+    later executed with ``next_bar_open`` bound, the deterministic fill plan
+    is rebuilt against that price.
     """
 
     def __init__(
@@ -99,6 +107,9 @@ class ExecutionEngine(BaseService):
                 causation_id=order.causation_id,
             )
             self._transition(order, OrderStatus.ACKNOWLEDGED)
+
+        if get_backtest_defer_fills() and get_next_bar_open() is None:
+            return
 
         plan = self._fill_plan(order)
         if not plan:
@@ -155,7 +166,32 @@ class ExecutionEngine(BaseService):
     def _fill_plan(self, order: Order) -> list[SimulatedFill]:
         getter = getattr(self._broker, "get_fill_plan", None)
         if callable(getter):
-            return list(getter(order.broker_order_ref) or [])
+            plan = list(getter(order.broker_order_ref) or [])
+            if plan:
+                return plan
+            # A deferred backtest order was acknowledged by an ephemeral broker
+            # instance whose in-memory book is gone. Re-place it on the current
+            # broker so the deterministic plan is rebuilt at next-bar-open.
+            if get_next_bar_open() is not None:
+                request = OrderPlacementRequest(
+                    order_id=order.id,
+                    account_id=order.account_id,
+                    symbol=order.symbol,
+                    side=Side(order.side),
+                    order_type=order.order_type,
+                    quantity=order.quantity,
+                    price=order.entry_price,
+                    correlation_id=order.correlation_id,
+                    causation_id=order.causation_id,
+                )
+                try:
+                    ack = self._broker.place_order(request)
+                except BrokerRejection:
+                    return []
+                order.broker_order_ref = ack.broker_order_ref
+                order.save(update_fields=["broker_order_ref", "updated_at"])
+                return list(getter(order.broker_order_ref) or [])
+            return []
         # Non-simulated adapter: a single full fill at the reference price.
         return [SimulatedFill(sequence=1, quantity=order.quantity, price=order.entry_price)]
 
@@ -196,8 +232,8 @@ class ExecutionEngine(BaseService):
                     account_id=order.account_id,
                     symbol=order.symbol,
                     side=Side(order.side),
-                    quantity=planned.quantity,
-                    price=planned.price,
+                    quantity=fill.quantity,
+                    price=order.entry_price,
                     occurred_at=fill.occurred_at,
                     stop_loss=order.stop_loss,
                     source_fill_id=fill.id,

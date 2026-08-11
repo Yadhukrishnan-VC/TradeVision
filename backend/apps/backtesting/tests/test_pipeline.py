@@ -172,6 +172,10 @@ class TestHistoricalReplayPipeline:
         from decimal import Decimal
 
         assert Decimal(stats["available_capital"]) == Decimal("1000000") - Decimal("343299")
+        # The deferred fill priced at the final bar's close with 5bps slippage
+        # (103.00 * 1.0005) — cost-aware, next-bar fill timing, not the signal
+        # bar's price.
+        assert Decimal(stats["trades"][0]["avg_fill_price"]) == Decimal("103.0515")
 
     def test_redelivery_is_a_noop(
         self,

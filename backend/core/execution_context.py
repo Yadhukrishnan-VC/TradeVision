@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import contextvars
 from contextlib import contextmanager
+from decimal import Decimal
 from uuid import UUID
 
 _account_override: contextvars.ContextVar[UUID | None] = contextvars.ContextVar(

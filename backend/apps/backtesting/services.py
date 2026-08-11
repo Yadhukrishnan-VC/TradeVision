@@ -187,7 +187,6 @@ class BacktestRunnerService(BaseService):
             commission_rate=run.commission_rate,
             slippage_bps=run.slippage_bps,
         )
-        engine = ExecutionEngine(broker=broker)
 
         with bind_account_override(run.account_id), bind_simulated_time(
             timestamp
@@ -196,6 +195,7 @@ class BacktestRunnerService(BaseService):
             slippage_bps=run.slippage_bps,
             next_bar_open=fill_price,
         ):
+            engine = ExecutionEngine(broker=broker)
             for order in pending_orders:
                 engine.execute_order(order.id)
 
