@@ -4,6 +4,7 @@ import csv
 import io
 import logging
 import uuid
+import warnings
 from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import Any
@@ -34,8 +35,27 @@ logger = logging.getLogger(__name__)
     soft_time_limit=120,
     time_limit=180,
 )
-def reconcile_positions_snapshot(account_id: str) -> dict[str, Any]:
-    logger.info("Reconciling positions snapshot", extra={"account_id": account_id})
+def reconcile_positions_snapshot_deprecated(account_id: str) -> dict[str, Any]:
+    """DEPRECATED — use ``apps.portfolio_reconciliation`` (PORTFOLIO-RECONCILE-1).
+
+    The real reconciliation is performed by
+    ``apps.portfolio_reconciliation.infrastructure.tasks.reconcile_account_positions``,
+    which compares the dashboard read model against the portfolio write
+    model and repairs drift. This task only counts its own snapshot
+    table and reports "completed" regardless of drift — kept as a
+    backward-compatible shim for the beat/caller that reference the old
+    name.
+    """
+    warnings.warn(
+        "reconcile_positions_snapshot is deprecated; use "
+        "apps.portfolio_reconciliation.infrastructure.tasks.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    logger.warning(
+        "deprecated_reconcile_positions_snapshot_called",
+        extra={"account_id": account_id},
+    )
     open_count = PositionSnapshot.objects.filter(
         account_id=account_id, is_open=True
     ).count()
@@ -88,8 +108,23 @@ def reconcile_holdings(account_id: str) -> dict[str, Any]:
     soft_time_limit=120,
     time_limit=180,
 )
-def reconcile_orders(account_id: str) -> dict[str, Any]:
-    logger.info("Reconciling orders", extra={"account_id": account_id})
+def reconcile_orders_deprecated(account_id: str) -> dict[str, Any]:
+    """DEPRECATED — use ``apps.portfolio_reconciliation`` (PORTFOLIO-RECONCILE-1).
+
+    See ``reconcile_positions_snapshot_deprecated`` — the real
+    read-model reconciliation now lives in
+    ``apps.portfolio_reconciliation.infrastructure.tasks.reconcile_account_orders``.
+    """
+    warnings.warn(
+        "reconcile_orders is deprecated; use "
+        "apps.portfolio_reconciliation.infrastructure.tasks.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    logger.warning(
+        "deprecated_reconcile_orders_called",
+        extra={"account_id": account_id},
+    )
     order_count = OrderSnapshot.objects.filter(account_id=account_id).count()
     status_counts = OrderSnapshot.objects.filter(account_id=account_id).values(
         "status"
@@ -234,3 +269,18 @@ def generate_trade_history_export(
 
 
 from django.db.models import Sum
+
+
+# ---------------------------------------------------------------------------
+# Backward-compatible aliases (PORTFOLIO-RECONCILE-1 deprecation)
+#
+# ``reconcile_positions_snapshot`` and ``reconcile_orders`` were renamed to
+# ``reconcile_positions_snapshot_deprecated`` / ``reconcile_orders_deprecated``
+# in favour of the real reconciliation engine in
+# ``apps.portfolio_reconciliation``. The old names remain importable so
+# existing callers/tests resolve; they emit ``DeprecationWarning`` when
+# invoked. Celery registers the tasks under the ``_deprecated`` names.
+# ---------------------------------------------------------------------------
+
+reconcile_positions_snapshot = reconcile_positions_snapshot_deprecated
+reconcile_orders = reconcile_orders_deprecated

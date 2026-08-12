@@ -205,3 +205,26 @@ PIPELINE_STALLED_TOTAL = Counter(
     "Total number of HEALTHY-to-STALLED transitions observed per stage",
     ["stage"],
 )
+
+# ---------------------------------------------------------------------------
+# Portfolio Reconciliation — dashboard read-model drift vs. source of truth
+# ---------------------------------------------------------------------------
+
+RECONCILIATION_DRIFT_TOTAL = Counter(
+    "tradevision_reconciliation_drift_total",
+    "Drift records created per entity type and classification",
+    ["entity_type", "classification"],
+)
+
+RECONCILIATION_REPAIRS_TOTAL = Counter(
+    "tradevision_reconciliation_repairs_total",
+    "Auto-repairs applied to the read model per entity type",
+    ["entity_type"],
+)
+
+RECONCILIATION_RUN_DURATION_SECONDS = Histogram(
+    "tradevision_reconciliation_run_duration_seconds",
+    "Reconciliation run duration per entity type",
+    ["entity_type"],
+    buckets=(0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0),
+)

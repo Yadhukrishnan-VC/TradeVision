@@ -88,6 +88,10 @@ LOCAL_APPS: list[str] = [
     # monitoring. Observability-only: consumes upstream events (read-only)
     # and publishes pipeline_health.StageStalled on HEALTHY->STALLED.
     "apps.pipeline_health",
+    # PORTFOLIO-RECONCILE-1 — Dashboard read-model reconciliation against
+    # the portfolio/execution source of truth. Detects and repairs drift in
+    # the dashboard's PositionSnapshot/OrderSnapshot read model.
+    "apps.portfolio_reconciliation",
 ]
 
 THIRD_PARTY_APPS = []
@@ -370,6 +374,26 @@ EXECUTION_MAX_SILENCE_SECONDS: int = config(
 )
 
 # ---------------------------------------------------------------------------
+# PORTFOLIO-RECONCILE-1 — dashboard read-model reconciliation.
+#
+# RECONCILIATION_AVG_PRICE_TOLERANCE is the maximum absolute difference,
+# in price-quote decimals, accepted between the write-model avg entry
+# price and the read-model entry price before a position is classified
+# STALE. The write model may carry more precision than the read-model
+# field (max_digits=20, decimal_places=8 on both sides — in practice they
+# match exactly); the tolerance exists purely for defensive correctness.
+# ---------------------------------------------------------------------------
+RECONCILIATION_AVG_PRICE_TOLERANCE: str = config(
+    "RECONCILIATION_AVG_PRICE_TOLERANCE", default="0.00000001"
+)
+# Cadence of the fan-out task. Drift detection does not need
+# pipeline_health's 30s cadence — projector lag of a few minutes is
+# acceptable; this catches sustained drift, not transient in-flight state.
+RECONCILIATION_BEAT_INTERVAL_SECONDS: int = config(
+    "RECONCILIATION_BEAT_INTERVAL_SECONDS", default=300, cast=int
+)
+
+# ---------------------------------------------------------------------------
 # Celery Beat schedule — market_data periodic tasks
 #
 # Only arg-free periodic tasks are scheduled here. ``refresh_candles`` and
@@ -429,6 +453,15 @@ CELERY_BEAT_SCHEDULE = {
     "evaluate-pipeline-health": {
         "task": "apps.pipeline_health.infrastructure.tasks.evaluate_pipeline_health",
         "schedule": 30.0,
+        "options": {"queue": "maintenance"},
+    },
+    # PORTFOLIO-RECONCILE-1 — fan-out that runs a position + order
+    # reconciliation pass for every account every 5 minutes, detecting and
+    # repairing drift in the dashboard read model. Supersedes the old
+    # dashboard reconcile_* count-only tasks (now deprecated).
+    "reconcile-all-accounts": {
+        "task": "apps.portfolio_reconciliation.infrastructure.tasks.reconcile_all_accounts",
+        "schedule": RECONCILIATION_BEAT_INTERVAL_SECONDS,
         "options": {"queue": "maintenance"},
     },
 }

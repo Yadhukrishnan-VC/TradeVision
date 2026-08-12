@@ -82,4 +82,13 @@ urlpatterns = [
     # Pipeline Health API — PIPELINE-HEALTH-1: Forward paper-trading
     # pipeline health & staleness monitoring (operator-facing, read-only).
     path("api/v1/pipeline-health/", include("apps.pipeline_health.interfaces.api.urls")),
+
+    # Portfolio Reconciliation API — PORTFOLIO-RECONCILE-1: read-only drift
+    # detection log for the dashboard read model (OWNER/STAFF only).
+    path(
+        "api/v1/portfolio-reconciliation/",
+        include(
+            "apps.portfolio_reconciliation.interfaces.api.urls"
+        ),
+    ),
 ]
