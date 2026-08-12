@@ -447,6 +447,15 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": 30.0,
         "options": {"queue": "maintenance"},
     },
+    # EVENTBUS-RELIABILITY-1 — reclaims stream entries left pending in a
+    # consumer group's Pending Entries List by a crashed/killed worker and
+    # re-dispatches them (idempotent); dead-letters entries at MAX_RETRIES.
+    # Runs every 30s, well inside the 60s time_limit of the reclaim task.
+    "reclaim-stale-pending-events": {
+        "task": "apps.eventbus.infrastructure.tasks.reclaim_stale_pending_events",
+        "schedule": 30.0,
+        "options": {"queue": "maintenance"},
+    },
     # PIPELINE-HEALTH-1 — evaluates forward-pipeline health every 30s during
     # market hours and publishes pipeline_health.StageStalled only on a
     # HEALTHY->STALLED transition. No-ops outside market hours.
