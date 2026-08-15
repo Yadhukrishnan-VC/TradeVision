@@ -21,6 +21,7 @@ from apps.backtesting.interfaces.api.serializers import (
     BacktestRunCreateSerializer,
     BacktestRunStatsSerializer,
     CostSensitivitySerializer,
+    EdgeValidationSerializer,
     WalkForwardSerializer,
 )
 from apps.backtesting.models import BacktestRun
@@ -119,6 +120,41 @@ class WalkForwardView(APIView):
             window_size_days=data["window_size_days"],
             step_size_days=data["step_size_days"],
             in_sample_ratio=data.get("in_sample_ratio", _DEFAULT_IN_SAMPLE_RATIO),
+            initial_capital=data.get("initial_capital", _DEFAULT_INITIAL_CAPITAL),
+        )
+        return Response(result, status=http_status.HTTP_200_OK)
+
+
+class EdgeValidationView(APIView):
+    """Evaluate every rule's empirical edge over a range, with cost sensitivity.
+
+    Runs one full-range backtest plus one walk-forward pass synchronously and
+    reports ``has_edge`` per rule at the zero-cost baseline and at a
+    caller-supplied realistic cost (including which rules flipped). Like the
+    other analytical endpoints, ``CELERY_TASK_ALWAYS_EAGER=True`` is required
+    for the simulated-time contextvars used by the replay engine.
+    """
+
+    def post(self, request) -> Response:
+        serializer = EdgeValidationSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        from apps.backtesting.application.edge_validation_service import (
+            EdgeValidationService,
+        )
+
+        result = EdgeValidationService().compare_costs(
+            owner=request.user,
+            symbol=data["symbol"].upper(),
+            timeframe=data.get("timeframe", ""),
+            range_start=data["range_start"],
+            range_end=data["range_end"],
+            window_size_days=data["window_size_days"],
+            step_size_days=data["step_size_days"],
+            in_sample_ratio=data.get("in_sample_ratio", _DEFAULT_IN_SAMPLE_RATIO),
+            realistic_commission_rate=data["realistic_commission_rate"],
+            realistic_slippage_bps=data["realistic_slippage_bps"],
             initial_capital=data.get("initial_capital", _DEFAULT_INITIAL_CAPITAL),
         )
         return Response(result, status=http_status.HTTP_200_OK)

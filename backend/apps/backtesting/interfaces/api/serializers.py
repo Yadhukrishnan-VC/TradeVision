@@ -80,6 +80,59 @@ class CostSensitivitySerializer(serializers.Serializer):
         return attrs
 
 
+class EdgeValidationSerializer(serializers.Serializer):
+    """Request body for a per-rule empirical edge evaluation.
+
+    Reports ``has_edge`` per rule that traded over the range at the zero-cost
+    baseline and at a caller-supplied realistic cost, plus the aggregate
+    walk-forward OOS distribution. Overlaps with ``WalkForwardSerializer`` by
+    design: the edge report is defined as the single-run metrics joined with
+    the walk-forward distribution over the same range.
+    """
+
+    symbol = serializers.CharField(max_length=100)
+    timeframe = serializers.CharField(max_length=20, required=False, allow_blank=True, default="")
+    range_start = serializers.DateTimeField()
+    range_end = serializers.DateTimeField()
+    window_size_days = serializers.IntegerField(min_value=1)
+    step_size_days = serializers.IntegerField(min_value=1)
+    in_sample_ratio = serializers.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        required=False,
+        default=Decimal("0.70"),
+    )
+    realistic_commission_rate = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=6,
+        required=False,
+        default=Decimal("0.0003"),
+    )
+    realistic_slippage_bps = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=4,
+        required=False,
+        default=Decimal("5.0"),
+    )
+    initial_capital = serializers.DecimalField(
+        max_digits=20,
+        decimal_places=8,
+        required=False,
+        default=Decimal(1000000),
+    )
+
+    def validate(self, attrs: dict) -> dict:
+        if attrs["range_end"] <= attrs["range_start"]:
+            raise serializers.ValidationError("range_end must be after range_start")
+        if attrs["realistic_commission_rate"] < 0:
+            raise serializers.ValidationError(
+                "realistic_commission_rate must not be negative"
+            )
+        if attrs["realistic_slippage_bps"] < 0:
+            raise serializers.ValidationError("realistic_slippage_bps must not be negative")
+        return attrs
+
+
 class BacktestRunStatsSerializer(serializers.Serializer):
     """Read-only run status + stats payload."""
 
