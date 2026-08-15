@@ -20,6 +20,7 @@ from apps.accounts.infrastructure.models import Account
 from apps.backtesting.interfaces.api.serializers import (
     BacktestRunCreateSerializer,
     BacktestRunStatsSerializer,
+    WalkForwardSerializer,
 )
 from apps.backtesting.models import BacktestRun
 from apps.backtesting.repository import BacktestRunRepository
@@ -27,6 +28,7 @@ from apps.backtesting.services import BacktestStatsService
 from apps.portfolio.application.capital_service import CapitalService
 
 _DEFAULT_INITIAL_CAPITAL = Decimal("1000000")
+_DEFAULT_IN_SAMPLE_RATIO = Decimal("0.70")
 
 
 class BacktestRunListCreateView(APIView):
@@ -90,3 +92,32 @@ class BacktestRunDetailView(APIView):
         payload = BacktestRunStatsSerializer(run).data
         payload["stats"] = stats
         return Response(payload, status=http_status.HTTP_200_OK)
+
+
+class WalkForwardView(APIView):
+    """Validate a strategy walk-forward and return the OOS distribution.
+
+    Runs synchronously: each window's ``BacktestRunnerService.run`` requires
+    ``CELERY_TASK_ALWAYS_EAGER=True`` (the simulation contextvars do not cross
+    Celery worker processes), so the response carries the full aggregate.
+    """
+
+    def post(self, request) -> Response:
+        serializer = WalkForwardSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        from apps.backtesting.application.walk_forward_service import WalkForwardService
+
+        result = WalkForwardService().execute(
+            owner=request.user,
+            symbol=data["symbol"].upper(),
+            timeframe=data.get("timeframe", ""),
+            range_start=data["range_start"],
+            range_end=data["range_end"],
+            window_size_days=data["window_size_days"],
+            step_size_days=data["step_size_days"],
+            in_sample_ratio=data.get("in_sample_ratio", _DEFAULT_IN_SAMPLE_RATIO),
+            initial_capital=data.get("initial_capital", _DEFAULT_INITIAL_CAPITAL),
+        )
+        return Response(result, status=http_status.HTTP_200_OK)
