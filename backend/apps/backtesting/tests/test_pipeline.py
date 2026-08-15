@@ -177,10 +177,16 @@ class TestHistoricalReplayPipeline:
         # bar's price.
         assert Decimal(stats["trades"][0]["avg_fill_price"]) == Decimal("103.0515")
 
-        # Batch M4.5: the single fill traces back to the rule that fired it.
-        assert list(stats["by_rule"]) == ["long_momentum_v1"]
-        assert stats["by_rule"]["long_momentum_v1"]["trade_count"] == 1
-        assert stats["by_rule"]["long_momentum_v1"]["win_count"] + stats["by_rule"]["long_momentum_v1"]["loss_count"] == 1
+        # Batch M4.5: the single fill traces back to a rule that fired for its
+        # bar. Both volume_spike_v1 and long_momentum_v1 can fire on the same
+        # bar, and the deterministic first-row-wins tie-break picks exactly one
+        # (the winner depends on RuleExecution.created_at, so only the set of
+        # candidate rules is asserted, never a specific winner).
+        assert len(stats["by_rule"]) == 1
+        attributed_rule = next(iter(stats["by_rule"]))
+        assert attributed_rule in {"long_momentum_v1", "volume_spike_v1"}
+        assert stats["by_rule"][attributed_rule]["trade_count"] == 1
+        assert stats["by_rule"][attributed_rule]["win_count"] + stats["by_rule"][attributed_rule]["loss_count"] == 1
         assert stats["unattributed_trade_count"] == 0
         attributed = sum(bucket["trade_count"] for bucket in stats["by_rule"].values())
         assert attributed + stats["unattributed_trade_count"] == stats["fill_count"]

@@ -314,6 +314,8 @@ class BacktestStatsService(BaseService):
                         "gross_profit": Decimal("0"),
                         "gross_loss": Decimal("0"),
                         "total_costs": Decimal("0"),
+                        "equity_curve": [initial_eq],
+                        "returns": [],
                         "trades": [],
                     },
                 )
@@ -326,6 +328,13 @@ class BacktestStatsService(BaseService):
                     bucket["loss_count"] += 1
                     bucket["gross_loss"] += abs(net_trade_pnl)
                 bucket["trades"].append(trade_entry)
+                prev_bucket_eq = bucket["equity_curve"][-1]
+                next_bucket_eq = prev_bucket_eq + net_trade_pnl
+                bucket["equity_curve"].append(next_bucket_eq)
+                if prev_bucket_eq > Decimal("0"):
+                    bucket["returns"].append(
+                        (next_bucket_eq - prev_bucket_eq) / prev_bucket_eq
+                    )
             else:
                 missing_regime_count += 1
 
@@ -403,6 +412,9 @@ class BacktestStatsService(BaseService):
             b_profit_factor = calculate_profit_factor(
                 bucket["gross_profit"], bucket["gross_loss"], bucket["total_costs"]
             )
+            b_max_dd_pct, b_max_dd_amt = calculate_max_drawdown(bucket["equity_curve"])
+            b_sharpe = calculate_sharpe_ratio(bucket["returns"])
+            b_sortino = calculate_sortino_ratio(bucket["returns"])
             by_regime[regime] = {
                 "trade_count": count,
                 "win_count": bucket["win_count"],
@@ -416,8 +428,24 @@ class BacktestStatsService(BaseService):
                 "avg_loss": str(b_avg_loss),
                 "expectancy": str(b_expectancy),
                 "profit_factor": str(b_profit_factor) if b_profit_factor is not None else None,
+                "sharpe_ratio": str(b_sharpe) if b_sharpe is not None else None,
+                "sortino_ratio": str(b_sortino) if b_sortino is not None else None,
+                "max_drawdown_pct": str(b_max_dd_pct),
+                "max_drawdown_amount": str(b_max_dd_amt),
                 "trades": bucket["trades"],
             }
+
+        # Observability: surface trades whose originating rule fired with no
+        # regime tag so thin regime buckets are visible rather than silent.
+        if missing_regime_count > 0:
+            logger.info(
+                "run_stats_unattributed_regime_trades",
+                extra={
+                    "run_id": str(run.id),
+                    "symbol": run.symbol,
+                    "missing_regime_count": missing_regime_count,
+                },
+            )
 
         # Per-rule attribution (Batch M4.5): the same metrics recomputed for each
         # rule's own trades, using the existing pure ``calculate_*`` helpers.
