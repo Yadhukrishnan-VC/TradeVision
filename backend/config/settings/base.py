@@ -5,6 +5,7 @@ from decimal import Decimal
 from pathlib import Path
 
 from decouple import config
+from celery.schedules import crontab
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -481,7 +482,7 @@ CELERY_BEAT_SCHEDULE = {
     # morning releases (~14:00 UTC / 19:30 IST); idempotent on re-run.
     "ingest-macro-series": {
         "task": "apps.macro_context.infrastructure.tasks.ingest_macro_series",
-        "schedule": "crontab(hour=14, minute=5)",
+        "schedule": crontab(hour=14, minute=5),
         "options": {"queue": "maintenance"},
     },
 }
