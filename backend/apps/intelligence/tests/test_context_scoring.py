@@ -10,6 +10,7 @@ from apps.intelligence.domain.context_scoring import (
     compute_context_scores,
 )
 from apps.intelligence.domain.market_regime import MarketRegime, MultiTimeframeAlignment
+from apps.macro_context.domain.entities import MacroContext
 from core.events.event_types import (
     BreadthContext,
     CircuitStatus,
@@ -64,6 +65,50 @@ def _full_packet_input() -> ContextScoringInput:
         global_context=None,
         pattern_context=None,
         data_quality=DataQuality(quality_score=0.95),
+    )
+
+
+def _sparse_packet_input() -> ContextScoringInput:
+    """Sparse fixture: no technical series, no volume, avg_volume_20d == 0.
+
+    Keeps ``overall_context_confidence`` unclamped (0.8) so the macro
+    arithmetic below is exact and hand-verifiable.
+    """
+    return ContextScoringInput(
+        price_context=PriceContext(
+            current_price=Decimal("100.00"),
+            open_price=Decimal("99.00"),
+            high=Decimal("101.00"),
+            low=Decimal("98.00"),
+            volume=50000,
+            avg_volume_20d=0,
+            circuit_status=CircuitStatus.NORMAL,
+        ),
+        technical_context=TechnicalContext(),
+        breadth_context=BreadthContext(
+            sector_index_change_pct=Decimal("0.00"),
+            sector_advance_decline=Decimal("0.00"),
+            nifty_change_pct=Decimal("0.00"),
+            sensex_change_pct=Decimal("0.00"),
+        ),
+        news_context=NewsContext(),
+        regime=MarketRegime.RANGING,
+        mtf_alignment=MultiTimeframeAlignment.NEUTRAL,
+        data_quality=DataQuality(quality_score=0.8),
+    )
+
+
+def _macro(series_count: int) -> MacroContext:
+    """Build a MacroContext with ``series_count`` known series populated."""
+    series = (Decimal("4.20"), Decimal("4.00"), Decimal("3.50"), Decimal("-0.20"))
+    values = series[:series_count]
+    return MacroContext(
+        as_of=datetime(2025, 1, 15, tzinfo=timezone.utc),
+        dgs10=values[0] if len(values) > 0 else None,
+        fedfunds=values[1] if len(values) > 1 else None,
+        cpiaucsl=values[2] if len(values) > 2 else None,
+        t10y2y=values[3] if len(values) > 3 else None,
+        series_count=series_count,
     )
 
 
@@ -382,3 +427,52 @@ class TestContextScoring:
         )
         result = compute_context_scores(inputs)
         assert 0.0 <= result.trend_score <= 1.0
+
+    def test_macro_context_none_confidence_byte_for_byte_regression(self) -> None:
+        # Byte-for-byte regression guard: with macro_context absent the
+        # confidence must equal the pre-MACRO-CONTEXT-SCORING-1 value for
+        # otherwise-identical inputs (the existing suite fixture included).
+        full = compute_context_scores(_full_packet_input())
+        sparse = compute_context_scores(_sparse_packet_input())
+        assert full.overall_context_confidence == 1.0
+        assert sparse.overall_context_confidence == 0.8
+
+    def test_macro_context_full_series_raises_confidence(self) -> None:
+        # All 4 tracked series known (series_count=4):
+        # conf = (0.8 + 4 / 4.0) / (1.0 + 1.0) = 1.8 / 2.0 = 0.9.
+        base = _sparse_packet_input()
+        base_confidence = compute_context_scores(base).overall_context_confidence
+        with_macro = compute_context_scores(
+            dataclasses.replace(base, macro_context=_macro(series_count=4))
+        )
+        assert with_macro.overall_context_confidence == 0.9
+        assert with_macro.overall_context_confidence > base_confidence
+
+    def test_macro_context_empty_series_dilutes_confidence(self) -> None:
+        # series_count=0 (built but no known values): the term adds weight 1.0
+        # with zero signal, so confidence drops by hand-computation:
+        # conf = (0.8 + 0 / 4.0) / (1.0 + 1.0) = 0.8 / 2.0 = 0.4. This is the
+        # explicit consequence of the formula and is asserted as-is.
+        with_macro = compute_context_scores(
+            dataclasses.replace(_sparse_packet_input(), macro_context=_macro(series_count=0))
+        )
+        assert with_macro.overall_context_confidence == 0.4
+
+    def test_macro_context_variants_leave_directional_scores_unchanged(self) -> None:
+        none_result = compute_context_scores(_sparse_packet_input())
+        for series_count in (0, 4):
+            variant_result = compute_context_scores(
+                dataclasses.replace(
+                    _sparse_packet_input(),
+                    macro_context=_macro(series_count=series_count),
+                )
+            )
+            for score_name in (
+                "bullishness_score",
+                "bearishness_score",
+                "volatility_score",
+                "trend_score",
+                "liquidity_score",
+                "momentum_score",
+            ):
+                assert getattr(variant_result, score_name) == getattr(none_result, score_name)

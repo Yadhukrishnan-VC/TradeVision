@@ -261,6 +261,14 @@ def compute_context_scores(inputs: ContextScoringInput) -> ContextScoringOutput:
         conf_weight += 0.5
         conf_signals += 1.0
 
+    # MACRO-CONTEXT-SCORING-1 — macro data completeness feeds confidence the
+    # same way data_quality does: more known series at signal time means higher
+    # confidence. Absence contributes nothing (never penalizes — macro_context
+    # is an additive, point-in-time context dimension).
+    if inputs.macro_context is not None:
+        conf_weight += 1.0
+        conf_signals += inputs.macro_context.series_count / 4.0
+
     if dq.missing_sources:
         conf_signals -= 0.3 * min(len(dq.missing_sources), 3)
 

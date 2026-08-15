@@ -230,6 +230,7 @@ class MarketContextService:
                 global_context=packet.global_context,
                 pattern_context=packet.pattern_context,
                 data_quality=dq,
+                macro_context=packet.macro_context,
             )
             cs_output = compute_context_scores(cs_input)
             bullishness_score = cs_output.bullishness_score
