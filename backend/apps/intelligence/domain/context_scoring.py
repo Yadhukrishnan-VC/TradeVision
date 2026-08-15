@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from decimal import Decimal
 
 from apps.intelligence.domain.market_regime import MarketRegime, MultiTimeframeAlignment
+from apps.macro_context.domain.entities import MacroContext
 from core.events.event_types import (
     BreadthContext,
     DataQuality,
@@ -26,6 +27,9 @@ class ContextScoringInput:
     global_context: GlobalContext | None = None
     pattern_context: PatternContext | None = None
     data_quality: DataQuality = DataQuality()
+    # MACRO-CONTEXT-1 — optional point-in-time macro context. Never blocks
+    # scoring when absent: it is an additive context dimension.
+    macro_context: MacroContext | None = None
 
 
 @dataclass(frozen=True)

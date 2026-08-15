@@ -92,6 +92,10 @@ LOCAL_APPS: list[str] = [
     # the portfolio/execution source of truth. Detects and repairs drift in
     # the dashboard's PositionSnapshot/OrderSnapshot read model.
     "apps.portfolio_reconciliation",
+    # MACRO-CONTEXT-1 — Point-in-time macro context from FRED/ALFRED.
+    # Provider ingest + provenance store; consumed by the intelligence
+    # context scoring as an additive context dimension.
+    "apps.macro_context",
 ]
 
 THIRD_PARTY_APPS = []
@@ -473,6 +477,13 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": RECONCILIATION_BEAT_INTERVAL_SECONDS,
         "options": {"queue": "maintenance"},
     },
+    # MACRO-CONTEXT-1 — daily FRED/ALFRED vintage ingestion. Runs after US
+    # morning releases (~14:00 UTC / 19:30 IST); idempotent on re-run.
+    "ingest-macro-series": {
+        "task": "apps.macro_context.infrastructure.tasks.ingest_macro_series",
+        "schedule": "crontab(hour=14, minute=5)",
+        "options": {"queue": "maintenance"},
+    },
 }
 
 LOGGING = {
@@ -588,6 +599,26 @@ MARKET_CONTEXT_SCORING_ENABLED: bool = config(
 )
 MARKET_CONTEXT_CACHE_TTL_SECONDS: int = config(
     "MARKET_CONTEXT_CACHE_TTL_SECONDS", default=900, cast=int
+)
+
+# ---------------------------------------------------------------------------
+# MACRO-CONTEXT-1 — FRED/ALFRED point-in-time macro provider
+# ---------------------------------------------------------------------------
+# FRED API key (https://fred.stlouisfed.org/docs/api/api_key.html).
+FRED_API_KEY: str = os.environ.get("FRED_API_KEY", "")
+# Per-request HTTP timeout for FRED observations fetches (seconds).
+FRED_REQUEST_TIMEOUT_SECONDS: int = int(
+    os.environ.get("FRED_REQUEST_TIMEOUT_SECONDS", "20")
+)
+# Earliest vintage window for the daily backfill fetch (YYYY-MM-DD). FRED
+# revision history is fetched wholesale from here on every run; the
+# append-only store makes re-runs idempotent.
+MACRO_BACKFILL_START_DATE: str = os.environ.get(
+    "MACRO_BACKFILL_START_DATE", "1990-01-01"
+)
+# Kill switch for the daily ingestion task (off disables only the task).
+MACRO_INGESTION_ENABLED: bool = config(
+    "MACRO_INGESTION_ENABLED", default=True, cast=bool
 )
 
 # ---------------------------------------------------------------------------

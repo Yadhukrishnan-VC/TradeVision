@@ -228,3 +228,26 @@ RECONCILIATION_RUN_DURATION_SECONDS = Histogram(
     ["entity_type"],
     buckets=(0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0),
 )
+
+# ---------------------------------------------------------------------------
+# MACRO-CONTEXT-1 — point-in-time macro provider ingestion
+# ---------------------------------------------------------------------------
+
+MACRO_INGESTION_OBSERVATIONS_TOTAL = Counter(
+    "tradevision_macro_ingestion_observations_total",
+    "Macro observations (vintage rows) inserted per series",
+    ["series_id"],
+)
+
+MACRO_INGESTION_ERRORS_TOTAL = Counter(
+    "tradevision_macro_ingestion_errors_total",
+    "Macro ingestion errors per series and error type",
+    ["series_id", "error_type"],
+)
+
+MACRO_PROVIDER_LATENCY_SECONDS = Histogram(
+    "tradevision_macro_provider_latency_seconds",
+    "Macro provider fetch latency per series",
+    ["series_id"],
+    buckets=(0.1, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0),
+)

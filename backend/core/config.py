@@ -18,6 +18,7 @@ Never scatter ``from django.conf import settings`` throughout the codebase.
 """
 
 import logging
+from datetime import date
 
 logger = logging.getLogger(__name__)
 
@@ -433,6 +434,39 @@ class TradeVisionConfig:
         from django.conf import settings
 
         return bool(getattr(settings, "MODEL_ROUTER_PREFERRED_PROVIDER_ENABLED", False))
+
+    # ---------------------------------------------------------------------------
+    # MACRO-CONTEXT-1 — FRED/ALFRED point-in-time macro provider
+    # ---------------------------------------------------------------------------
+
+    @property
+    def fred_api_key(self) -> str:
+        """FRED API key used to authenticate observations fetches."""
+        from django.conf import settings
+
+        return str(getattr(settings, "FRED_API_KEY", ""))
+
+    @property
+    def fred_request_timeout_seconds(self) -> int:
+        """Per-request HTTP timeout for FRED observations fetches (seconds)."""
+        from django.conf import settings
+
+        return int(getattr(settings, "FRED_REQUEST_TIMEOUT_SECONDS", 20))
+
+    @property
+    def macro_backfill_start(self) -> date:
+        """Earliest vintage window for the daily FRED backfill fetch."""
+        from django.conf import settings
+
+        raw = str(getattr(settings, "MACRO_BACKFILL_START_DATE", "1990-01-01"))
+        return date.fromisoformat(raw)
+
+    @property
+    def macro_ingestion_enabled(self) -> bool:
+        """Kill switch for the daily macro ingestion task."""
+        from django.conf import settings
+
+        return bool(getattr(settings, "MACRO_INGESTION_ENABLED", True))
 
     # ---------------------------------------------------------------------------
     # Celery queue names
