@@ -270,6 +270,38 @@ class BacktestStatsService(BaseService):
 
         current_equity = initial_eq
 
+        # IS/OOS static split (Batch IS-OOS-METRICS-1): the run's date range is
+        # divided once by in_sample_ratio; trades before split_ts are the
+        # in-sample half, the rest out-of-sample. Same split_ts the old
+        # partition pass used, computed earlier so per-bucket equity/returns can
+        # be accumulated inline with the other bucket passes.
+        total_seconds = (run.range_end - run.range_start).total_seconds()
+        split_seconds = total_seconds * float(run.in_sample_ratio)
+        split_ts = run.range_start.timestamp() + split_seconds
+
+        is_bucket = {
+            "trade_count": 0,
+            "win_count": 0,
+            "loss_count": 0,
+            "gross_profit": Decimal("0"),
+            "gross_loss": Decimal("0"),
+            "total_costs": Decimal("0"),
+            "equity_curve": [initial_eq],
+            "returns": [],
+            "trades": [],
+        }
+        oos_bucket = {
+            "trade_count": 0,
+            "win_count": 0,
+            "loss_count": 0,
+            "gross_profit": Decimal("0"),
+            "gross_loss": Decimal("0"),
+            "total_costs": Decimal("0"),
+            "equity_curve": [initial_eq],
+            "returns": [],
+            "trades": [],
+        }
+
         for order in orders:
             direction = Decimal("1") if str(order.side).upper() == "LONG" else Decimal("-1")
             avg_fill = order.avg_fill_price or Decimal("0")
@@ -370,6 +402,27 @@ class BacktestStatsService(BaseService):
                     rule_bucket["returns"].append((next_rule_eq - prev_rule_eq) / prev_rule_eq)
             else:
                 unattributed_trade_count += 1
+
+            # IS/OOS partition: same equity-curve/returns accumulation the
+            # regime and rule buckets above do, for each half of the split.
+            if order.created_at and order.created_at.timestamp() <= split_ts:
+                split_bucket = is_bucket
+            else:
+                split_bucket = oos_bucket
+            split_bucket["trade_count"] += 1
+            split_bucket["total_costs"] += order_cost
+            if net_trade_pnl > Decimal("0"):
+                split_bucket["win_count"] += 1
+                split_bucket["gross_profit"] += net_trade_pnl
+            elif net_trade_pnl < Decimal("0"):
+                split_bucket["loss_count"] += 1
+                split_bucket["gross_loss"] += abs(net_trade_pnl)
+            split_bucket["trades"].append(trade_entry)
+            prev_split_eq = split_bucket["equity_curve"][-1]
+            next_split_eq = prev_split_eq + net_trade_pnl
+            split_bucket["equity_curve"].append(next_split_eq)
+            if prev_split_eq > Decimal("0"):
+                split_bucket["returns"].append((next_split_eq - prev_split_eq) / prev_split_eq)
 
             current_equity += net_trade_pnl
             equity_curve.append(current_equity)
@@ -537,17 +590,55 @@ class BacktestStatsService(BaseService):
         else:
             benchmark_return = None
 
-        total_seconds = (run.range_end - run.range_start).total_seconds()
-        split_seconds = total_seconds * float(run.in_sample_ratio)
-        split_ts = run.range_start.timestamp() + split_seconds
-
-        is_trades = []
-        oos_trades = []
-        for order_dict, order_obj in zip(trades, orders):
-            if order_obj.created_at and order_obj.created_at.timestamp() <= split_ts:
-                is_trades.append(order_dict)
-            else:
-                oos_trades.append(order_dict)
+        # IS/OOS metrics (Batch IS-OOS-METRICS-1): the full metrics suite
+        # computed independently for the in-sample and out-of-sample halves of
+        # the static split, mirroring the by_regime/by_rule bucket pattern. An
+        # empty half yields None for ratio-based metrics (profit_factor, sharpe,
+        # sortino) exactly like a by_regime bucket with too few trades.
+        split_metrics: dict[str, dict[str, Any]] = {}
+        for split_name, bucket in (("in_sample", is_bucket), ("out_of_sample", oos_bucket)):
+            count = bucket["trade_count"]
+            s_win_rate = (
+                Decimal(bucket["win_count"]) / Decimal(count) if count > 0 else Decimal("0")
+            )
+            s_avg_win = (
+                bucket["gross_profit"] / Decimal(bucket["win_count"])
+                if bucket["win_count"] > 0
+                else Decimal("0")
+            )
+            s_avg_loss = (
+                bucket["gross_loss"] / Decimal(bucket["loss_count"])
+                if bucket["loss_count"] > 0
+                else Decimal("0")
+            )
+            s_avg_cost = bucket["total_costs"] / Decimal(count) if count > 0 else Decimal("0")
+            s_net_pnl = bucket["gross_profit"] - bucket["gross_loss"]
+            s_expectancy = calculate_expectancy(s_win_rate, s_avg_win, s_avg_loss, s_avg_cost)
+            s_profit_factor = calculate_profit_factor(
+                bucket["gross_profit"], bucket["gross_loss"], bucket["total_costs"]
+            )
+            s_max_dd_pct, s_max_dd_amt = calculate_max_drawdown(bucket["equity_curve"])
+            s_sharpe = calculate_sharpe_ratio(bucket["returns"])
+            s_sortino = calculate_sortino_ratio(bucket["returns"])
+            split_metrics[split_name] = {
+                "trade_count": count,
+                "win_count": bucket["win_count"],
+                "loss_count": bucket["loss_count"],
+                "gross_profit": str(bucket["gross_profit"]),
+                "gross_loss": str(bucket["gross_loss"]),
+                "total_transaction_costs": str(bucket["total_costs"]),
+                "net_pnl": str(s_net_pnl),
+                "win_rate": str(round(s_win_rate, 4)),
+                "avg_win": str(s_avg_win),
+                "avg_loss": str(s_avg_loss),
+                "expectancy": str(s_expectancy),
+                "profit_factor": str(s_profit_factor) if s_profit_factor is not None else None,
+                "sharpe_ratio": str(s_sharpe) if s_sharpe is not None else None,
+                "sortino_ratio": str(s_sortino) if s_sortino is not None else None,
+                "max_drawdown_pct": str(s_max_dd_pct),
+                "max_drawdown_amount": str(s_max_dd_amt),
+                "trades": bucket["trades"],
+            }
 
         run.net_pnl = net_pnl
         run.expectancy = expectancy
@@ -580,8 +671,8 @@ class BacktestStatsService(BaseService):
             "benchmark_return_pct": str(benchmark_return) if benchmark_return is not None else None,
             "equity_at_completion": str(capital.equity) if capital else "0",
             "available_capital": str(capital.available_capital) if capital else "0",
-            "in_sample": {"trade_count": len(is_trades), "trades": is_trades},
-            "out_of_sample": {"trade_count": len(oos_trades), "trades": oos_trades},
+            "in_sample": split_metrics["in_sample"],
+            "out_of_sample": split_metrics["out_of_sample"],
             "by_regime": by_regime,
             "missing_regime_count": missing_regime_count,
             "by_rule": by_rule,
