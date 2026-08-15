@@ -21,6 +21,10 @@ from typing import Any
 
 from django.conf import settings
 
+from apps.backtesting.domain.attribution import (
+    build_correlation_to_rule_map,
+    group_fills_by_rule,
+)
 from apps.backtesting.domain.metrics import (
     calculate_benchmark_return,
     calculate_expectancy,
@@ -28,6 +32,9 @@ from apps.backtesting.domain.metrics import (
     calculate_profit_factor,
     calculate_sharpe_ratio,
     calculate_sortino_ratio,
+)
+from apps.backtesting.infrastructure.rule_attribution_repository import (
+    RuleAttributionRepository,
 )
 from apps.backtesting.models import BacktestRun, BacktestRunStatus
 from apps.backtesting.repository import BacktestRunRepository
@@ -231,6 +238,15 @@ class BacktestStatsService(BaseService):
         regime_buckets: dict[str, dict[str, Any]] = {}
         missing_regime_count = 0
 
+        # Per-rule attribution (Batch M4.5): each Order carries a correlation_id
+        # equal to the RuleExecution.analysis_event_id of the rule that fired it.
+        order_by_id = {str(order.id): order for order in orders}
+        correlation_ids = {order.correlation_id for order in orders if order.correlation_id}
+        rule_executions = RuleAttributionRepository().get_rule_executions(correlation_ids)
+        rule_by_correlation = build_correlation_to_rule_map(rule_executions)
+        rule_buckets: dict[str, dict[str, Any]] = {}
+        unattributed_trade_count = 0
+
         gross_profit = Decimal("0")
         gross_loss = Decimal("0")
         total_costs = Decimal("0")
@@ -272,6 +288,21 @@ class BacktestStatsService(BaseService):
                 loss_count += 1
                 gross_loss += abs(net_trade_pnl)
 
+            trade_entry = {
+                "order_id": str(order.id),
+                "symbol": order.symbol,
+                "side": order.side,
+                "quantity": str(order.quantity),
+                "entry_price": str(order.entry_price),
+                "avg_fill_price": str(avg_fill),
+                "filled_quantity": str(order.filled_quantity),
+                "status": order.status,
+                "realized_pnl": str(raw_pnl),
+                "net_pnl": str(net_trade_pnl),
+                "transaction_cost": str(order_cost),
+                "created_at": order.created_at.isoformat() if order.created_at else "",
+            }
+
             regime = regime_by_correlation.get(order.correlation_id)
             if regime:
                 bucket = regime_buckets.setdefault(
@@ -294,24 +325,42 @@ class BacktestStatsService(BaseService):
                 elif net_trade_pnl < Decimal("0"):
                     bucket["loss_count"] += 1
                     bucket["gross_loss"] += abs(net_trade_pnl)
-                bucket["trades"].append(
-                    {
-                        "order_id": str(order.id),
-                        "symbol": order.symbol,
-                        "side": order.side,
-                        "quantity": str(order.quantity),
-                        "entry_price": str(order.entry_price),
-                        "avg_fill_price": str(avg_fill),
-                        "filled_quantity": str(order.filled_quantity),
-                        "status": order.status,
-                        "realized_pnl": str(raw_pnl),
-                        "net_pnl": str(net_trade_pnl),
-                        "transaction_cost": str(order_cost),
-                        "created_at": order.created_at.isoformat() if order.created_at else "",
-                    }
-                )
+                bucket["trades"].append(trade_entry)
             else:
                 missing_regime_count += 1
+
+            rule_id = rule_by_correlation.get(str(order.correlation_id))
+            if rule_id:
+                rule_bucket = rule_buckets.setdefault(
+                    rule_id,
+                    {
+                        "trade_count": 0,
+                        "win_count": 0,
+                        "loss_count": 0,
+                        "gross_profit": Decimal("0"),
+                        "gross_loss": Decimal("0"),
+                        "total_costs": Decimal("0"),
+                        "equity_curve": [initial_eq],
+                        "returns": [],
+                        "trades": [],
+                    },
+                )
+                rule_bucket["trade_count"] += 1
+                rule_bucket["total_costs"] += order_cost
+                if net_trade_pnl > Decimal("0"):
+                    rule_bucket["win_count"] += 1
+                    rule_bucket["gross_profit"] += net_trade_pnl
+                elif net_trade_pnl < Decimal("0"):
+                    rule_bucket["loss_count"] += 1
+                    rule_bucket["gross_loss"] += abs(net_trade_pnl)
+                rule_bucket["trades"].append(trade_entry)
+                prev_rule_eq = rule_bucket["equity_curve"][-1]
+                next_rule_eq = prev_rule_eq + net_trade_pnl
+                rule_bucket["equity_curve"].append(next_rule_eq)
+                if prev_rule_eq > Decimal("0"):
+                    rule_bucket["returns"].append((next_rule_eq - prev_rule_eq) / prev_rule_eq)
+            else:
+                unattributed_trade_count += 1
 
             current_equity += net_trade_pnl
             equity_curve.append(current_equity)
@@ -321,22 +370,7 @@ class BacktestStatsService(BaseService):
                 ret = (current_equity - prev_eq) / prev_eq
                 daily_returns.append(ret)
 
-            trades.append(
-                {
-                    "order_id": str(order.id),
-                    "symbol": order.symbol,
-                    "side": order.side,
-                    "quantity": str(order.quantity),
-                    "entry_price": str(order.entry_price),
-                    "avg_fill_price": str(avg_fill),
-                    "filled_quantity": str(order.filled_quantity),
-                    "status": order.status,
-                    "realized_pnl": str(raw_pnl),
-                    "net_pnl": str(net_trade_pnl),
-                    "transaction_cost": str(order_cost),
-                    "created_at": order.created_at.isoformat() if order.created_at else "",
-                }
-            )
+            trades.append(trade_entry)
 
         trade_count = len(orders)
         win_rate = Decimal(win_count) / Decimal(trade_count) if trade_count > 0 else Decimal("0")
@@ -384,6 +418,76 @@ class BacktestStatsService(BaseService):
                 "profit_factor": str(b_profit_factor) if b_profit_factor is not None else None,
                 "trades": bucket["trades"],
             }
+
+        # Per-rule attribution (Batch M4.5): the same metrics recomputed for each
+        # rule's own trades, using the existing pure ``calculate_*`` helpers.
+        by_rule: dict[str, dict[str, Any]] = {}
+        for rule_id in sorted(rule_buckets):
+            bucket = rule_buckets[rule_id]
+            count = bucket["trade_count"]
+            r_win_rate = (
+                Decimal(bucket["win_count"]) / Decimal(count) if count > 0 else Decimal("0")
+            )
+            r_avg_win = (
+                bucket["gross_profit"] / Decimal(bucket["win_count"])
+                if bucket["win_count"] > 0
+                else Decimal("0")
+            )
+            r_avg_loss = (
+                bucket["gross_loss"] / Decimal(bucket["loss_count"])
+                if bucket["loss_count"] > 0
+                else Decimal("0")
+            )
+            r_avg_cost = bucket["total_costs"] / Decimal(count) if count > 0 else Decimal("0")
+            r_net_pnl = bucket["gross_profit"] - bucket["gross_loss"]
+            r_expectancy = calculate_expectancy(r_win_rate, r_avg_win, r_avg_loss, r_avg_cost)
+            r_profit_factor = calculate_profit_factor(
+                bucket["gross_profit"], bucket["gross_loss"], bucket["total_costs"]
+            )
+            r_max_dd_pct, r_max_dd_amt = calculate_max_drawdown(bucket["equity_curve"])
+            r_sharpe = calculate_sharpe_ratio(bucket["returns"])
+            r_sortino = calculate_sortino_ratio(bucket["returns"])
+            by_rule[rule_id] = {
+                "rule_id": rule_id,
+                "trade_count": count,
+                "win_count": bucket["win_count"],
+                "loss_count": bucket["loss_count"],
+                "gross_profit": str(bucket["gross_profit"]),
+                "gross_loss": str(bucket["gross_loss"]),
+                "total_transaction_costs": str(bucket["total_costs"]),
+                "net_pnl": str(r_net_pnl),
+                "win_rate": str(round(r_win_rate, 4)),
+                "avg_win": str(r_avg_win),
+                "avg_loss": str(r_avg_loss),
+                "expectancy": str(r_expectancy),
+                "profit_factor": str(r_profit_factor) if r_profit_factor is not None else None,
+                "sharpe_ratio": str(r_sharpe) if r_sharpe is not None else None,
+                "sortino_ratio": str(r_sortino) if r_sortino is not None else None,
+                "max_drawdown_pct": str(r_max_dd_pct),
+                "max_drawdown_amount": str(r_max_dd_amt),
+                "trades": bucket["trades"],
+            }
+
+        # Reconciliation: every fill must trace to exactly one rule (or be
+        # unattributed), and the totals must match the run's total fill count.
+        attributed_trade_count = sum(bucket["trade_count"] for bucket in rule_buckets.values())
+        by_rule_fill_groups = group_fills_by_rule(fills, rule_executions, order_by_id)
+        if (
+            attributed_trade_count + unattributed_trade_count != len(fills)
+            or sum(len(group) for group in by_rule_fill_groups.values()) != attributed_trade_count
+        ):
+            logger.warning(
+                "rule_attribution_reconciliation_mismatch",
+                extra={
+                    "run_id": str(run.id),
+                    "attributed_trade_count": attributed_trade_count,
+                    "unattributed_trade_count": unattributed_trade_count,
+                    "attributed_fill_count": sum(
+                        len(group) for group in by_rule_fill_groups.values()
+                    ),
+                    "total_fill_count": len(fills),
+                },
+            )
 
         max_dd_pct, max_dd_amt = calculate_max_drawdown(equity_curve)
         sharpe = calculate_sharpe_ratio(daily_returns)
@@ -452,6 +556,8 @@ class BacktestStatsService(BaseService):
             "out_of_sample": {"trade_count": len(oos_trades), "trades": oos_trades},
             "by_regime": by_regime,
             "missing_regime_count": missing_regime_count,
+            "by_rule": by_rule,
+            "unattributed_trade_count": unattributed_trade_count,
             "trades": trades,
         }
 

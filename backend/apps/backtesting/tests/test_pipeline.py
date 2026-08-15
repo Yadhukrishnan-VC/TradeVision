@@ -177,6 +177,14 @@ class TestHistoricalReplayPipeline:
         # bar's price.
         assert Decimal(stats["trades"][0]["avg_fill_price"]) == Decimal("103.0515")
 
+        # Batch M4.5: the single fill traces back to the rule that fired it.
+        assert list(stats["by_rule"]) == ["long_momentum_v1"]
+        assert stats["by_rule"]["long_momentum_v1"]["trade_count"] == 1
+        assert stats["by_rule"]["long_momentum_v1"]["win_count"] + stats["by_rule"]["long_momentum_v1"]["loss_count"] == 1
+        assert stats["unattributed_trade_count"] == 0
+        attributed = sum(bucket["trade_count"] for bucket in stats["by_rule"].values())
+        assert attributed + stats["unattributed_trade_count"] == stats["fill_count"]
+
     def test_redelivery_is_a_noop(
         self,
         seed_session_facts,
