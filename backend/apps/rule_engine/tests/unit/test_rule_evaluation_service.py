@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from dataclasses import replace
 
 import pytest
 
@@ -10,6 +11,10 @@ from apps.rule_engine.domain.exceptions import RuleEvaluationError
 from apps.rule_engine.infrastructure.models import RuleExecution
 
 pytestmark = pytest.mark.django_db
+
+
+def _with_regime(packet, regime: str):
+    return replace(packet, regime=regime)
 
 
 class TestRuleEvaluationService:
@@ -131,6 +136,36 @@ class TestRuleEvaluationService:
         assert firing.symbol == "RELIANCE"
         assert "change_pct" in firing.trigger_data
         assert firing.occurred_at is not None
+
+    def test_regime_is_injected_into_firing_trigger_data(
+        self, price_movement_packet, analysis_event_id
+    ) -> None:
+        price_movement_packet = replace(
+            price_movement_packet,
+            packet=_with_regime(price_movement_packet.packet, "BULLISH"),
+        )
+        service = RuleEvaluationService()
+        firings = service.evaluate_enriched_packet(
+            price_movement_packet,
+            analysis_event_id=analysis_event_id,
+        )
+
+        assert len(firings) >= 1
+        for firing in firings:
+            assert firing.trigger_data["regime"] == "BULLISH"
+
+    def test_regime_absent_omits_key_from_trigger_data(
+        self, price_movement_packet, analysis_event_id
+    ) -> None:
+        service = RuleEvaluationService()
+        firings = service.evaluate_enriched_packet(
+            price_movement_packet,
+            analysis_event_id=analysis_event_id,
+        )
+
+        assert len(firings) >= 1
+        for firing in firings:
+            assert "regime" not in firing.trigger_data
 
     def test_publish_rule_firing_publishes_domain_event(
         self, price_movement_packet, analysis_event_id

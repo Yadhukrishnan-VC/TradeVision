@@ -53,6 +53,7 @@ class RuleEvaluationService(BaseService):
 
         results = self._registry.evaluate_all(packet)
         firings: list[RuleFiring] = []
+        regime = getattr(packet, "regime", None)
         with transaction.atomic():
             for result in results:
                 analysis_event = result.to_analysis_event(
@@ -60,12 +61,15 @@ class RuleEvaluationService(BaseService):
                     packet=packet,
                 )
                 event_id = analysis_event_id or analysis_event.id
+                trigger_data = dict(result.trigger_data)
+                if regime:
+                    trigger_data["regime"] = regime
                 firing = RuleFiring(
                     rule_id=result.rule_id,
                     event_type=result.event_type.value,
                     severity=result.severity,
                     symbol=packet.symbol,
-                    trigger_data=result.trigger_data,
+                    trigger_data=trigger_data,
                     analysis_event_id=event_id,
                     occurred_at=analysis_event.timestamp,
                 )

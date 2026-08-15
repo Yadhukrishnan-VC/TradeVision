@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 from apps.eventbus.domain.events import DomainEvent
 from apps.intelligence.infrastructure.ta_completed_handler import (
     _build_packet,
+    _detect_regime_value,
     _get_prev_close,
     _optional_decimal,
     handle_ta_completed,
@@ -165,6 +166,34 @@ class TestHandleTACompleted:
     def test_optional_decimal_returns_decimal_for_valid(self) -> None:
         assert _optional_decimal("62.5") == Decimal("62.5")
 
+    def test_detect_regime_value_detects_bullish(self) -> None:
+        indicators = {
+            "ema_50": "2550.00",
+            "ema_200": "2500.00",
+            "rsi_14": "60.0",
+            "macd": "5.0",
+            "macd_histogram": "2.0",
+        }
+        price = {"close": "2600.00", "volume": "1000", "avg_volume_20d": "500"}
+        assert _detect_regime_value(indicators, price) == "BULLISH"
+
+    def test_detect_regime_value_detects_bearish(self) -> None:
+        indicators = {
+            "ema_50": "2500.00",
+            "ema_200": "2550.00",
+            "rsi_14": "40.0",
+            "macd": "-5.0",
+            "macd_histogram": "-2.0",
+        }
+        price = {"close": "2450.00", "volume": "1000", "avg_volume_20d": "500"}
+        assert _detect_regime_value(indicators, price) == "BEARISH"
+
+    def test_detect_regime_value_ranging_without_trend_inputs(self) -> None:
+        assert _detect_regime_value({}, {"close": "100.00"}) == "RANGING"
+
+    def test_detect_regime_value_survives_partial_payload(self) -> None:
+        assert _detect_regime_value({"rsi_14": "60"}, {"close": "2600.00"}) == "RANGING"
+
     def test_technical_context_optional_fields_preserve_none(self) -> None:
         payload = {
             "symbol": "RELIANCE",
@@ -224,3 +253,21 @@ class TestHandleTACompleted:
         assert packet.technical_context.ema_50 == Decimal("2480.00")
         assert packet.technical_context.ema_200 == Decimal("2400.00")
         assert packet.technical_context.vwap == Decimal("2490.00")
+
+    def test_build_packet_attaches_detected_regime(self) -> None:
+        payload = {
+            "symbol": "RELIANCE",
+            "snapshot_id": "snap-789",
+            "exchange": "NSE",
+            "timeframe": "1D",
+            "snapshot_timestamp": "2026-07-28T10:00:00+00:00",
+            "indicators": {
+                "ema_50": "2550.00",
+                "ema_200": "2500.00",
+                "rsi_14": "60.0",
+            },
+            "price": {"close": "2600.00", "volume": "1000", "avg_volume_20d": "500"},
+        }
+        occurred_at = datetime(2026, 7, 28, 10, 0, 0, tzinfo=timezone.utc)
+        packet = _build_packet(payload, occurred_at)
+        assert packet.regime == "BULLISH"

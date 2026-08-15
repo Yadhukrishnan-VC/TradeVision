@@ -329,6 +329,11 @@ class IntelligencePacket:
     institutional_context: InstitutionalContext | None = None
     pattern_context: PatternContext | None = None
 
+    # Deterministic market regime (e.g. "BULLISH", "RANGING") detected during
+    # packet assembly. Optional: absent for packets assembled without the
+    # classifier inputs. Consumed by the rule engine to tag RuleExecution rows.
+    regime: str | None = None
+
     def __post_init__(self) -> None:
         if self.timestamp.tzinfo is None:
             raise ValueError(

@@ -227,6 +227,10 @@ class BacktestStatsService(BaseService):
             account_id=run.account_id, status__startswith="REJECTED"
         ).count()
 
+        regime_by_correlation = self._resolve_regimes(orders)
+        regime_buckets: dict[str, dict[str, Any]] = {}
+        missing_regime_count = 0
+
         gross_profit = Decimal("0")
         gross_loss = Decimal("0")
         total_costs = Decimal("0")
@@ -268,6 +272,47 @@ class BacktestStatsService(BaseService):
                 loss_count += 1
                 gross_loss += abs(net_trade_pnl)
 
+            regime = regime_by_correlation.get(order.correlation_id)
+            if regime:
+                bucket = regime_buckets.setdefault(
+                    regime,
+                    {
+                        "trade_count": 0,
+                        "win_count": 0,
+                        "loss_count": 0,
+                        "gross_profit": Decimal("0"),
+                        "gross_loss": Decimal("0"),
+                        "total_costs": Decimal("0"),
+                        "trades": [],
+                    },
+                )
+                bucket["trade_count"] += 1
+                bucket["total_costs"] += order_cost
+                if net_trade_pnl > Decimal("0"):
+                    bucket["win_count"] += 1
+                    bucket["gross_profit"] += net_trade_pnl
+                elif net_trade_pnl < Decimal("0"):
+                    bucket["loss_count"] += 1
+                    bucket["gross_loss"] += abs(net_trade_pnl)
+                bucket["trades"].append(
+                    {
+                        "order_id": str(order.id),
+                        "symbol": order.symbol,
+                        "side": order.side,
+                        "quantity": str(order.quantity),
+                        "entry_price": str(order.entry_price),
+                        "avg_fill_price": str(avg_fill),
+                        "filled_quantity": str(order.filled_quantity),
+                        "status": order.status,
+                        "realized_pnl": str(raw_pnl),
+                        "net_pnl": str(net_trade_pnl),
+                        "transaction_cost": str(order_cost),
+                        "created_at": order.created_at.isoformat() if order.created_at else "",
+                    }
+                )
+            else:
+                missing_regime_count += 1
+
             current_equity += net_trade_pnl
             equity_curve.append(current_equity)
 
@@ -302,6 +347,44 @@ class BacktestStatsService(BaseService):
         net_pnl = gross_profit - gross_loss
         expectancy = calculate_expectancy(win_rate, avg_win, avg_loss, avg_cost)
         profit_factor = calculate_profit_factor(gross_profit, gross_loss, total_costs)
+
+        by_regime: dict[str, dict[str, Any]] = {}
+        for regime in sorted(regime_buckets):
+            bucket = regime_buckets[regime]
+            count = bucket["trade_count"]
+            b_win_rate = Decimal(bucket["win_count"]) / Decimal(count) if count > 0 else Decimal("0")
+            b_avg_win = (
+                bucket["gross_profit"] / Decimal(bucket["win_count"])
+                if bucket["win_count"] > 0
+                else Decimal("0")
+            )
+            b_avg_loss = (
+                bucket["gross_loss"] / Decimal(bucket["loss_count"])
+                if bucket["loss_count"] > 0
+                else Decimal("0")
+            )
+            b_avg_cost = bucket["total_costs"] / Decimal(count) if count > 0 else Decimal("0")
+            b_net_pnl = bucket["gross_profit"] - bucket["gross_loss"]
+            b_expectancy = calculate_expectancy(b_win_rate, b_avg_win, b_avg_loss, b_avg_cost)
+            b_profit_factor = calculate_profit_factor(
+                bucket["gross_profit"], bucket["gross_loss"], bucket["total_costs"]
+            )
+            by_regime[regime] = {
+                "trade_count": count,
+                "win_count": bucket["win_count"],
+                "loss_count": bucket["loss_count"],
+                "gross_profit": str(bucket["gross_profit"]),
+                "gross_loss": str(bucket["gross_loss"]),
+                "total_transaction_costs": str(bucket["total_costs"]),
+                "net_pnl": str(b_net_pnl),
+                "win_rate": str(round(b_win_rate, 4)),
+                "avg_win": str(b_avg_win),
+                "avg_loss": str(b_avg_loss),
+                "expectancy": str(b_expectancy),
+                "profit_factor": str(b_profit_factor) if b_profit_factor is not None else None,
+                "trades": bucket["trades"],
+            }
+
         max_dd_pct, max_dd_amt = calculate_max_drawdown(equity_curve)
         sharpe = calculate_sharpe_ratio(daily_returns)
         sortino = calculate_sortino_ratio(daily_returns)
@@ -367,5 +450,30 @@ class BacktestStatsService(BaseService):
             "available_capital": str(capital.available_capital) if capital else "0",
             "in_sample": {"trade_count": len(is_trades), "trades": is_trades},
             "out_of_sample": {"trade_count": len(oos_trades), "trades": oos_trades},
+            "by_regime": by_regime,
+            "missing_regime_count": missing_regime_count,
             "trades": trades,
         }
+
+    def _resolve_regimes(self, orders: list[Any]) -> dict[uuid.UUID, str]:
+        """Map each order's correlation_id to its market regime.
+
+        An ``Order`` carries the same ``correlation_id`` as the ``PacketBuilt``
+        event that produced its triggering rule firing, and that id is stored as
+        ``RuleExecution.analysis_event_id``. We read the ``regime`` key injected
+        into ``trigger_data`` at rule-firing time. One query per run.
+        """
+        from apps.rule_engine.infrastructure.models import RuleExecution
+
+        correlation_ids = {o.correlation_id for o in orders if o.correlation_id}
+        regime_map: dict[uuid.UUID, str] = {}
+        if not correlation_ids:
+            return regime_map
+        rows = RuleExecution.objects.filter(
+            analysis_event_id__in=correlation_ids
+        ).only("analysis_event_id", "trigger_data")
+        for row in rows:
+            regime = (row.trigger_data or {}).get("regime")
+            if regime and row.analysis_event_id not in regime_map:
+                regime_map[row.analysis_event_id] = regime
+        return regime_map

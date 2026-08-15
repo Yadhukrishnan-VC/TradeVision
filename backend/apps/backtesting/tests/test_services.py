@@ -231,3 +231,102 @@ class TestStatsService:
         assert stats["trades"][0]["symbol"] == "RELIANCE"
         assert stats["trades"][0]["side"] == "LONG"
         assert Decimal(stats["available_capital"]) == Decimal("948500")
+
+    def test_stats_buckets_trades_by_regime(self, backtest_run) -> None:
+        from decimal import Decimal
+
+        from apps.execution.infrastructure.models import ExecutionRequest, Order
+        from apps.rule_engine.infrastructure.models import RuleExecution
+
+        account_id = backtest_run.account_id
+
+        def _make_order(side, entry, fill, qty, corr, regime):
+            req = ExecutionRequest.objects.create(
+                idempotency_key=f"key-{uuid.uuid4().hex}",
+                account_id=account_id,
+                symbol="RELIANCE",
+                side=side,
+                quantity=Decimal(qty),
+                entry_price=Decimal(entry),
+                stop_loss=Decimal("90.00"),
+                correlation_id=corr,
+                risk_approved_event_id=uuid.uuid4(),
+                rule_id="long_momentum_v1",
+                event_type="BREAKOUT",
+                status="FILLED",
+            )
+            Order.objects.create(
+                execution_request=req,
+                account_id=account_id,
+                symbol="RELIANCE",
+                side=side,
+                quantity=Decimal(qty),
+                status="FILLED",
+                filled_quantity=Decimal(qty),
+                avg_fill_price=Decimal(fill),
+                entry_price=Decimal(entry),
+                stop_loss=Decimal("90.00"),
+                correlation_id=corr,
+            )
+            RuleExecution.objects.create(
+                rule_id="long_momentum_v1",
+                symbol="RELIANCE",
+                severity="medium",
+                trigger_data={"regime": regime},
+                analysis_event_id=corr,
+            )
+
+        bull_corr = uuid.uuid4()
+        bear_corr = uuid.uuid4()
+        _make_order("LONG", "100.00", "110.00", 100, bull_corr, "BULLISH")
+        _make_order("SHORT", "120.00", "125.00", 100, bear_corr, "BEARISH")
+
+        stats = BacktestStatsService().run_stats(backtest_run)
+        assert stats["missing_regime_count"] == 0
+        assert stats["by_regime"]["BULLISH"]["trade_count"] == 1
+        assert stats["by_regime"]["BULLISH"]["win_count"] == 1
+        assert stats["by_regime"]["BULLISH"]["loss_count"] == 0
+        assert stats["by_regime"]["BULLISH"]["trades"][0]["order_id"] is not None
+        assert stats["by_regime"]["BEARISH"]["trade_count"] == 1
+        assert stats["by_regime"]["BEARISH"]["win_count"] == 0
+        assert stats["by_regime"]["BEARISH"]["loss_count"] == 1
+        assert Decimal(stats["by_regime"]["BEARISH"]["gross_loss"]) > Decimal("0")
+
+    def test_stats_counts_missing_regime(self, backtest_run) -> None:
+        from decimal import Decimal
+
+        from apps.execution.infrastructure.models import ExecutionRequest, Order
+
+        account_id = backtest_run.account_id
+        corr = uuid.uuid4()
+        req = ExecutionRequest.objects.create(
+            idempotency_key=f"key-{uuid.uuid4().hex}",
+            account_id=account_id,
+            symbol="RELIANCE",
+            side="LONG",
+            quantity=Decimal("100"),
+            entry_price=Decimal("100.00"),
+            stop_loss=Decimal("90.00"),
+            correlation_id=corr,
+            risk_approved_event_id=uuid.uuid4(),
+            rule_id="long_momentum_v1",
+            event_type="BREAKOUT",
+            status="FILLED",
+        )
+        Order.objects.create(
+            execution_request=req,
+            account_id=account_id,
+            symbol="RELIANCE",
+            side="LONG",
+            quantity=Decimal("100"),
+            status="FILLED",
+            filled_quantity=Decimal("100"),
+            avg_fill_price=Decimal("110.00"),
+            entry_price=Decimal("100.00"),
+            stop_loss=Decimal("90.00"),
+            correlation_id=corr,
+        )
+
+        stats = BacktestStatsService().run_stats(backtest_run)
+        assert stats["missing_regime_count"] == 1
+        assert stats["by_regime"] == {}

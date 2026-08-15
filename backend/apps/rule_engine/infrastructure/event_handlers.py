@@ -131,6 +131,7 @@ def _deserialize_enriched_packet(data: dict) -> EnrichedIntelligencePacket:
         breadth_context=breadth_ctx,
         news_context=news_ctx,
         data_quality=dq_ctx,
+        regime=packet_data.get("regime"),
     )
 
     return EnrichedIntelligencePacket(packet=pkt)

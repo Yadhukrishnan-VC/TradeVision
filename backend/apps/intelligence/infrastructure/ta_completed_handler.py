@@ -177,6 +177,46 @@ def _get_prev_close(symbol: str, price_data: dict[str, Any]) -> Decimal | None:
     return None
 
 
+def _detect_regime_value(
+    indicators: dict[str, Any], price_data: dict[str, Any]
+) -> str | None:
+    """Detect the deterministic market regime from the payload's pine values.
+
+    Reuses the frozen ``detect_regime`` classifier (``apps.intelligence.domain.
+    market_regime``) with the same inputs ``MarketContextService`` feeds it.
+    Returns the regime string (e.g. ``"BULLISH"``) or ``None`` when the
+    classifier inputs are unavailable. Additive and defensive — never raises.
+    """
+    from apps.intelligence.domain.market_regime import RegimeInput, detect_regime
+
+    volume = _optional_int(price_data.get("volume")) or 0
+    avg_volume_20d = _optional_int(price_data.get("avg_volume_20d")) or 0
+    volume_ratio = float(volume) / float(avg_volume_20d) if avg_volume_20d > 0 else 1.0
+
+    try:
+        regime_input = RegimeInput(
+            current_price=_optional_decimal(price_data.get("close")) or Decimal("0"),
+            ema_20=_optional_decimal(indicators.get("ema_20")),
+            ema_50=_optional_decimal(indicators.get("ema_50")),
+            ema_200=_optional_decimal(indicators.get("ema_200")),
+            rsi_14=_optional_decimal(indicators.get("rsi_14")),
+            macd=_optional_decimal(indicators.get("macd")),
+            macd_histogram=_optional_decimal(indicators.get("macd_histogram")),
+            bb_upper=_optional_decimal(indicators.get("bb_upper")),
+            bb_lower=_optional_decimal(indicators.get("bb_lower")),
+            atr_14=_optional_decimal(indicators.get("atr_14")),
+            avg_atr_20d=_optional_decimal(indicators.get("avg_atr_20d")),
+            volume_ratio=volume_ratio,
+            india_vix=_optional_decimal(indicators.get("india_vix")),
+            sector_change_pct=_optional_decimal(indicators.get("sector_index_change_pct")),
+            support_levels=_optional_levels(indicators.get("support_levels")),
+            resistance_levels=_optional_levels(indicators.get("resistance_levels")),
+        )
+        return detect_regime(regime_input).regime.value
+    except Exception:
+        return None
+
+
 def _build_packet(payload: dict[str, Any], occurred_at: datetime) -> IntelligencePacket:
     symbol = payload.get("symbol", "UNKNOWN")
     indicators: dict[str, Any] = payload.get("indicators", {})
@@ -251,6 +291,7 @@ def _build_packet(payload: dict[str, Any], occurred_at: datetime) -> Intelligenc
         breadth_context=breadth_ctx,
         news_context=NewsContext(),
         data_quality=dq,
+        regime=_detect_regime_value(indicators, price_data),
     )
     return _enrich_with_session_facts(packet)
 
