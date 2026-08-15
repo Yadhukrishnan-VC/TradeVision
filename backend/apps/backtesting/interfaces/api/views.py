@@ -20,6 +20,7 @@ from apps.accounts.infrastructure.models import Account
 from apps.backtesting.interfaces.api.serializers import (
     BacktestRunCreateSerializer,
     BacktestRunStatsSerializer,
+    CostSensitivitySerializer,
     WalkForwardSerializer,
 )
 from apps.backtesting.models import BacktestRun
@@ -27,7 +28,7 @@ from apps.backtesting.repository import BacktestRunRepository
 from apps.backtesting.services import BacktestStatsService
 from apps.portfolio.application.capital_service import CapitalService
 
-_DEFAULT_INITIAL_CAPITAL = Decimal("1000000")
+_DEFAULT_INITIAL_CAPITAL = Decimal(1000000)
 _DEFAULT_IN_SAMPLE_RATIO = Decimal("0.70")
 
 
@@ -118,6 +119,39 @@ class WalkForwardView(APIView):
             window_size_days=data["window_size_days"],
             step_size_days=data["step_size_days"],
             in_sample_ratio=data.get("in_sample_ratio", _DEFAULT_IN_SAMPLE_RATIO),
+            initial_capital=data.get("initial_capital", _DEFAULT_INITIAL_CAPITAL),
+        )
+        return Response(result, status=http_status.HTTP_200_OK)
+
+
+class CostSensitivityView(APIView):
+    """Sweep a cost grid and report each rule's commission/slippage breakeven.
+
+    Purely analytical: runs the unmodified backtest engine once per grid point
+    over isolated accounts and aggregates the resulting ``by_rule`` expectancies.
+    Like ``WalkForwardView``, this runs synchronously and therefore requires
+    ``CELERY_TASK_ALWAYS_EAGER=True`` for the simulated-time contextvars.
+    """
+
+    def post(self, request) -> Response:
+        serializer = CostSensitivitySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        from apps.backtesting.application.cost_sensitivity_service import (
+            CostSensitivityService,
+        )
+
+        result = CostSensitivityService().execute(
+            owner=request.user,
+            symbol=data["symbol"].upper(),
+            timeframe=data.get("timeframe", ""),
+            range_start=data["range_start"],
+            range_end=data["range_end"],
+            commission_range=(data["commission_start"], data["commission_end"]),
+            commission_step=data["commission_step"],
+            slippage_range=(data["slippage_start"], data["slippage_end"]),
+            slippage_step=data["slippage_step"],
             initial_capital=data.get("initial_capital", _DEFAULT_INITIAL_CAPITAL),
         )
         return Response(result, status=http_status.HTTP_200_OK)
