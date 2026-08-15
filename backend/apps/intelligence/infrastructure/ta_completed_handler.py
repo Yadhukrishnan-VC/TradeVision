@@ -9,8 +9,10 @@ from typing import Any
 from apps.eventbus.domain.events import DomainEvent
 from apps.eventbus.infrastructure.event_bus_factory import get_event_bus
 from apps.intelligence.models import PineOutput
+from apps.macro_context.application.macro_context_builder import get_context_builder
 from apps.technical_analysis.application.services import CANONICAL_FIELD_MAP
 from apps.technical_analysis.infrastructure.repositories import TASnapshotRepository
+from core.clock import get_clock
 from core.events.event_types import (
     BreadthContext,
     CircuitStatus,
@@ -217,6 +219,21 @@ def _detect_regime_value(
         return None
 
 
+def _build_macro_context() -> Any:
+    """Build the point-in-time macro context as of the active clock.
+
+    Defensive (additive-only contract): returns ``None`` when the provenance
+    store is unavailable, so packet assembly never fails because macro data
+    could not be fetched. ``as_of`` always comes from ``get_clock().now()`` —
+    the simulated-clock binding that makes backtest replay point-in-time safe.
+    """
+    try:
+        return get_context_builder().build(as_of=get_clock().now())
+    except Exception as exc:
+        logger.warning("macro_context_build_failed", extra={"error": str(exc)})
+        return None
+
+
 def _build_packet(payload: dict[str, Any], occurred_at: datetime) -> IntelligencePacket:
     symbol = payload.get("symbol", "UNKNOWN")
     indicators: dict[str, Any] = payload.get("indicators", {})
@@ -290,6 +307,7 @@ def _build_packet(payload: dict[str, Any], occurred_at: datetime) -> Intelligenc
         technical_context=tech_ctx,
         breadth_context=breadth_ctx,
         news_context=NewsContext(),
+        macro_context=_build_macro_context(),
         data_quality=dq,
         regime=_detect_regime_value(indicators, price_data),
     )

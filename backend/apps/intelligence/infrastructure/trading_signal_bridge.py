@@ -10,7 +10,9 @@ from apps.eventbus.infrastructure.event_bus_factory import get_event_bus
 from apps.intelligence.infrastructure.market_context_cache import MarketContextCache
 from apps.intelligence.models import PineOutput
 from apps.intelligence.services import MarketContextService, SignalContextRef
+from apps.macro_context.application.macro_context_builder import get_context_builder
 from apps.technical_analysis.infrastructure.repositories import TASnapshotRepository
+from core.clock import get_clock
 from core.events.event_types import (
     BreadthContext,
     CircuitStatus,
@@ -107,6 +109,22 @@ def _fetch_breadth_context(indicators: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _build_macro_context() -> Any:
+    """Build the point-in-time macro context as of the active clock.
+
+    Defensive (additive-only contract): returns ``None`` when the provenance
+    store is unavailable, so signal-driven packet assembly never fails because
+    macro data could not be fetched. ``as_of`` always comes from
+    ``get_clock().now()`` — the simulated-clock binding that makes backtest
+    replay point-in-time safe.
+    """
+    try:
+        return get_context_builder().build(as_of=get_clock().now())
+    except Exception as exc:
+        logger.warning("macro_context_build_failed", extra={"error": str(exc)})
+        return None
+
+
 def handle_signal_created(event: DomainEvent) -> None:
     payload = event.payload
     symbol = payload.get("symbol", "")
@@ -151,6 +169,7 @@ def handle_signal_created(event: DomainEvent) -> None:
             sensex_change_pct=breadth_data.get("sensex_change_pct", Decimal("0")),
         ),
         news_context=NewsContext(),
+        macro_context=_build_macro_context(),
         data_quality=DataQuality(),
     )
 

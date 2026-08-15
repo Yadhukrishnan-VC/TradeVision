@@ -18,7 +18,10 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from apps.macro_context.domain.entities import MacroContext
 
 
 # ---------------------------------------------------------------------------
@@ -333,6 +336,11 @@ class IntelligencePacket:
     # packet assembly. Optional: absent for packets assembled without the
     # classifier inputs. Consumed by the rule engine to tag RuleExecution rows.
     regime: str | None = None
+
+    # Point-in-time macro context built from the provenance store as of the
+    # active clock (see core.clock). Forward-referenced under TYPE_CHECKING so
+    # this module stays importable in isolation with no runtime app coupling.
+    macro_context: "MacroContext | None" = None
 
     def __post_init__(self) -> None:
         if self.timestamp.tzinfo is None:
