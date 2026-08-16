@@ -1,12 +1,10 @@
-import React from 'react';
+import { AuthProvider } from "@/auth/AuthContext";
+import { AppRoutes } from "./routes";
 
-export const App: React.FC = () => {
+export default function App() {
   return (
-    <div style={{ padding: '2rem', fontFamily: 'system-ui, sans-serif' }}>
-      <h1>TradeVision AI Dashboard</h1>
-      <p>Phase 8 — Frontend Interface Foundation</p>
-    </div>
+    <AuthProvider>
+      <AppRoutes />
+    </AuthProvider>
   );
-};
-
-export default App;
+}
