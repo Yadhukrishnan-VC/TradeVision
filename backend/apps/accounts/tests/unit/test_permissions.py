@@ -79,6 +79,14 @@ class TestHasAPIKeyScope:
         perm = HasAPIKeyScope.with_scope(Scope.READ_MARKET_DATA)
         assert perm.has_permission(request, None) is True
 
+    def test_jwt_viewer_can_read_scope(self) -> None:
+        """DECISION (API-WIRING-CLOSURE-1): viewers may read scope-gated data."""
+        user = type("User", (), {"is_authenticated": True, "role": Role.VIEWER.value})
+        request = _make_request(user=user, auth=None)
+        for scope in [Scope.READ_PORTFOLIO, Scope.READ_JOURNAL, Scope.DASHBOARD_READ_RISK]:
+            perm = HasAPIKeyScope.with_scope(scope)
+            assert perm.has_permission(request, None) is True
+
     def test_jwt_viewer_cannot_manage_scope(self) -> None:
         user = type("User", (), {"is_authenticated": True, "role": Role.VIEWER.value})
         request = _make_request(user=user, auth=None)

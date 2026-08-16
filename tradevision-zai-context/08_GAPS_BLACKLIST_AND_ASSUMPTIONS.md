@@ -81,6 +81,7 @@ Everything marked VERIFIED was read directly from source. Everything else is pro
 - Error envelope format. (`drf_exception_handler.py`)
 - Frontend scaffold contents (package.json, App.tsx). (`frontend/`)
 - Frontend response-shape serializers for trading_core dashboard (serializer field names).
+- **Authorization model (CONFIRMED by owner, API-WIRING-CLOSURE-1): any authenticated JWT user may read scope-gated data endpoints (read:/dashboard:read: scopes); `manage:` scopes require owner/staff for JWT users; API keys always require their exact scope. This intentionally diverges from the Scope enum's "staff-only or owner-only" docstring, which predates the JWT primary-consumer model.**
 
 ### NOT VERIFIED / requires verification before rendering field-by-field (medium confidence)
 

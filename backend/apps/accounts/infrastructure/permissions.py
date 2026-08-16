@@ -50,8 +50,12 @@ class HasAPIKeyScope(BasePermission):
             return self.required_scope in auth.scopes
 
         # Interactive access (JWT Bearer) — authorize by role.
-        # read:* / dashboard:read:* scopes are available to any authenticated
-        # user; manage:* scopes are reserved for owner/staff roles.
+        # DECISION (API-WIRING-CLOSURE-1, confirmed by owner): any authenticated
+        # user may read scope-gated data; read:/dashboard:read: scopes are open
+        # to all authenticated users (matching DEFAULT_PERMISSION_CLASSES and
+        # the journal's IsAuthenticated behavior). manage: scopes are reserved
+        # for owner/staff. API keys still require their exact scope regardless
+        # of the caller's role.
         if self.required_scope.startswith("manage:"):
             return request.user.role in (Role.OWNER.value, Role.STAFF.value)
         return True
