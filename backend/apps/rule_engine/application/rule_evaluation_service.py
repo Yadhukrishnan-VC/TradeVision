@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import logging
 import uuid
 
 from core.events.event_types import EnrichedIntelligencePacket
 from django.db import transaction
 
+from core.execution_context import get_account_override
+from core.rules.base_rule import RuleResult
 from core.rules.rule_registry import RuleRegistry
 from core.services import BaseService
 from apps.eventbus.domain.events import DomainEvent
@@ -21,13 +24,19 @@ from apps.rule_engine.domain.rules import (
     VolatilityBreakoutRule,
     VolumeSpikeRule,
 )
-from apps.rule_engine.infrastructure.repositories import RuleExecutionRepository
+from apps.rule_engine.infrastructure.repositories import (
+    RuleConfigRepository,
+    RuleExecutionRepository,
+)
+
+logger = logging.getLogger(__name__)
 
 
 class RuleEvaluationService(BaseService):
     def __init__(self) -> None:
         super().__init__()
         self._repository = RuleExecutionRepository()
+        self._config_repository = RuleConfigRepository()
         self._registry = RuleRegistry()
         self._register_builtin_rules()
 
@@ -54,6 +63,11 @@ class RuleEvaluationService(BaseService):
         results = self._registry.evaluate_all(packet)
         firings: list[RuleFiring] = []
         regime = getattr(packet, "regime", None)
+        # ADR-029: live firing must clear the go/no-go validation gate.
+        # Backtest replay (account override bound) always fires ungated so the
+        # run can generate the RuleExecution/Fill rows validation needs.
+        if get_account_override() is None:
+            results = self._filter_by_gate(results, regime)
         with transaction.atomic():
             for result in results:
                 analysis_event = result.to_analysis_event(
@@ -79,6 +93,57 @@ class RuleEvaluationService(BaseService):
                 firings.append(firing)
 
         return firings
+
+    def _filter_by_gate(
+        self, results: list[RuleResult], regime: str | None
+    ) -> list[RuleResult]:
+        """ADR-029 §4 gate: keep only (rule_id, regime) pairs that are both
+        enabled and validated, fail-closed for everything else.
+
+        Exclusion reasons logged at INFO via ``rule_gated_out``: ``no_config``
+        (no RuleConfig row), ``disabled`` (RuleConfig.enabled is False),
+        ``no_regime`` (packet carried no regime), ``not_validated`` (regime
+        has no GO/NO_GO verdict in ``validated_regimes``). Rows created by
+        backtesting always have ``enabled=False`` (ADR-029 §3), so a GO verdict
+        alone never flips a rule live — an explicit human decision is required.
+        """
+        allowed: list[RuleResult] = []
+        if not regime:
+            for result in results:
+                logger.info(
+                    "rule_gated_out",
+                    extra={
+                        "rule_id": result.rule_id,
+                        "regime": None,
+                        "reason": "no_regime",
+                    },
+                )
+            return []
+
+        for result in results:
+            config = self._config_repository.get_by_rule_id(result.rule_id)
+            if config is None:
+                reason = "no_config"
+            elif not config.enabled:
+                reason = "disabled"
+            elif (
+                regime not in config.validated_regimes
+                or config.validated_regimes[regime].get("status") != "GO"
+            ):
+                reason = "not_validated"
+            else:
+                allowed.append(result)
+                continue
+
+            logger.info(
+                "rule_gated_out",
+                extra={
+                    "rule_id": result.rule_id,
+                    "regime": regime,
+                    "reason": reason,
+                },
+            )
+        return allowed
 
     def publish_rule_firing(
         self,

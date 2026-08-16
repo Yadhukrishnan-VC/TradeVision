@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Callable
 from dataclasses import replace
 
 import pytest
@@ -11,6 +12,16 @@ from apps.rule_engine.domain.exceptions import RuleEvaluationError
 from apps.rule_engine.infrastructure.models import RuleExecution
 
 pytestmark = pytest.mark.django_db
+
+
+@pytest.fixture(autouse=True)
+def _clear_go_gate(gate_configs: Callable[..., None]) -> None:
+    """Every firing test here clears ADR-029's go/no-go gate.
+
+    These tests exercise live (non-replay) evaluation mechanics, so each fired
+    rule needs an enabled RuleConfig with a GO verdict for the packet's regime.
+    """
+    gate_configs()
 
 
 def _with_regime(packet, regime: str):
@@ -157,11 +168,21 @@ class TestRuleEvaluationService:
     def test_regime_absent_omits_key_from_trigger_data(
         self, price_movement_packet, analysis_event_id
     ) -> None:
-        service = RuleEvaluationService()
-        firings = service.evaluate_enriched_packet(
+        from core.execution_context import bind_account_override
+
+        # This test only cares about trigger_data shape, not the go/no-go gate.
+        # A live no-regime packet is correctly fail-closed by ADR-029, so run
+        # under replay semantics (bound override) to isolate trigger_data.
+        regime_free = replace(
             price_movement_packet,
-            analysis_event_id=analysis_event_id,
+            packet=_with_regime(price_movement_packet.packet, None),
         )
+        service = RuleEvaluationService()
+        with bind_account_override(uuid.uuid4()):
+            firings = service.evaluate_enriched_packet(
+                regime_free,
+                analysis_event_id=analysis_event_id,
+            )
 
         assert len(firings) >= 1
         for firing in firings:

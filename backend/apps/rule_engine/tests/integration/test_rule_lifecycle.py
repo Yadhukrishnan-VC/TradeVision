@@ -24,6 +24,12 @@ def _use_fake_event_bus() -> None:
     reset_event_bus()
 
 
+@pytest.fixture(autouse=True)
+def _clear_go_gate(gate_configs) -> None:
+    """Seed enabled GO verdicts so live (non-replay) firing passes ADR-029."""
+    gate_configs()
+
+
 def _build_enriched_data(
     symbol: str = "RELIANCE",
     change_pct: str = "3.50",
@@ -66,6 +72,7 @@ def _build_enriched_data(
         "symbol": symbol,
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "freshness_validated": freshness_validated,
+        "regime": "BULLISH",
         "price_context": price_context,
         "technical_context": technical_context,
         "breadth_context": {

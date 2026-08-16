@@ -17,6 +17,17 @@ class RuleConfig(BaseModel):
         blank=True,
         help_text="Override default severity (LOW, MEDIUM, HIGH, CRITICAL)",
     )
+    validated_regimes = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text=(
+            "Per-regime go/no-go verdict, keyed by regime name. "
+            "Each value: {'status': 'GO'|'NO_GO'|'INSUFFICIENT_DATA', "
+            "'expectancy': str, 'profit_factor': str, 'sharpe_ratio': str|None, "
+            "'max_drawdown_pct': str, 'trade_count': int, 'backtest_run_id': str, "
+            "'evaluated_at': iso8601 str}"
+        ),
+    )
 
     class Meta:
         db_table = "rule_engine_ruleconfig"

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Callable
 from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any
@@ -109,12 +110,14 @@ def make_intelligence_packet(
     bb_upper: Decimal | None = None,
     resistance_levels: tuple[Decimal, ...] = (),
     freshness_validated: bool = True,
+    regime: str | None = None,
     **price_kwargs: Any,
 ) -> IntelligencePacket:
     return IntelligencePacket(
         symbol=symbol,
         timestamp=datetime.now(timezone.utc),
         freshness_validated=freshness_validated,
+        regime=regime,
         price_context=make_price_context(
             current_price=current_price,
             change_pct=change_pct,
@@ -142,6 +145,7 @@ def price_movement_packet(symbol: str) -> EnrichedIntelligencePacket:
         symbol=symbol,
         change_pct=Decimal("3.50"),
         current_price=Decimal("2535.75"),
+        regime="BULLISH",
     )
     return make_enriched_packet(packet)
 
@@ -153,6 +157,7 @@ def volume_spike_packet(symbol: str) -> EnrichedIntelligencePacket:
         volume=2_000_000,
         avg_volume_20d=500_000,
         change_pct=Decimal("0.50"),
+        regime="BULLISH",
     )
     return make_enriched_packet(packet)
 
@@ -165,6 +170,7 @@ def breakout_packet(symbol: str) -> EnrichedIntelligencePacket:
         bb_upper=Decimal("2550.00"),
         resistance_levels=(Decimal("2520.00"),),
         change_pct=Decimal("1.50"),
+        regime="BULLISH",
     )
     return make_enriched_packet(packet)
 
@@ -179,6 +185,7 @@ def multi_fire_packet(symbol: str) -> EnrichedIntelligencePacket:
         current_price=Decimal("2560.00"),
         bb_upper=Decimal("2550.00"),
         resistance_levels=(Decimal("2520.00"),),
+        regime="BULLISH",
     )
     return make_enriched_packet(packet)
 
@@ -204,3 +211,42 @@ def stale_packet(symbol: str) -> EnrichedIntelligencePacket:
         freshness_validated=False,
     )
     return make_enriched_packet(packet)
+
+
+BUILTIN_RULE_IDS: tuple[str, ...] = (
+    "price_movement_v1",
+    "volume_spike_v1",
+    "breakout_v1",
+    "long_momentum_v1",
+    "short_sell_v1",
+    "volatility_breakout_v1",
+    "high_beta_breakout_v1",
+    "short_breakdown_v1",
+)
+
+GO_VERDICT: dict[str, str] = {"status": "GO"}
+
+
+@pytest.fixture
+def gate_configs() -> Callable[..., None]:
+    """Seed enabled RuleConfig rows with a GO verdict for builtin rules.
+
+    ADR-029 regression: firing tests that exercise live (ungated-by-replay)
+    evaluation must first clear the go/no-go gate. Without these rows the gate
+    fail-closes everything and every firing test would return zero firings.
+    """
+
+    def _seed(*rule_ids: str, regime: str = "BULLISH") -> None:
+        from apps.rule_engine.infrastructure.models import RuleConfig
+        from apps.rule_engine.infrastructure.repositories import RuleConfigRepository
+
+        repo = RuleConfigRepository()
+        for rule_id in rule_ids or BUILTIN_RULE_IDS:
+            config = RuleConfig(
+                rule_id=rule_id,
+                enabled=True,
+                validated_regimes={regime: dict(GO_VERDICT)},
+            )
+            repo.create(config)
+
+    return _seed
