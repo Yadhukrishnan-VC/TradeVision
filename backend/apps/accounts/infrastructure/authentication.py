@@ -7,6 +7,7 @@ from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.request import Request
 
 from apps.accounts.application.services import APIKeyService
+from apps.accounts.domain.exceptions import RevokedAPIKeyError
 from apps.common.domain.exceptions import NotFoundError
 
 
@@ -33,6 +34,8 @@ class APIKeyAuthentication(BaseAuthentication):
 
         try:
             api_key = service.verify_key(raw_key)
+        except RevokedAPIKeyError:
+            raise AuthenticationFailed("API key has been revoked", code="api_key_revoked")
         except NotFoundError:
             raise AuthenticationFailed("Invalid API key.")
         except Exception as exc:

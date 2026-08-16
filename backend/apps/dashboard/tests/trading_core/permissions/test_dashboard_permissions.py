@@ -37,10 +37,10 @@ class TestHasDashboardReadHome:
         request = _make_request(user=user, auth=auth)
         assert HasDashboardReadHome().has_permission(request, None) is False
 
-    def test_no_api_key(self) -> None:
-        user = type("User", (), {"is_authenticated": True, "role": Role.OWNER.value})
+    def test_jwt_user_read_scope_allowed(self) -> None:
+        user = type("User", (), {"is_authenticated": True, "role": Role.VIEWER.value})
         request = _make_request(user=user, auth=None)
-        assert HasDashboardReadHome().has_permission(request, None) is False
+        assert HasDashboardReadHome().has_permission(request, None) is True
 
     def test_unauthenticated(self) -> None:
         user = type("User", (), {"is_authenticated": False, "role": Role.OWNER.value})

@@ -100,21 +100,25 @@ export interface WatchlistItem {
 // ---- Portfolio (apps/portfolio) ----
 export interface PortfolioSummary {
   account_id?: string;
+  cash?: string;
+  margin_used?: string;
   equity?: string;
   available_capital?: string;
-  cash_balance?: string;
-  market_value?: string;
-  positions?: PortfolioPosition[];
+  realized_pnl_today?: string;
+  unrealized_pnl_today?: string;
   [key: string]: unknown;
 }
 
 export interface PortfolioPosition {
+  account_id?: string;
   symbol: string;
   side?: string;
   quantity?: string;
-  avg_cost?: string | null;
-  market_value?: string | null;
+  avg_entry_price?: string | null;
+  opened_at?: string | null;
+  current_price?: string | null;
   unrealized_pnl?: string | null;
+  exposure?: string | null;
   [key: string]: unknown;
 }
 
@@ -185,40 +189,47 @@ export interface IngestionRawEvent {
   [key: string]: unknown;
 }
 
-// ---- Analytics & Risk (per-account) — ⚠ bodies NOT VERIFIED ----
+// ---- Analytics & Risk (per-account) — VERIFIED against backend ----
 export interface AnalyticsPnl {
   account_id?: string;
-  total_realized_pnl?: string;
-  total_unrealized_pnl?: string;
-  net_pnl?: string;
-  by_symbol?: Record<string, unknown>;
-  by_day?: Array<{ date: string; pnl: string }>;
+  current_total_pnl?: string;
+  current_unrealized_pnl?: string;
+  peak_cumulative_pnl?: string;
+  current_drawdown_pct?: string;
+  time_series?: Array<Record<string, unknown>>;
+  metadata?: { period?: string; point_count?: number; [k: string]: unknown };
   [key: string]: unknown;
 }
 
 export interface AnalyticsDailyRollup {
-  account_id?: string;
-  daily?: Array<{ date: string; pnl: string; cumulative?: string }>;
+  trading_date: string;
+  realized_pnl: string;
+  total_pnl: string;
+  cumulative_pnl: string;
   [key: string]: unknown;
 }
 
 export interface AnalyticsPerformance {
   account_id?: string;
-  sharpe_ratio?: string | null;
-  sortino_ratio?: string | null;
-  max_drawdown_pct?: string | null;
-  win_rate?: string | null;
-  expectancy?: string | null;
+  period?: string;
+  win_rate?: string;
+  avg_win?: string;
+  avg_loss?: string;
   profit_factor?: string | null;
-  benchmark_return_pct?: string | null;
+  expectancy?: string;
+  sharpe_like_ratio?: string | null;
+  total_trades?: number;
+  winning_trades?: number;
+  losing_trades?: number;
   [key: string]: unknown;
 }
 
 export interface AnalyticsRiskSummary {
   account_id?: string;
-  var_95?: string | null;
-  var_99?: string | null;
-  exposure?: string | null;
-  leverage?: string | null;
+  total_exposure?: string;
+  largest_position_pct?: string;
+  sector_concentration_pct?: string;
+  leverage_ratio?: string;
+  active_alerts?: Array<Record<string, unknown>>;
   [key: string]: unknown;
 }

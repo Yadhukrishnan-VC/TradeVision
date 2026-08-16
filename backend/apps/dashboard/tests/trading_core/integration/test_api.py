@@ -23,16 +23,16 @@ User = get_user_model()
 
 
 @pytest.fixture
-def account_id() -> uuid.UUID:
-    return uuid.uuid4()
-
-
-@pytest.fixture
-def owner_user(db: Any, account_id: uuid.UUID) -> Any:
+def owner_user(db: Any) -> Any:
     return User.objects.create_user(
         username=f"owner-{uuid.uuid4().hex[:8]}",
         password="SecurePass123!",
     )
+
+
+@pytest.fixture
+def account_id(owner_user: Any) -> uuid.UUID:
+    return owner_user.id
 
 
 @pytest.fixture

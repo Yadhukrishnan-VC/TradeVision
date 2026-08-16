@@ -34,13 +34,11 @@ class TestRolePermissionMatrix:
         viewer = self._make_user(Role.VIEWER.value)
 
         for user in [owner]:
-            user.is_authenticated = True  # type: ignore[attr-defined]
             assert IsOwnerRole().has_permission(
                 self._make_request(user), None
             ) is True
 
         for user in [staff, viewer]:
-            user.is_authenticated = True  # type: ignore[attr-defined]
             assert IsOwnerRole().has_permission(
                 self._make_request(user), None
             ) is False
@@ -51,21 +49,20 @@ class TestRolePermissionMatrix:
         viewer = self._make_user(Role.VIEWER.value)
 
         for user in [owner, staff]:
-            user.is_authenticated = True  # type: ignore[attr-defined]
             assert IsStaffRole().has_permission(
                 self._make_request(user), None
             ) is True
 
-        viewer.is_authenticated = True  # type: ignore[attr-defined]
         assert IsStaffRole().has_permission(
             self._make_request(viewer), None
         ) is False
 
     def _make_request(self, user: Any) -> Any:
         class FakeRequest:
-            user = user
-            auth = None
-            META = {}
-            method = "GET"
+            def __init__(self, request_user: Any) -> None:
+                self.user = request_user
+                self.auth = None
+                self.META = {}
+                self.method = "GET"
 
-        return FakeRequest()
+        return FakeRequest(user)

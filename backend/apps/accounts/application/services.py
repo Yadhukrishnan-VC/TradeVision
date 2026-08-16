@@ -11,6 +11,7 @@ from django.db import transaction
 from apps.accounts.domain.exceptions import (
     InvalidScopeError,
     InvalidTokenError,
+    RevokedAPIKeyError,
 )
 from apps.common.domain.exceptions import NotFoundError, PermissionDeniedError
 from apps.accounts.domain.value_objects import Role, Scope
@@ -212,6 +213,12 @@ class APIKeyService:
 
     @staticmethod
     def _validate_scopes(scopes: list[Scope]) -> None:
+        if not scopes:
+            raise InvalidScopeError(
+                message="At least one scope is required",
+                code="invalid_scope",
+                details={"invalid_scope": "empty list", "valid_scopes": sorted({s.value for s in Scope})},
+            )
         valid_values = {s.value for s in Scope}
         for scope in scopes:
             if isinstance(scope, str):

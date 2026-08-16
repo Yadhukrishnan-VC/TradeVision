@@ -136,5 +136,5 @@ def owner_user(db: Any) -> Any:
 
 
 @pytest.fixture
-def account_id() -> uuid.UUID:
-    return uuid.uuid4()
+def account_id(owner_user: Any) -> uuid.UUID:
+    return owner_user.id

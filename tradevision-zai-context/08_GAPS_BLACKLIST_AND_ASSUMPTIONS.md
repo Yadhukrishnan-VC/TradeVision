@@ -10,13 +10,14 @@ These are **verified absence** items. Do NOT build UI that depends on them, and 
 - SOURCE: `backend/config/urls.py` (market_data is NOT mounted), `backend/apps/market_data/infrastructure/models.py`
 - UI impact: no live/detailed price charts as a standalone feature. (Watchlist references instruments by `instrument_token` but the watchlist API does not return instrument metadata over the dashboards' contracts.)
 
-### P2 — No trade-export / CSV file endpoint contract verified
+### P2 — Trade export endpoint requires a live Celery broker/worker
 
-- `trades/history/export/` and `.../export/<id>/` exist in trading_core; the exact response (file vs job metadata) is ⚠ not verified. Build defensively against `ExportJobSerializer` fields; prefer an export-status UI over a raw file download.
+- `POST trades/history/export/` is verified to return 202 + `ExportJobSerializer` when Celery runs eagerly (`CELERY_TASK_ALWAYS_EAGER=True`, test settings). Under staging settings the request fails with 500 (`AttributeError: 'str' object has no attribute 'name'`) because `CELERY_TASK_QUEUES` is a plain string list, which breaks the Celery 5.6 AMQP router, and because no broker/worker is running.
+- UI impact: keep the export-status UI defensive; if the POST fails, surface the error envelope. Do not assume a file download URL will be populated. (Ops item — not fixed in this batch; infra is a non-goal.)
 
 ### P3 — Equity-curve series is not a top-level field
 
-- `run_stats` returns `equity_at_completion` (scalar) and per-bucket `equity_curve` arrays for in_sample/out_of_sample/by_regime/by_rule, but not one merged daily equity curve. Build merged curve from `trades[].net_pnl` cumulative or use the IS/OOS curves.
+- `run_stats` returns `equity_at_completion` (scalar) and per-bucket `equity_curve` arrays for in_sample/out_of_sample/by_regime/by_rule, but not one merged daily equity curve. Build merged curve from `trades[].net_pnl` cumulative or use the IS/OOS curves. There is no dedicated `/analytics/.../equity/curve/` endpoint — the dashboard equity chart is sourced from `pnl/daily` (`total_pnl` cumulative).
 
 ### P4 — No drawdown / returns series
 
@@ -83,8 +84,8 @@ Everything marked VERIFIED was read directly from source. Everything else is pro
 
 ### NOT VERIFIED / requires verification before rendering field-by-field (medium confidence)
 
-- Exact JSON key sets returned by: `/auth/me/`, `/auth/api-keys/`, `/dashboard/accounts/:id/pnl*`, `/performance`, `/risk`, `/journal/entries/`, `/audit/entries/`, `/rule-engine/configs*`, `/rule-engine/executions/`, `/recommendations/*`, `/signals/*`, `/trader-memory/*`, `/pattern-engine/*`, `/portfolio/*`, `/risk-management/*`, `/pipeline-health/`, `/portfolio-reconciliation/*`, `/watchlist/*`, `/execution/*`, `/ingestion/raw-events/`, trade export.
-  - Strategy: build typed interfaces from the ⚠ documented fields, render defensively (ignore unknown, `--` for missing), and adjust once live payloads are observed.
+- Live verification completed 2026-08-16 against the staging backend (seeded account + dashboard read-model rows). The following bodies are now **VERIFIED live** and recorded in `04_API_CONTRACT.md`: `/auth/me/`, `/auth/api-keys/`, `/dashboard/home/summary/`, `/dashboard/portfolio/composition/`, `/dashboard/positions/live/`, `/dashboard/orders/`, `/dashboard/trades/{history,open,closed}/`, `/dashboard/accounts/:id/pnl`, `/pnl/daily` (array + date-range params), `/performance`, `/risk`, `/portfolio/` (capital snapshot), `/portfolio/positions/` (plain array), `/watchlist/?account_id=`, `/risk-management/{decisions,kill-switch}/`, `/pipeline-health/`, `/portfolio-reconciliation/drift/{summary,}/`, `/recommendations/`, `/signals/`, `/trader-memory/entries/`, `/ingestion/raw-events/`, `/execution/orders/`, `/audit/entries/`.
+- Still ⚠ (empty-data only, shape not exercised with rows): trade-export status (requires Celery), watchlist item GET/DELETE/PATCH, journal entry bodies, rule-engine config/execution item bodies, pattern-engine run/historical-vector item bodies.
 - Whether the top-level `run_stats` includes an `equity_curve` key in the final return (the top-level return in `services.py:653` lists `equity_at_completion` and per-bucket curves, but a merged curve key was NOT seen — do not assume it exists; build from `trades[].net_pnl` cumulative or bucket arrays).
 - `edge_criterion` / `EDGE_CRITERION` value: VERIFIED and quoted in `04_API_CONTRACT.md` (`expectancy_greater_than_zero`, `profit_factor_greater_than_one=1.0`, `min_trades=10`).
 - Cost-sensitivity classification constants: VERIFIED exact spellings — `BREAKEVEN_FOUND`, `NEVER_PROFITABLE`, `SURVIVES_FULL_RANGE` (`cost_sensitivity_service.py:52-54`).
@@ -95,10 +96,12 @@ Everything marked VERIFIED was read directly from source. Everything else is pro
 - The trading_core dashboard serializers' field lists reflect actual view output (serializer `data` is serialized directly in views — `return Response(serializer.data)` — so this is high-confidence, but ordering/extra computed fields were not traced into every view).
 - Regime strings in `by_regime` and `trigger_data["regime"]` are arbitrary — UI must not assume a fixed set.
 - `watchlist` item paths use `<int:instrument_token>` (instrument_token is BigInteger) — the URL param is an integer.
-- Account context: the SPA assumes a "current account" concept; the default account id is expected from `/auth/me/` (⚠) — until then, account-driven pages use ids passed in the route/from run responses.
+- Account context: the SPA assumes a "current account" concept. Verified live: dashboard/analytics views resolve `account_id = request.user.id` (the User's UUID, not a separate Account table id), and `/auth/me/` returns that `id`. Portfolio/Watchlist use a separate `Account` model (`owner` FK); portfolio resolves the primary account via `Account.objects.filter(is_default=True)` and 404s (`no-primary-account`) if none exists. Seed/ensure a default `Account` row owned by the user before calling `/portfolio/`, `/portfolio/positions/`, or `/watchlist/?account_id=`.
 
 ### Explicit non-goals / unresolved
 
 - No live backend was queried during this audit; all contracts are source-derived. The ⚠ endpoint bodies are the main uncertainty.
 - Broker/provider connectivity status (`broker_connection_status`, `market_session_status`) fields exist in serializers but the live values/source were not verified.
 - The number of lines/figures in this package is small by design (compact, actionable); the repo is ~599 MB and this package is a few KB.
+- **New finding (2026-08-16): dashboard read-model `side` column is `CharField(max_length=4)` but the domain `Side` enum includes `"SHORT"` (5 chars) — persisting a SHORT row raises `StringDataRightTruncation` (`dashboard_positionsnapshot`/`dashboard_ordersnapshot`/`dashboard_traderecord`). Needs a schema change + migration; left as a documented gap (schema/migration work, not fixed in this batch).**
+- **New finding (2026-08-16): dashboard app migrations are undiscoverable** — migration modules live under `apps/dashboard/infrastructure/{trading_core,analytics_risk}/migrations/` but the `dashboard` app label resolves migrations to `apps/dashboard/migrations/` (does not exist), so `showmigrations dashboard` reports `(no migrations)` and the app was treated as unmigrated. Tables were created via `migrate --run-syncdb` for live verification. This is a pre-existing architecture mismatch (D1/D2 split), not fixed in this batch.

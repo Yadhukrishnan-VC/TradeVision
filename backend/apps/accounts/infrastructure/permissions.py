@@ -43,14 +43,18 @@ class HasAPIKeyScope(BasePermission):
         if self.required_scope is None:
             return True
 
-        api_key = getattr(request, "auth", None)
-        if api_key is None:
-            return False
+        auth = getattr(request, "auth", None)
 
-        if not hasattr(api_key, "scopes"):
-            return False
+        # Programmatic access — an API key must carry the required scope.
+        if auth is not None and hasattr(auth, "scopes"):
+            return self.required_scope in auth.scopes
 
-        return self.required_scope in api_key.scopes
+        # Interactive access (JWT Bearer) — authorize by role.
+        # read:* / dashboard:read:* scopes are available to any authenticated
+        # user; manage:* scopes are reserved for owner/staff roles.
+        if self.required_scope.startswith("manage:"):
+            return request.user.role in (Role.OWNER.value, Role.STAFF.value)
+        return True
 
     @classmethod
     def with_scope(cls, scope: Scope) -> HasAPIKeyScope:

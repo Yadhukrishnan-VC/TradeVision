@@ -1,6 +1,6 @@
 // Analytics & Risk API module (per-account).
 // SOURCE: 04_API_CONTRACT.md — /api/v1/dashboard/accounts/:account_id/.
-// ⚠ All bodies NOT VERIFIED — defensive interfaces; render whatever keys arrive.
+// Verified against backend: pnl, performance, risk, pnl/daily (array + date range).
 
 import { apiGet } from "./client";
 import type {
@@ -14,9 +14,13 @@ export function getAnalyticsPnl(accountId: string): Promise<AnalyticsPnl> {
   return apiGet<AnalyticsPnl>(`/dashboard/accounts/${encodeURIComponent(accountId)}/pnl`);
 }
 
-export function getAnalyticsPnlDaily(accountId: string): Promise<AnalyticsDailyRollup> {
-  return apiGet<AnalyticsDailyRollup>(
-    `/dashboard/accounts/${encodeURIComponent(accountId)}/pnl/daily`
+export function getAnalyticsPnlDaily(
+  accountId: string,
+  dateFrom: string,
+  dateTo: string
+): Promise<AnalyticsDailyRollup[]> {
+  return apiGet<AnalyticsDailyRollup[]>(
+    `/dashboard/accounts/${encodeURIComponent(accountId)}/pnl/daily?date_from=${encodeURIComponent(dateFrom)}&date_to=${encodeURIComponent(dateTo)}`
   );
 }
 

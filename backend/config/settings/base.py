@@ -43,6 +43,7 @@ DJANGO_APPS: list[str] = [
     "django.contrib.staticfiles",
     # Third-party
     "rest_framework",
+    "rest_framework_simplejwt.token_blacklist",
     "corsheaders",
     "django_celery_beat",
     "django_celery_results",

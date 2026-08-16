@@ -7,6 +7,7 @@ from rest_framework import status
 from rest_framework.generics import GenericAPIView, ListAPIView, ListCreateAPIView, RetrieveAPIView
 from rest_framework.request import Request
 from rest_framework.response import Response
+from django_filters.rest_framework import DjangoFilterBackend
 
 from apps.dashboard.application.trading_core.dto import ExportJobDTO
 from apps.dashboard.application.trading_core.services.dashboard_home_service import (
@@ -153,6 +154,7 @@ class LivePositionsListView(ListAPIView):
     serializer_class = PositionSnapshotSerializer
     pagination_class = PositionCursorPagination
     filterset_class = PositionFilter
+    filter_backends = [DjangoFilterBackend]
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
@@ -210,6 +212,7 @@ class OrdersListView(ListAPIView):
     serializer_class = OrderSnapshotSerializer
     pagination_class = OrderCursorPagination
     filterset_class = OrderFilter
+    filter_backends = [DjangoFilterBackend]
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
@@ -253,6 +256,7 @@ class TradeHistoryListView(ListAPIView):
     serializer_class = TradeRecordSerializer
     pagination_class = TradeCursorPagination
     filterset_class = TradeFilter
+    filter_backends = [DjangoFilterBackend]
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
@@ -361,6 +365,7 @@ class OpenTradesListView(ListAPIView):
     serializer_class = PositionSnapshotSerializer
     pagination_class = PositionCursorPagination
     filterset_class = PositionFilter
+    filter_backends = [DjangoFilterBackend]
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
@@ -376,6 +381,7 @@ class ClosedTradesListView(ListAPIView):
     serializer_class = TradeRecordSerializer
     pagination_class = TradeCursorPagination
     filterset_class = TradeFilter
+    filter_backends = [DjangoFilterBackend]
 
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)

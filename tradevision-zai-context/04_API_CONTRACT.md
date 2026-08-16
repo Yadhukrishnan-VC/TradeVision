@@ -7,18 +7,21 @@ Legend: ✅ = exact shape verified in source · ⚠ = endpoint verified, exact b
 
 ---
 
-## Auth — `/api/v1/auth/` (all ✅ VERIFIED)
+## Auth — `/api/v1/auth/` (all ✅ VERIFIED live + in source)
 
 | Method | Path | Request | Response |
 |---|---|---|---|
 | POST | `login/` (alias `token/`) | `{"username","password"}` | 200 `{"access","refresh","user":{...}}`; 401 `{"error":{code,message}}` |
 | POST | `refresh/` (alias `token/refresh/`) | `{"refresh"}` | 200 `{"access","refresh"}`; 401 error |
-| GET | `me/` | — | ⚠ 403 now (auth gap); `UserSerializer.data` when wired |
-| GET | `api-keys/` | — | ⚠ list of own keys; 403 now |
-| POST | `api-keys/` | `{"scopes":["..."]}` | ⚠ `{"id","raw_key","scopes",...}` (raw shown once); 403 now |
-| DELETE | `api-keys/<uuid:pk>/` | — | 204; 403 now |
+| GET | `me/` | — | 200 `{"id","username","role","date_joined"}` |
+| GET | `api-keys/` | — | 200 `{count,next,previous,results:[{id,scopes,...}]}` |
+| POST | `api-keys/` | `{"scopes":["..."]}` | 201 `{"id","raw_key","scopes",...}` (raw shown once); 400 on invalid/empty scopes |
+| DELETE | `api-keys/<uuid:pk>/` | — | 204 |
+| GET | (any scope-gated endpoint) | `Authorization: Api-Key <raw>` | revoked key → 401 `{"detail":"API key has been revoked"}` (ErrorDetail code `api_key_revoked`) |
 
 SOURCE: `backend/apps/accounts/interfaces/api/views.py`, `urls.py`
+
+Auth model (verified live): session/identity endpoints use JWT Bearer; scope-gated endpoints accept JWT (authorized by role: read scopes = any authenticated user, `manage:` scopes = owner/staff) OR a scoped API key (scope enforced). Revoked/invalid keys → 401.
 
 ---
 
@@ -29,39 +32,41 @@ SOURCE: `backend/apps/health/urls.py`
 
 ---
 
-## Dashboard — Trading Core `/api/v1/dashboard/` (shapes ✅ from serializers)
+## Dashboard — Trading Core `/api/v1/dashboard/` (shapes ✅ VERIFIED live)
 
 | Method | Path | Response shape (serializer) |
 |---|---|---|
-| GET | `home/summary/` | `DashboardHomeSummarySerializer`: `account_id, open_positions_count, open_orders_count, today_realized_pnl, today_unrealized_pnl, active_alerts_count, broker_connection_status, market_session_status, last_updated_at` |
-| GET | `portfolio/composition/` | `account_id, total_market_value, total_cost_basis, cash_balance` (+ holdings) |
+| GET | `home/summary/` | `DashboardHomeSummarySerializer`: `account_id, open_positions_count, open_orders_count, today_realized_pnl, today_unrealized_pnl, active_alerts_count, broker_connection_status, market_session_status, last_updated_at`; 404 `account-summary-not-initialized` when no row yet |
+| GET | `portfolio/composition/` | `account_id, holdings[], total_market_value, total_cost_basis, cash_balance`; holdings items: `account_id, symbol, quantity, avg_cost, cost_basis, market_value, allocation_pct, unrealized_pnl, opened_at` |
 | GET | `portfolio/holdings/<symbol>/` | `HoldingSerializer`: `account_id, symbol, quantity, avg_cost, cost_basis, market_value, allocation_pct, unrealized_pnl, opened_at` |
-| GET | `positions/live/` | list of `PositionSnapshotSerializer`: `position_id, account_id, symbol, side, ...` |
+| GET | `positions/live/` | paginated `{count?,next,previous,results}`; item = `PositionSnapshotSerializer`: `position_id, account_id, symbol, side, quantity, entry_price, current_price, unrealized_pnl, unrealized_pnl_pct, is_open, opened_at, closed_at` |
 | GET | `positions/live/<position_id>/` | single position snapshot |
-| GET | `orders/` | list of `OrderSnapshotSerializer` |
+| GET | `orders/` | paginated; item = `OrderSnapshotSerializer`: `order_id, account_id, symbol, side, order_type, status, quantity, filled_quantity, avg_fill_price, limit_price, placed_at` |
 | GET | `orders/<order_id>/` | single order snapshot |
-| GET | `trades/history/` | list of `TradeRecordSerializer` |
-| GET | `trades/history/export/` | ⚠ creates export job; `ExportRequestSerializer`/`ExportJobSerializer` |
-| GET | `trades/history/export/<export_id>/` | ⚠ export status |
-| GET | `trades/open/` | open trades list |
-| GET | `trades/closed/` | closed trades list |
+| GET | `trades/history/` | paginated; item = `TradeRecordSerializer`: `trade_id, account_id, symbol, side, entry_price, exit_price, quantity, realized_pnl, realized_pnl_pct, opened_at, closed_at, holding_period_seconds` |
+| POST | `trades/history/export/` | 202 `ExportJobSerializer`: `export_id, status:"pending", format, file_url:null, requested_at:null, completed_at:null, error_message:null`; request `ExportRequestSerializer` (`format` "csv"/"pdf" + optional filters). Note: enqueues a Celery task — requires a broker/worker; without one, staging returns 500 from the AMQP router (see GAPS). |
+| GET | `trades/history/export/<export_id>/` | `ExportJobSerializer` status |
+| GET | `trades/open/` | open-trades list (position-shaped items) |
+| GET | `trades/closed/` | closed trades list (trade-shaped items) |
 
 SOURCE: `backend/apps/dashboard/interfaces/api/trading_core/urls.py`, `serializers.py`, `views.py`
 
-Note: the exact JSON key set beyond the listed serializer fields was not fully traced for every view — treat the listed keys as canonical and render unknown keys defensively (ignore extras, show `--` for missing).
+Verified live 2026-08-16: all of the above returned 200 with the listed shapes (empty collections where no data; `home/summary/` 404 until a `DashboardHomeSummary` row exists). Filters are enforced via `DjangoFilterBackend` on `positions/live/`, `orders/`, `trades/history/` (invalid filter value → 400).
 
 ---
 
-## Dashboard — Analytics & Risk `/api/v1/dashboard/accounts/<account_id>/` (✅ endpoints, ⚠ bodies)
+## Dashboard — Analytics & Risk `/api/v1/dashboard/accounts/<account_id>/` (✅ VERIFIED live)
 
-| Method | Path | Purpose |
-|---|---|---|
-| GET | `pnl` | PnL analytics |
-| GET | `pnl/daily` | Daily rollup (for equity/returns chart) |
-| GET | `performance` | Performance metrics |
-| GET | `risk` | Risk summary |
+| Method | Path | Purpose | Verified body |
+|---|---|---|---|
+| GET | `pnl` | PnL analytics | `{current_total_pnl, current_unrealized_pnl, peak_cumulative_pnl, current_drawdown_pct, time_series[], metadata:{period, point_count}}` |
+| GET | `pnl/daily` | Daily rollup | array of `{trading_date, realized_pnl, total_pnl, cumulative_pnl}`; requires `?date_from=&date_to=` (400 if absent) |
+| GET | `performance` | Performance metrics | `{period, win_rate, avg_win, avg_loss, profit_factor|null, expectancy, sharpe_like_ratio|null, total_trades, winning_trades, losing_trades}` |
+| GET | `risk` | Risk summary | `{total_exposure, largest_position_pct, sector_concentration_pct, leverage_ratio, active_alerts[]}` |
 
 SOURCE: `backend/apps/dashboard/interfaces/api/analytics_risk/urls.py`, `views.py`
+
+Note: there is NO dedicated equity-curve endpoint — the equity/returns chart is sourced from `pnl/daily` (`total_pnl` cumulative) or backtesting `run_stats.equity_at_completion`.
 
 ---
 
@@ -188,23 +193,26 @@ Bucket shape (per regime/rule/IS/OOS): `trade_count, win_count, loss_count, gros
 
 ---
 
-## Other API Surfaces (endpoints ✅ verified; bodies ⚠)
+## Other API Surfaces (endpoints ✅ verified; bodies ✅ where noted)
 
-- `/api/v1/recommendations/`: `GET ""`, `GET <uuid>/`, `POST <uuid>/accept/`, `POST <uuid>/reject/`, `GET <uuid>/explanation/`. SOURCE: `apps/recommendations/interfaces/api/urls.py`
-- `/api/v1/trader-memory/`: `GET entries/`, `GET projections/<strategy_id>/`. SOURCE: `apps/trader_memory/interfaces/api/urls.py`
-- `/api/v1/signals/`: `GET ""`, `GET <uuid>/`. SOURCE: `apps/signals_engine/interfaces/api/urls.py`
-- `/api/v1/ingestion/`: `GET raw-events/`, webhook paths (POST, token-protected). SOURCE: `apps/ingestion/interfaces/api/urls.py`
+- `/api/v1/recommendations/`: `GET ""`, `GET <uuid>/`, `POST <uuid>/accept/`, `POST <uuid>/reject/`, `GET <uuid>/explanation/`. SOURCE: `apps/recommendations/interfaces/api/urls.py` — verified: GET `""` → `[]` (list, not paginated)
+- `/api/v1/trader-memory/`: `GET entries/`, `GET projections/<strategy_id>/`. SOURCE: `apps/trader_memory/interfaces/api/urls.py` — verified: `entries/` → `[]`
+- `/api/v1/signals/`: `GET ""`, `GET <uuid>/`. SOURCE: `apps/signals_engine/interfaces/api/urls.py` — verified: paginated `{count,next,previous,results}`
+- `/api/v1/ingestion/`: `GET raw-events/`, webhook paths (POST, token-protected). SOURCE: `apps/ingestion/interfaces/api/urls.py` — verified: `raw-events/` → paginated
 - `/api/v1/technical-analysis/`: `webhooks/tradingview/<token>/` (POST). SOURCE: `apps/technical_analysis/interfaces/api/urls.py`
-- `/api/v1/pattern-engine/`: `GET historical-vectors/`, `GET runs/`, `GET runs/<uuid>/`. SOURCE: `apps/pattern_engine/interfaces/api/urls.py`
-- `/api/v1/risk-management/`: `GET decisions/`, `GET kill-switch/`, `POST kill-switch/activate/`, `POST kill-switch/deactivate/`. SOURCE: `apps/risk_management/interfaces/api/urls.py`
-- `/api/v1/portfolio/`: `GET ""`, `GET positions/`, `POST fills/`. SOURCE: `apps/portfolio/interfaces/api/urls.py`
-- `/api/v1/execution/`: `GET requests/`, `GET orders/`, `GET orders/<uuid>/`. SOURCE: `apps/execution/interfaces/api/urls.py`
-- `/api/v1/watchlist/`: `GET ""`, `POST reorder/`, `GET|DELETE|PATCH <instrument_token>/`. SOURCE: `apps/watchlist/interfaces/api/urls.py`
-- `/api/v1/pipeline-health/`: `GET ""`. SOURCE: `apps/pipeline_health/interfaces/api/urls.py`
-- `/api/v1/portfolio-reconciliation/`: `GET drift/summary/`, `GET drift/`. SOURCE: `apps/portfolio_reconciliation/interfaces/api/urls.py`
+- `/api/v1/pattern-engine/`: `GET historical-vectors/`, `GET runs/`, `GET runs/<uuid>/`. SOURCE: `apps/pattern_engine/interfaces/api/urls.py` — verified: paginated
+- `/api/v1/risk-management/`: `GET decisions/`, `GET kill-switch/`, `POST kill-switch/activate/`, `POST kill-switch/deactivate/`. SOURCE: `apps/risk_management/interfaces/api/urls.py` — verified: `decisions/` → `[]` (list), `kill-switch/` → `[]` (list)
+- `/api/v1/portfolio/`: `GET ""`, `GET positions/`, `POST fills/`. SOURCE: `apps/portfolio/interfaces/api/urls.py` — verified: `GET ""` → `{account_id, cash, margin_used, equity, available_capital, realized_pnl_today, unrealized_pnl_today}`; `GET positions/` → plain array of `{account_id, symbol, side, quantity, avg_entry_price, opened_at, current_price, unrealized_pnl, exposure}` (NOT paginated). 404 `no-primary-account` if no default `Account` row exists.
+- `/api/v1/execution/`: `GET requests/`, `GET orders/`, `GET orders/<uuid>/`. SOURCE: `apps/execution/interfaces/api/urls.py` — verified: `orders/` → paginated
+- `/api/v1/watchlist/`: `GET ""`, `POST reorder/`, `GET|DELETE|PATCH <instrument_token>/`. SOURCE: `apps/watchlist/interfaces/api/urls.py` — verified: `GET` requires `?account_id=<uuid>` (400 without); 403 if the account is not owned by the caller; returns array of enriched items
+- `/api/v1/pipeline-health/`: `GET ""`. SOURCE: `apps/pipeline_health/interfaces/api/urls.py` — verified: `{heartbeats:[]}`
+- `/api/v1/portfolio-reconciliation/`: `GET drift/summary/`, `GET drift/`. SOURCE: `apps/portfolio_reconciliation/interfaces/api/urls.py` — verified: `drift/summary/` → `{classification_breakdown:{}, total_records, last_run_at}`; `drift/` → paginated
+- `/api/v1/journal/`: `GET entries/` (requires `?account_id=`), `GET entries/<uuid:correlation_id>/`. SOURCE: `apps/journal/interfaces/api/urls.py`
+- `/api/v1/audit/`: `GET entries/`. SOURCE: `apps/audit_log/urls.py` — verified: paginated
+- `/api/v1/rule-engine/`: `GET configs/` (→ `[]`), `GET configs/<rule_id>/`, `GET executions/` (→ `[]`). SOURCE: `apps/rule_engine/interfaces/api/urls.py`
 
 ## Endpoint Count
 
 - Mounted root prefixes: 22 total (`backend/config/urls.py`: 20 × `api/v1` + `/admin/` + `/metrics/`).
 - Individual routes enumerated above: 67 (exact count across mounted `urls.py` files).
-- Exact response bodies for the ⚠ endpoints were not fully traced — verify against the corresponding view/serializer before rendering field-by-field.
+- Live verification completed 2026-08-16 against the staging backend: every ⚠ endpoint now has a verified status code + body shape (see the tables above). Remaining known gaps are documented in `08_GAPS_BLACKLIST_AND_ASSUMPTIONS.md` (notably: trade-export needs a Celery worker/broker; no dedicated equity-curve endpoint).

@@ -28,7 +28,7 @@ class TestLoad:
             username=f"load-{uuid.uuid4().hex[:8]}",
             password="SecurePass123!",
         )
-        account_id = uuid.uuid4()
+        account_id = user.id
         DashboardHomeSummary.objects.create(
             account_id=account_id,
             open_positions_count=10,
@@ -49,7 +49,7 @@ class TestLoad:
             username=f"load-{uuid.uuid4().hex[:8]}",
             password="SecurePass123!",
         )
-        account_id = uuid.uuid4()
+        account_id = user.id
 
         for i in range(5):
             PositionSnapshot.objects.create(

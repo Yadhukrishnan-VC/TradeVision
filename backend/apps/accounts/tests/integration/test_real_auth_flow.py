@@ -196,6 +196,7 @@ class TestAPIKeyScopeAuth:
             HTTP_AUTHORIZATION=f"Api-Key {raw_key}",
         )
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
+        assert response.data["detail"].code == "api_key_revoked"
 
 
 class TestWebhookAndHealthRegression:

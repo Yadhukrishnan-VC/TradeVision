@@ -15,6 +15,7 @@ import type {
   IngestionRawEvent,
   KillSwitchState,
   PatternRun,
+  PortfolioPosition,
   PortfolioSummary,
   Recommendation,
   RiskDecision,
@@ -88,8 +89,8 @@ void apiPatch;
 export function getPortfolioSummary(): Promise<PortfolioSummary> {
   return apiGet<PortfolioSummary>("/portfolio/");
 }
-export function getPortfolioPositions(): Promise<Paginated<unknown>> {
-  return apiGetPaged<unknown>("/portfolio/positions/");
+export function getPortfolioPositions(): Promise<PortfolioPosition[]> {
+  return apiGet<PortfolioPosition[]>("/portfolio/positions/");
 }
 
 // ---- Risk Management ----

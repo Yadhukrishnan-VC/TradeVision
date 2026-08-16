@@ -166,7 +166,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="ordersnapshot",
-            index=models.Index(fields=["account_id", "status", "placed_at"], name="idx_orders_account_status_placed"),
+            index=models.Index(fields=["account_id", "status", "placed_at"], name="idx_orders_acct_status_placed"),
         ),
         migrations.AddIndex(
             model_name="ordersnapshot",

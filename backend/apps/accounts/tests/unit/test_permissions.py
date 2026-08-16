@@ -72,11 +72,24 @@ class TestHasAPIKeyScope:
         perm = HasAPIKeyScope.with_scope(Scope.READ_MARKET_DATA)
         assert perm.has_permission(request, None) is False
 
-    def test_no_api_key_auth(self) -> None:
+    def test_no_api_key_read_scope_allows_jwt_user(self) -> None:
+        """A JWT-authenticated (non-API-key) user passes read scopes by role."""
         user = type("User", (), {"is_authenticated": True, "role": Role.STAFF.value})
         request = _make_request(user=user, auth=None)
         perm = HasAPIKeyScope.with_scope(Scope.READ_MARKET_DATA)
+        assert perm.has_permission(request, None) is True
+
+    def test_jwt_viewer_cannot_manage_scope(self) -> None:
+        user = type("User", (), {"is_authenticated": True, "role": Role.VIEWER.value})
+        request = _make_request(user=user, auth=None)
+        perm = HasAPIKeyScope.with_scope(Scope.MANAGE_RISK_POLICY)
         assert perm.has_permission(request, None) is False
+
+    def test_jwt_staff_can_manage_scope(self) -> None:
+        user = type("User", (), {"is_authenticated": True, "role": Role.STAFF.value})
+        request = _make_request(user=user, auth=None)
+        perm = HasAPIKeyScope.with_scope(Scope.MANAGE_RISK_POLICY)
+        assert perm.has_permission(request, None) is True
 
     def test_no_scope_required_returns_true(self) -> None:
         user = type("User", (), {"is_authenticated": True, "role": Role.VIEWER.value})

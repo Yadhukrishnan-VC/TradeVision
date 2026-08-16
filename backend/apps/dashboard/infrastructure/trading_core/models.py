@@ -43,7 +43,7 @@ class OrderSnapshot(ProjectionMetadataMixin, models.Model):
     class Meta:
         db_table = "dashboard_ordersnapshot"
         indexes = [
-            models.Index(fields=["account_id", "status", "placed_at"], name="idx_orders_account_status_placed"),
+            models.Index(fields=["account_id", "status", "placed_at"], name="idx_orders_acct_status_placed"),
             models.Index(fields=["account_id", "symbol", "placed_at"]),
         ]
 
