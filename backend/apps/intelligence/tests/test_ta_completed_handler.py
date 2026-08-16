@@ -7,12 +7,14 @@ from unittest.mock import MagicMock, patch
 
 from apps.eventbus.domain.events import DomainEvent
 from apps.intelligence.infrastructure.ta_completed_handler import (
+    NEWS_MISSING_QUALITY_PENALTY,
     _build_packet,
     _detect_regime_value,
     _get_prev_close,
     _optional_decimal,
     handle_ta_completed,
 )
+from core.events.event_types import NewsContext
 
 
 class TestHandleTACompleted:
@@ -271,3 +273,46 @@ class TestHandleTACompleted:
         occurred_at = datetime(2026, 7, 28, 10, 0, 0, tzinfo=timezone.utc)
         packet = _build_packet(payload, occurred_at)
         assert packet.regime == "BULLISH"
+
+    def test_missing_news_source_is_tagged_in_data_quality(self) -> None:
+        payload = {
+            "symbol": "RELIANCE",
+            "snapshot_id": "snap-news-1",
+            "exchange": "NSE",
+            "timeframe": "1D",
+            "snapshot_timestamp": "2026-07-28T10:00:00+00:00",
+            "indicators": {},
+            "price": {"close": "2500.00", "prev_close": "2450.00", "change_pct": "2.04"},
+        }
+        occurred_at = datetime(2026, 7, 28, 10, 0, 0, tzinfo=timezone.utc)
+        packet = _build_packet(payload, occurred_at)
+        assert "news" in packet.data_quality.missing_sources
+
+    def test_news_context_remains_unchecked_default(self) -> None:
+        payload = {
+            "symbol": "RELIANCE",
+            "snapshot_id": "snap-news-2",
+            "exchange": "NSE",
+            "timeframe": "1D",
+            "snapshot_timestamp": "2026-07-28T10:00:00+00:00",
+            "indicators": {},
+            "price": {"close": "2500.00", "prev_close": "2450.00", "change_pct": "2.04"},
+        }
+        occurred_at = datetime(2026, 7, 28, 10, 0, 0, tzinfo=timezone.utc)
+        packet = _build_packet(payload, occurred_at)
+        assert packet.news_context == NewsContext()
+
+    def test_quality_score_reflects_news_missing_penalty(self) -> None:
+        payload = {
+            "symbol": "RELIANCE",
+            "snapshot_id": "snap-news-3",
+            "exchange": "NSE",
+            "timeframe": "1D",
+            "snapshot_timestamp": "2026-07-28T10:00:00+00:00",
+            "indicators": {},
+            "price": {"close": "2500.00", "prev_close": "2450.00", "change_pct": "2.04"},
+        }
+        occurred_at = datetime(2026, 7, 28, 10, 0, 0, tzinfo=timezone.utc)
+        packet = _build_packet(payload, occurred_at)
+        expected = 1.0 - (NEWS_MISSING_QUALITY_PENALTY * len(packet.data_quality.missing_sources))
+        assert packet.data_quality.quality_score == expected

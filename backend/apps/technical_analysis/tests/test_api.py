@@ -84,6 +84,22 @@ class TestTradingViewTAWebhookEndpoint:
             content_type="application/json",
         )
         assert response.status_code == 401
+        assert response.json() == {"error": "Invalid token"}
+
+    def test_token_compared_with_constant_time(self, api_client) -> None:
+        payload = {"ticker": "RELIANCE", "close": 2850.50}
+
+        with patch(
+            "apps.technical_analysis.interfaces.api.views.hmac.compare_digest"
+        ) as mock_cmp:
+            mock_cmp.return_value = False
+            response = api_client.post(
+                _get_url(token="wrong_token"),
+                data=json.dumps(payload),
+                content_type="application/json",
+            )
+            assert response.status_code == 401
+            mock_cmp.assert_called_once()
 
     def test_missing_required_fields_returns_400(
         self, api_client

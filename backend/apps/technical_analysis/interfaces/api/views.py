@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hmac
 import json
 import logging
 import uuid
@@ -71,7 +72,7 @@ class TradingViewTechnicalAnalysisWebhookView(GenericAPIView):
                 status=status.HTTP_501_NOT_IMPLEMENTED,
             )
 
-        if token != expected_token:
+        if not hmac.compare_digest(token, expected_token):
             logger.warning(
                 "tradingview_ta_webhook_invalid_token",
                 extra={"provided_token": token[:8] + "..." if len(token) > 8 else token},

@@ -25,6 +25,13 @@ from core.events.event_types import (
 
 logger = logging.getLogger(__name__)
 
+# Per-missing-source penalty applied to data_quality.quality_score. Mirrors the
+# existing 0.3 discount used in apps/intelligence/domain/context_scoring.py
+# (conf_signals -= 0.3 * min(len(dq.missing_sources), 3)). A local constant
+# keeps the discount at the call site without a cross-layer import, and keeps
+# this site consistent with ta_completed_handler.py.
+NEWS_MISSING_QUALITY_PENALTY = 0.3
+
 
 def _to_decimal(value: Any) -> Decimal:
     try:
@@ -137,6 +144,15 @@ def handle_signal_created(event: DomainEvent) -> None:
     breadth_data = _fetch_breadth_context(tech_data)
 
     service = MarketContextService()
+
+    # No real news source is wired up yet (the news_feed app is an intentionally
+    # empty scaffold pending NSE/BSE/Moneycontrol ToS review), so the packet uses
+    # the unchecked NewsContext() default. Tag that absence explicitly so "no
+    # news found" is distinguishable from "never checked", and reflect the same
+    # per-source penalty used at the ta_completed_handler assembly site.
+    missing: list[str] = []
+    missing.append("news")
+
     packet = IntelligencePacket(
         symbol=symbol,
         timestamp=event.occurred_at,
@@ -170,7 +186,11 @@ def handle_signal_created(event: DomainEvent) -> None:
         ),
         news_context=NewsContext(),
         macro_context=_build_macro_context(),
-        data_quality=DataQuality(),
+        data_quality=DataQuality(
+            quality_score=1.0 - (NEWS_MISSING_QUALITY_PENALTY * len(missing)),
+            missing_sources=tuple(missing),
+            stale_sources=(),
+        ),
     )
 
     signal_ref = None

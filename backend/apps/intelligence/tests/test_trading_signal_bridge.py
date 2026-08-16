@@ -9,6 +9,10 @@ import pytest
 from django.test import override_settings
 
 from apps.eventbus.domain.events import DomainEvent
+from apps.intelligence.infrastructure.trading_signal_bridge import (
+    NEWS_MISSING_QUALITY_PENALTY,
+    handle_signal_created,
+)
 from core.events.event_types import (
     BreadthContext,
     CircuitStatus,
@@ -211,3 +215,142 @@ class TestTradingSignalBridge:
             published_event = mock_bus.publish.call_args[0][0]
             assert published_event.correlation_id == cid
             assert published_event.causation_id == event.event_id
+
+    @override_settings(MARKET_CONTEXT_SCORING_ENABLED=True)
+    def test_missing_news_source_is_tagged_in_data_quality(self) -> None:
+        event = DomainEvent.create(
+            event_type="signals.SignalCreated",
+            payload={
+                "symbol": "RELIANCE",
+                "signal_id": str(uuid.uuid4()),
+                "direction": "BUY",
+                "confidence_hint": 0.85,
+            },
+            correlation_id=uuid.uuid4(),
+        )
+
+        captured: dict[str, object] = {}
+
+        def _fake_build_signal_context(symbol, packet, trading_signal):
+            captured["packet"] = packet
+            return MagicMock()
+
+        with (
+            patch("apps.intelligence.infrastructure.trading_signal_bridge.TASnapshotRepository") as mock_repo_cls,
+            patch("apps.intelligence.infrastructure.trading_signal_bridge.PineOutput.objects.filter") as mock_pine_filter,
+            patch("apps.intelligence.infrastructure.trading_signal_bridge.get_event_bus") as mock_get_bus,
+            patch("apps.intelligence.infrastructure.trading_signal_bridge.MarketContextCache") as mock_cache_cls,
+            patch(
+                "apps.intelligence.infrastructure.trading_signal_bridge.MarketContextService.build_signal_context",
+                side_effect=_fake_build_signal_context,
+            ),
+        ):
+            mock_repo = MagicMock()
+            mock_repo.find_by_symbol.return_value = []
+            mock_repo_cls.return_value = mock_repo
+
+            mock_pine_qs = MagicMock()
+            mock_pine_qs.order_by.return_value.first.return_value = None
+            mock_pine_filter.return_value = mock_pine_qs
+
+            mock_get_bus.return_value = MagicMock()
+            mock_cache_cls.return_value = MagicMock()
+
+            handle_signal_created(event)
+
+        packet = captured["packet"]
+        assert isinstance(packet, IntelligencePacket)
+        assert "news" in packet.data_quality.missing_sources
+
+    @override_settings(MARKET_CONTEXT_SCORING_ENABLED=True)
+    def test_news_context_remains_unchecked_default(self) -> None:
+        event = DomainEvent.create(
+            event_type="signals.SignalCreated",
+            payload={
+                "symbol": "RELIANCE",
+                "signal_id": str(uuid.uuid4()),
+                "direction": "BUY",
+                "confidence_hint": 0.85,
+            },
+            correlation_id=uuid.uuid4(),
+        )
+
+        captured: dict[str, object] = {}
+
+        def _fake_build_signal_context(symbol, packet, trading_signal):
+            captured["packet"] = packet
+            return MagicMock()
+
+        with (
+            patch("apps.intelligence.infrastructure.trading_signal_bridge.TASnapshotRepository") as mock_repo_cls,
+            patch("apps.intelligence.infrastructure.trading_signal_bridge.PineOutput.objects.filter") as mock_pine_filter,
+            patch("apps.intelligence.infrastructure.trading_signal_bridge.get_event_bus") as mock_get_bus,
+            patch("apps.intelligence.infrastructure.trading_signal_bridge.MarketContextCache") as mock_cache_cls,
+            patch(
+                "apps.intelligence.infrastructure.trading_signal_bridge.MarketContextService.build_signal_context",
+                side_effect=_fake_build_signal_context,
+            ),
+        ):
+            mock_repo = MagicMock()
+            mock_repo.find_by_symbol.return_value = []
+            mock_repo_cls.return_value = mock_repo
+
+            mock_pine_qs = MagicMock()
+            mock_pine_qs.order_by.return_value.first.return_value = None
+            mock_pine_filter.return_value = mock_pine_qs
+
+            mock_get_bus.return_value = MagicMock()
+            mock_cache_cls.return_value = MagicMock()
+
+            handle_signal_created(event)
+
+        packet = captured["packet"]
+        assert isinstance(packet, IntelligencePacket)
+        assert packet.news_context == NewsContext()
+
+    @override_settings(MARKET_CONTEXT_SCORING_ENABLED=True)
+    def test_quality_score_reflects_news_missing_penalty(self) -> None:
+        event = DomainEvent.create(
+            event_type="signals.SignalCreated",
+            payload={
+                "symbol": "RELIANCE",
+                "signal_id": str(uuid.uuid4()),
+                "direction": "BUY",
+                "confidence_hint": 0.85,
+            },
+            correlation_id=uuid.uuid4(),
+        )
+
+        captured: dict[str, object] = {}
+
+        def _fake_build_signal_context(symbol, packet, trading_signal):
+            captured["packet"] = packet
+            return MagicMock()
+
+        with (
+            patch("apps.intelligence.infrastructure.trading_signal_bridge.TASnapshotRepository") as mock_repo_cls,
+            patch("apps.intelligence.infrastructure.trading_signal_bridge.PineOutput.objects.filter") as mock_pine_filter,
+            patch("apps.intelligence.infrastructure.trading_signal_bridge.get_event_bus") as mock_get_bus,
+            patch("apps.intelligence.infrastructure.trading_signal_bridge.MarketContextCache") as mock_cache_cls,
+            patch(
+                "apps.intelligence.infrastructure.trading_signal_bridge.MarketContextService.build_signal_context",
+                side_effect=_fake_build_signal_context,
+            ),
+        ):
+            mock_repo = MagicMock()
+            mock_repo.find_by_symbol.return_value = []
+            mock_repo_cls.return_value = mock_repo
+
+            mock_pine_qs = MagicMock()
+            mock_pine_qs.order_by.return_value.first.return_value = None
+            mock_pine_filter.return_value = mock_pine_qs
+
+            mock_get_bus.return_value = MagicMock()
+            mock_cache_cls.return_value = MagicMock()
+
+            handle_signal_created(event)
+
+        packet = captured["packet"]
+        assert isinstance(packet, IntelligencePacket)
+        expected = 1.0 - (NEWS_MISSING_QUALITY_PENALTY * len(packet.data_quality.missing_sources))
+        assert packet.data_quality.quality_score == expected
