@@ -85,12 +85,14 @@ class CandleToTechnicalAnalysisBridge:
         redis_client: Any | None = None,
         staleness_seconds: int | None = None,
         session_facts: SessionFactsService | None = None,
+        ta_repo: TASnapshotRepository | None = None,
     ) -> None:
         self._instrument_repo = instrument_repo or InstrumentRepository()
         self._candle_repo = candle_repo or CandleRepository()
         self._session_facts = session_facts or SessionFactsService(candle_repo=self._candle_repo)
         self._redis = redis_client or get_redis_client()
         self._staleness_seconds = staleness_seconds or config.market_data_poll_staleness_seconds
+        self._ta_repo = ta_repo or TASnapshotRepository()
         self._ingestion_service = ingestion_service or TechnicalAnalysisIngestionService(
             repository=TASnapshotRepository(),
             event_bus=get_event_bus(),
@@ -151,7 +153,11 @@ class CandleToTechnicalAnalysisBridge:
     # Payload construction + publish (with nothing-but-OHLCV indicators)
     # ------------------------------------------------------------------
 
-    def build_payload_for_candle(self, candle: Candle) -> dict[str, Any]:
+    def build_payload_for_candle(
+        self,
+        candle: Candle,
+        up_to: datetime | None = None,
+    ) -> dict[str, Any]:
         """Build the TA ingestion payload from one persisted candle.
 
         Returns a dict in the shape ``TechnicalAnalysisIngestionService``
@@ -160,6 +166,11 @@ class CandleToTechnicalAnalysisBridge:
         ``ema_20``, ``atr_14``, ``bb_upper``, ``rsi_14``). Insufficient history
         omits the corresponding keys (never ``0``, never fabricated) so
         indicator rules fail closed.
+
+        ``up_to`` (optional) temporally anchors every history query to
+        ``<= up_to``, so each candle's indicators only see genuinely earlier
+        history — used by the historical backfill where the whole range is
+        already persisted. The live polling path omits it and is unchanged.
         """
         instrument = self._instrument_repo.find_by_token(candle.instrument_token)
         if instrument is None:
@@ -168,8 +179,8 @@ class CandleToTechnicalAnalysisBridge:
                 "Refusing to ingest candles for an unknown instrument."
             )
 
-        prev_close, change_pct = self._prev_close_and_change(candle)
-        indicators = self._compute_indicators(candle)
+        prev_close, change_pct = self._prev_close_and_change(candle, up_to=up_to)
+        indicators = self._compute_indicators(candle, up_to=up_to)
 
         payload: dict[str, Any] = {
             "ticker": instrument.tradingsymbol,
@@ -240,6 +251,107 @@ class CandleToTechnicalAnalysisBridge:
         return candle
 
     # ------------------------------------------------------------------
+    # Historical TA backfill (Batch HISTORICAL-TA-BACKFILL-1)
+    # ------------------------------------------------------------------
+
+    def backfill_ta_from_candles(
+        self,
+        instrument_token: int,
+        timeframe: str,
+        from_timestamp: datetime,
+        to_timestamp: datetime,
+    ) -> int:
+        """Ingest already-persisted historical candles into ``TASnapshot``.
+
+        Historical replay is definitionally not "fresh", so this entry point
+        deliberately bypasses :meth:`should_ingest`'s "now"-relative staleness
+        gate while reusing the *unchanged* payload builder and ingestion seam:
+        each candle goes through :meth:`build_payload_for_candle` (same
+        indicator computation, same warm-up gating, same never-zero-filled
+        key-omission) then ``TechnicalAnalysisIngestionService.ingest``.
+
+        Candles are processed strictly oldest-to-newest (``CandleRepository``
+        orders the range chronologically) and each candle's payload is built
+        with a temporal bound (``up_to=candle.timestamp``) so its indicator
+        window (``_indicator_series`` reads "most recent N candles") only ever
+        sees genuinely earlier history. Because ``HistoricalSyncService``
+        persists the whole range up front, this bound — not loop order alone —
+        is what guarantees causality for the historical path.
+
+        Idempotency: ``TASnapshot`` has no DB uniqueness on
+        ``(symbol, snapshot_timestamp)``, so a pre-existing snapshot for a
+        candle is detected up front (one range query) and skipped — re-running
+        a range never duplicates rows nor re-publishes
+        ``TechnicalAnalysisCompleted`` events. A single failed ``ingest()`` is
+        logged and isolated (does not abort the rest of the range), mirroring
+        the "count persisted" pattern of ``HistoricalSyncService``.
+
+        Returns the number of candles ingested.
+        """
+        instrument = self._instrument_repo.find_by_token(instrument_token)
+        if instrument is None:
+            raise ValueError(
+                f"No instrument for token {instrument_token}. "
+                "Refusing to backfill TA for an unknown instrument."
+            )
+
+        candles = self._candle_repo.find_range(
+            instrument_token, timeframe, from_timestamp, to_timestamp
+        )
+        symbol = instrument.tradingsymbol.upper()
+        existing = {
+            to_utc(s.snapshot_timestamp).timestamp()
+            for s in self._ta_repo.find_in_range(
+                symbol, from_timestamp, to_timestamp, timeframe=timeframe
+            )
+        }
+
+        created = 0
+        failures = 0
+        for candle in candles:
+            candle_ts = to_utc(candle.timestamp)
+            if candle_ts.timestamp() in existing:
+                logger.info(
+                    "historical_ta_backfill_skip_existing",
+                    extra={
+                        "instrument_token": instrument_token,
+                        "timeframe": timeframe,
+                        "candle_timestamp_utc": candle_ts.isoformat(),
+                    },
+                )
+                continue
+
+            try:
+                payload = self.build_payload_for_candle(candle, up_to=candle.timestamp)
+                correlation_id = self._deterministic_correlation(candle)
+                self._ingestion_service.ingest(payload, correlation_id=correlation_id)
+                created += 1
+            except Exception:
+                failures += 1
+                logger.exception(
+                    "historical_ta_backfill_candle_failed",
+                    extra={
+                        "instrument_token": instrument_token,
+                        "timeframe": timeframe,
+                        "candle_timestamp_utc": candle_ts.isoformat(),
+                    },
+                )
+
+        logger.info(
+            "historical_ta_backfill_completed",
+            extra={
+                "instrument_token": instrument_token,
+                "timeframe": timeframe,
+                "from_timestamp_utc": to_utc(from_timestamp).isoformat(),
+                "to_timestamp_utc": to_utc(to_timestamp).isoformat(),
+                "candles_processed": len(candles),
+                "snapshots_created": created,
+                "failures": failures,
+            },
+        )
+        return created
+
+    # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
 
@@ -248,8 +360,12 @@ class CandleToTechnicalAnalysisBridge:
         candles = self._candle_repo.find_range(instrument_token, timeframe, ts_utc, ts_utc)
         return candles[0] if candles else None
 
-    def _prev_close_and_change(self, candle: Candle) -> tuple[Decimal | None, Decimal | None]:
-        context = self._candle_repo.find_latest(candle.instrument_token, candle.timeframe, limit=20)
+    def _prev_close_and_change(
+        self, candle: Candle, up_to: datetime | None = None
+    ) -> tuple[Decimal | None, Decimal | None]:
+        context = self._candle_repo.find_latest(
+            candle.instrument_token, candle.timeframe, limit=20, up_to=up_to
+        )
         prev_close: Decimal | None = None
         change_pct: Decimal | None = None
         for idx, other in enumerate(context):
@@ -262,7 +378,9 @@ class CandleToTechnicalAnalysisBridge:
             change_pct = change_pct.quantize(_CHANGE_PCT_QUANT, rounding=ROUND_HALF_UP)
         return prev_close, change_pct
 
-    def _compute_indicators(self, candle: Candle) -> dict[str, str]:
+    def _compute_indicators(
+        self, candle: Candle, up_to: datetime | None = None
+    ) -> dict[str, str]:
         """Compute M5 indicator values for *candle* from persisted history.
 
         Only keys with a decision-grade value are emitted (warm-up simply
@@ -272,10 +390,11 @@ class CandleToTechnicalAnalysisBridge:
 
         The shared 60-candle fetch covers all fixed-window indicators;
         VWAP is sliced separately from the session-open boundary derived via
-        ``SessionFactsService``.
+        ``SessionFactsService``. ``up_to`` (optional) anchors every history
+        query to ``<= up_to`` (historical backfill); the live path omits it.
         """
-        history = self._indicator_series(candle)
-        vwap = self._compute_vwap(candle)
+        history = self._indicator_series(candle, up_to=up_to)
+        vwap = self._compute_vwap(candle, up_to=up_to)
 
         indicators: dict[str, Any] = {}
         if len(history) >= _MIN_CANDLES_EMA20:
@@ -298,19 +417,28 @@ class CandleToTechnicalAnalysisBridge:
             indicators["vwap"] = str(vwap)
         return indicators
 
-    def _indicator_series(self, candle: Candle) -> list[Candle]:
-        """Most recent 60 candles for the shared indicator window."""
+    def _indicator_series(
+        self, candle: Candle, up_to: datetime | None = None
+    ) -> list[Candle]:
+        """Most recent 60 candles for the shared indicator window.
+
+        With ``up_to`` set, the window is the most recent 60 candles at or
+        before ``up_to`` — the causal bound the historical backfill needs.
+        """
         return self._candle_repo.find_latest(
-            candle.instrument_token, candle.timeframe, limit=_MIN_CANDLES_EMA20
+            candle.instrument_token, candle.timeframe, limit=_MIN_CANDLES_EMA20, up_to=up_to
         )
 
-    def _compute_vwap(self, candle: Candle) -> Decimal | None:
+    def _compute_vwap(
+        self, candle: Candle, up_to: datetime | None = None
+    ) -> Decimal | None:
         """VWAP from the current session's candles (session-sliced).
 
         Uses ``SessionFactsService`` to find the session boundary (09:15 IST
         opening candle) for the candle's trading day, then scans the same
         timeframe from that boundary up to and including *candle*. When the
         session open cannot be determined, VWAP is unavailable (``None``).
+        ``up_to`` (optional) anchors the session slice to ``<= up_to``.
         """
         opening = self._session_facts.get_opening_15m_candle(
             candle.instrument_token, to_utc(candle.timestamp)
@@ -318,11 +446,12 @@ class CandleToTechnicalAnalysisBridge:
         if opening is None:
             return None
         session_open_utc = to_utc(opening.timestamp)
+        end_ts = to_utc(candle.timestamp if up_to is None else up_to)
         session_candles = self._candle_repo.find_range(
             candle.instrument_token,
             candle.timeframe,
             session_open_utc,
-            to_utc(candle.timestamp),
+            end_ts,
         )
         return compute_vwap(session_candles)
 

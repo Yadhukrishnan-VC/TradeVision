@@ -296,6 +296,69 @@ def run_historical_sync(
 @shared_task(
     bind=True,
     max_retries=3,
+    default_retry_delay=30,
+    acks_late=True,
+    queue="market_data",
+    time_limit=600,
+)
+def run_historical_ta_backfill(
+    self: Any,
+    instrument_token: int,
+    timeframe: str,
+    from_timestamp: datetime,
+    to_timestamp: datetime,
+) -> int:
+    """On-demand historical TA backfill from already-persisted candles.
+
+    Walks persisted ``Candle`` rows oldest-to-newest and ingests each through
+    the existing TA pipeline (bypassing the live-only staleness gate), so the
+    resulting ``TASnapshot`` rows feed the rule engine and backtester. Safe to
+    re-run: candles already ingested as ``TASnapshot`` rows are skipped.
+
+    Args:
+        instrument_token: The instrument whose candles to ingest.
+        timeframe:        Candle timeframe (e.g. ``"1D"``, ``"15min"``).
+        from_timestamp:   Start of the range (inclusive).
+        to_timestamp:     End of the range (inclusive).
+
+    Returns:
+        Number of ``TASnapshot`` rows created.
+    """
+    try:
+        from apps.market_data.application.candle_ta_bridge import get_candle_ta_bridge
+
+        created = get_candle_ta_bridge().backfill_ta_from_candles(
+            instrument_token=instrument_token,
+            timeframe=timeframe,
+            from_timestamp=from_timestamp,
+            to_timestamp=to_timestamp,
+        )
+        logger.info(
+            "historical_ta_backfill_task_complete",
+            extra={
+                "instrument_token": instrument_token,
+                "timeframe": timeframe,
+                "from_timestamp_utc": from_timestamp.isoformat(),
+                "to_timestamp_utc": to_timestamp.isoformat(),
+                "snapshots_created": created,
+            },
+        )
+        return created
+    except Exception as exc:
+        logger.error(
+            "historical_ta_backfill_task_failed",
+            extra={
+                "instrument_token": instrument_token,
+                "timeframe": timeframe,
+                "error": str(exc),
+            },
+        )
+        raise self.retry(exc=exc)
+
+
+@shared_task(
+    bind=True,
+    max_retries=3,
     default_retry_delay=60,
     acks_late=True,
     queue="maintenance",

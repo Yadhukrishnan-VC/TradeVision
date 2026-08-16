@@ -117,15 +117,26 @@ class CandleRepository:
         instrument_token: int,
         timeframe: str,
         limit: int = 100,
+        up_to: datetime | None = None,
     ) -> list[Candle]:
-        """Return the most recent *limit* candles for the given instrument/timeframe."""
-        qs: QuerySet[CandleModel] = (
+        """Return the most recent *limit* candles for the given instrument/timeframe.
+
+        When ``up_to`` is given, only candles at or before that timestamp are
+        considered (inclusive upper bound), so the "most recent" window is
+        temporally anchored to *up_to* rather than to now. This is how the
+        historical TA backfill keeps each candle's indicator window free of
+        look-ahead when the full range is already persisted; the live polling
+        path calls this without ``up_to`` and is unchanged.
+        """
+        qs = (
             CandleModel.objects.filter(
                 instrument_id=instrument_token,
                 timeframe=timeframe,
             )
-            .order_by("-timestamp")[:limit]
         )
+        if up_to is not None:
+            qs = qs.filter(timestamp__lte=up_to)
+        qs = qs.order_by("-timestamp")[:limit]
         candles = [self._to_domain(c) for c in qs]
         candles.reverse()
         return candles
