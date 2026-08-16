@@ -52,7 +52,9 @@ class TestDriftRecordListAPI:
     def test_requires_authentication(self, api_client: APIClient) -> None:
         response = api_client.get(PATH + "drift/")
 
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        # With the global authenticators registered, an unauthenticated request
+        # to a protected endpoint raises NotAuthenticated -> 401 (not 403).
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_viewer_role_is_forbidden(self, api_client: APIClient, viewer_user: object) -> None:
         api_client.force_authenticate(user=viewer_user)
@@ -187,7 +189,9 @@ class TestDriftSummaryAPI:
     def test_summary_requires_authentication(self, api_client: APIClient) -> None:
         response = api_client.get(PATH + "drift/summary/")
 
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        # With the global authenticators registered, an unauthenticated request
+        # to a protected endpoint raises NotAuthenticated -> 401 (not 403).
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_summary_returns_breakdown(
         self, api_client: APIClient, staff_user: object, account

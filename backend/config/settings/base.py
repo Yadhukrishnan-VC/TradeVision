@@ -15,6 +15,17 @@ DEBUG = False
 
 ALLOWED_HOSTS: list[str] = []
 
+# CORS — API authentication is header-based (JWT Bearer / Api-Key), so no
+# cookies are exchanged and CORS_ALLOW_CREDENTIALS stays off. Cross-origin
+# SPA origins must be listed explicitly here; production never allows all
+# origins. Development overrides this with CORS_ALLOW_ALL_ORIGINS=True.
+CORS_ALLOWED_ORIGINS: list[str] = [
+    origin.strip()
+    for origin in os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",")
+    if origin.strip()
+]
+CORS_ALLOW_CREDENTIALS: bool = False
+
 # Custom user model — email-only auth, UUID pk, role-based RBAC.
 # This replaces Django's default auth.User and activates the model defined
 # in apps/accounts/models.py. Must be set before the first makemigrations run.
@@ -32,6 +43,7 @@ DJANGO_APPS: list[str] = [
     "django.contrib.staticfiles",
     # Third-party
     "rest_framework",
+    "corsheaders",
     "django_celery_beat",
     "django_celery_results",
 ]
@@ -110,6 +122,7 @@ MIDDLEWARE: list[str] = [
     "django_prometheus.middleware.PrometheusBeforeMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -190,7 +203,15 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": ("rest_framework.renderers.JSONRenderer",),
-    "DEFAULT_AUTHENTICATION_CLASSES": [],
+    # JWT Bearer — interactive user/session authentication (login/refresh).
+    # API Key — scoped data authorization (Authorization: Api-Key <raw_key>).
+    # Both are registered so the existing API contracts work: session/identity
+    # endpoints authenticate via JWT; scope-gated data endpoints require the
+    # API key's scopes via the existing HasAPIKeyScope permission classes.
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "apps.accounts.infrastructure.authentication.APIKeyAuthentication",
+    ),
     "DEFAULT_PARSER_CLASSES": ("rest_framework.parsers.JSONParser",),
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
     "EXCEPTION_HANDLER": "apps.common.infrastructure.drf_exception_handler.custom_exception_handler",

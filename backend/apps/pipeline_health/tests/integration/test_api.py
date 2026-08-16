@@ -47,7 +47,9 @@ class TestPipelineHealthAPI:
     def test_requires_authentication(self, api_client: APIClient) -> None:
         response = api_client.get(PATH)
 
-        assert response.status_code == status.HTTP_403_FORBIDDEN
+        # With the global authenticators registered, an unauthenticated request
+        # to a protected endpoint raises NotAuthenticated -> 401 (not 403).
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
     def test_returns_heartbeats_when_no_snapshot_yet(
         self, api_client: APIClient, user
