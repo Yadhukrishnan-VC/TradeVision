@@ -1,4 +1,5 @@
 // RuleExecutions — GET /rule-engine/executions/.
+// ⚠ Body VERIFIED 2026-08-17: bare array; `id` unique (analysis_event_id repeats across rules).
 
 import { useFetch } from "@/hooks/useFetch";
 import { getRuleExecutions } from "@/api/rules";
@@ -9,7 +10,7 @@ import type { RuleExecution } from "@/types/rules";
 
 export function RuleExecutions() {
   const { data, state, error, refetch } = useFetch(getRuleExecutions);
-  const rows: RuleExecution[] = Array.isArray(data) ? data : data?.results || [];
+  const rows: RuleExecution[] = data || [];
 
   const columns: Column<RuleExecution>[] = [
     { key: "rule_id", header: "Rule ID", cell: (r) => <Chip tone="violet">{r.rule_id}</Chip>, sortAccessor: (r) => r.rule_id },
@@ -54,7 +55,7 @@ export function RuleExecutions() {
         ) : rows.length === 0 ? (
           <EmptyState title="No rule executions" />
         ) : (
-          <DataTable columns={columns} rows={rows} rowKey={(r) => r.analysis_event_id} initialSortKey="created_at" initialSortDir="desc" />
+          <DataTable columns={columns} rows={rows} rowKey={(r) => r.id} initialSortKey="created_at" initialSortDir="desc" />
         )}
       </Card>
     </div>

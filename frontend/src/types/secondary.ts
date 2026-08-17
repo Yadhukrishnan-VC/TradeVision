@@ -2,28 +2,54 @@
 // Per 08_GAPS_BLACKLIST_AND_ASSUMPTIONS.md: render documented fields; ignore unknowns;
 // show `--` for missing. Every interface here uses [key: string]: unknown for forward-compat.
 
-// ---- Journal ----
-export interface JournalEntry {
-  correlation_id: string;
-  entry_type?: string;
-  symbol?: string;
-  rule_id?: string;
-  severity?: string | null;
-  payload?: Record<string, unknown>;
-  notes?: string | null;
-  created_at?: string | null;
+// ---- Journal — VERIFIED against backend (2026-08-17) ----
+export interface JournalOrderEvent {
+  event_type: string;
+  event_id: string;
+  occurred_at: string;
+  payload: Record<string, unknown>;
   [key: string]: unknown;
 }
 
-// ---- Audit Log ----
+export interface JournalEntry {
+  correlation_id: string;
+  account_id: string;
+  signal_snapshot: {
+    symbol?: string;
+    signal_type?: string;
+    confidence?: number;
+    account_id?: string;
+    [key: string]: unknown;
+  } | null;
+  decision_snapshot: {
+    symbol?: string;
+    decision?: string;
+    quantity?: number;
+    account_id?: string;
+    [key: string]: unknown;
+  } | null;
+  order_events: JournalOrderEvent[] | null;
+  position_id: string | null;
+  outcome: "won" | "lost" | "breakeven" | null;
+  realized_pnl: string | null;
+  finalized: boolean;
+  finalized_at: string | null;
+  // ⚠ Snapshot dataclass has no created/updated timestamps — API always returns null.
+  created_at: string | null;
+  updated_at: string | null;
+  [key: string]: unknown;
+}
+
+// ---- Audit Log — VERIFIED against backend (2026-08-17) ----
 export interface AuditEntry {
   id: string;
-  actor?: string | null;
-  action?: string;
-  target_type?: string | null;
-  target_id?: string | null;
-  timestamp?: string | null;
-  details?: Record<string, unknown>;
+  actor: string; // "system" | "user" | "ai"
+  action: string;
+  target_type: string;
+  target_id: string;
+  metadata: Record<string, unknown>;
+  occurred_at: string;
+  created_at: string;
   [key: string]: unknown;
 }
 

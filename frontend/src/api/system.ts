@@ -4,8 +4,11 @@ import { apiGet, apiGetPaged } from "./client";
 import type { Paginated } from "@/types/common";
 import type { AuditEntry, JournalEntry, PipelineHealth } from "@/types/secondary";
 
-export function getJournalEntries(): Promise<Paginated<JournalEntry>> {
-  return apiGetPaged<JournalEntry>("/journal/entries/");
+// ⚠ Journal list returns a BARE array (not paginated) — VERIFIED 2026-08-17.
+// `account_id` is required by the backend (400 `missing_account_id` without it).
+export function getJournalEntries(accountId?: string): Promise<JournalEntry[]> {
+  const q = accountId ? `?account_id=${encodeURIComponent(accountId)}` : "";
+  return apiGet<JournalEntry[]>(`/journal/entries/${q}`);
 }
 
 export function getJournalEntry(correlationId: string): Promise<JournalEntry> {

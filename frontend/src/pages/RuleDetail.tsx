@@ -3,7 +3,7 @@
 import { useParams, Link } from "react-router-dom";
 import { useFetch } from "@/hooks/useFetch";
 import { getRuleConfig } from "@/api/rules";
-import { Card, Alert, Breadcrumbs, EmptyState, Chip, gateTone } from "@/components";
+import { Card, Alert, Breadcrumbs, EmptyState, Chip } from "@/components";
 
 export function RuleDetail() {
   const { ruleId } = useParams<{ ruleId: string }>();
@@ -33,29 +33,11 @@ export function RuleDetail() {
             </dl>
           </Card>
 
-          <Card title="ADR-029 validation gate" description="validated_regimes (RuleValidationService per regime)">
-            {Object.keys(data.validated_regimes || {}).length === 0 ? (
-              <EmptyState title="No validated regimes" description="This rule has not been validated against any regime yet." />
-            ) : (
-              <div className="overflow-x-auto tv-scrollbar">
-                <table className="min-w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-200 text-xs text-slate-500">
-                      <th className="px-3 py-2 text-left font-semibold">Regime</th>
-                      <th className="px-3 py-2 text-left font-semibold">Gate status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {Object.entries(data.validated_regimes).map(([regime, status]) => (
-                      <tr key={regime} className="border-b border-slate-100">
-                        <td className="px-3 py-2">{regime}</td>
-                        <td className="px-3 py-2"><Chip tone={gateTone(status)}>{status}</Chip></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+          <Card title="ADR-029 validation gate" description="validated_regimes is stored on the model but NOT serialized by the configs API">
+            <p className="text-sm text-slate-500">
+              — (not exposed). Gate statuses per regime are computed by RuleValidationService and
+              persisted in the DB; the configs endpoint does not return them.
+            </p>
           </Card>
 
           <Card title="Parameters" description="parameters (JSON)">

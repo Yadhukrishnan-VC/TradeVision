@@ -1,9 +1,9 @@
 // Rules — GET /rule-engine/configs/.
-// ⚠ Body NOT VERIFIED — may be paginated or bare list. RuleConfig fields VERIFIED.
+// ⚠ Body VERIFIED 2026-08-17: bare array. validated_regimes NOT exposed by the API.
 
 import { useFetch } from "@/hooks/useFetch";
 import { getRuleConfigs } from "@/api/rules";
-import { Card, Alert, EmptyState, Chip, gateTone } from "@/components";
+import { Card, Alert, EmptyState, Chip } from "@/components";
 import { DataTable, type Column } from "@/components/DataTable";
 import { useNavigate } from "react-router-dom";
 import type { RuleConfig } from "@/types/rules";
@@ -12,8 +12,7 @@ export function Rules() {
   const { data, state, error, refetch } = useFetch(getRuleConfigs);
   const navigate = useNavigate();
 
-  // Normalize: data may be an array or a paginated envelope.
-  const rows: RuleConfig[] = Array.isArray(data) ? data : data?.results || [];
+  const rows: RuleConfig[] = data || [];
 
   const columns: Column<RuleConfig>[] = [
     { key: "rule_id", header: "Rule ID", cell: (r) => <span className="font-medium">{r.rule_id}</span>, sortAccessor: (r) => r.rule_id },
@@ -32,7 +31,7 @@ export function Rules() {
     {
       key: "validated_regimes",
       header: "ADR-029 gate (regimes)",
-      cell: (r) => <RegimeChips regimes={r.validated_regimes} />,
+      cell: () => <span className="text-slate-400 text-xs">—</span>,
     },
     {
       key: "parameters",
@@ -53,9 +52,6 @@ export function Rules() {
           GET /rule-engine/configs/ · Read-only (no config-write contract exists)
         </p>
       </div>
-      <Alert tone="warning" title="⚠ Contract not verified">
-        Body shape not verified. May be paginated or bare list.
-      </Alert>
       {state === "error" && error && (
         <Alert tone="error" code={error.code} onRetry={refetch}>{error.message}</Alert>
       )}
@@ -75,25 +71,8 @@ export function Rules() {
         )}
       </Card>
       <p className="text-xs text-slate-500">
-        ADR-029 gate colors: <Chip tone="emerald">GO</Chip> <Chip tone="rose">NO_GO</Chip> <Chip tone="amber">INSUFFICIENT_DATA</Chip>
+        ADR-029 gate statuses (GO / NO_GO / INSUFFICIENT_DATA) are stored on the model but not exposed by the configs API — column shows —.
       </p>
-    </div>
-  );
-}
-
-function RegimeChips({ regimes }: { regimes: Record<string, string> }) {
-  const entries = Object.entries(regimes || {});
-  if (entries.length === 0) {
-    return <span className="text-xs text-slate-400">no regimes</span>;
-  }
-  return (
-    <div className="flex flex-wrap gap-1">
-      {entries.map(([regime, status]) => (
-        <span key={regime} className="inline-flex items-center gap-1">
-          <span className="text-[10px] text-slate-600">{regime}</span>
-          <Chip tone={gateTone(status)}>{status}</Chip>
-        </span>
-      ))}
     </div>
   );
 }
