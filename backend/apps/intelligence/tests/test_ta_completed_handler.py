@@ -5,6 +5,8 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from apps.eventbus.domain.events import DomainEvent
 from apps.intelligence.infrastructure.ta_completed_handler import (
     NEWS_MISSING_QUALITY_PENALTY,
@@ -14,7 +16,53 @@ from apps.intelligence.infrastructure.ta_completed_handler import (
     _optional_decimal,
     handle_ta_completed,
 )
-from core.events.event_types import NewsContext
+from core.events.event_types import (
+    AggregateSentiment,
+    MaterialityLevel,
+    NewsContext,
+    NewsItem,
+)
+
+
+class _EmptyNewsLookup:
+    """NewsContextService stand-in: a real lookup that finds no headlines."""
+
+    def build(self, symbol: str, *, as_of=None) -> tuple[NewsContext, bool]:
+        return NewsContext(), True
+
+
+class _PopulatedNewsLookup:
+    """NewsContextService stand-in: a lookup that finds headlines."""
+
+    def build(self, symbol: str, *, as_of=None) -> tuple[NewsContext, bool]:
+        context = NewsContext(
+            headlines=(
+                NewsItem(
+                    title="RELIANCE Q2 profit beats estimates",
+                    source="Reuters",
+                    sentiment=AggregateSentiment.POSITIVE,
+                    materiality=MaterialityLevel.LOW,
+                    age_minutes=5,
+                    url="https://example.com/news/1",
+                ),
+            ),
+            aggregate_sentiment=AggregateSentiment.POSITIVE,
+        )
+        return context, True
+
+
+@pytest.fixture(autouse=True)
+def _hermetic_news_lookup(monkeypatch) -> None:
+    """Keep news lookups deterministic (empty) across the module's tests.
+
+    The batch's bridge integration test overrides this per-test where a
+    populated news context is exercised.
+    """
+    from apps.intelligence.infrastructure import ta_completed_handler
+
+    monkeypatch.setattr(
+        ta_completed_handler, "get_news_context_service", lambda: _EmptyNewsLookup()
+    )
 
 
 class TestHandleTACompleted:
@@ -301,6 +349,28 @@ class TestHandleTACompleted:
         occurred_at = datetime(2026, 7, 28, 10, 0, 0, tzinfo=timezone.utc)
         packet = _build_packet(payload, occurred_at)
         assert packet.news_context == NewsContext()
+
+    def test_news_context_populated_when_lookup_finds_headlines(self) -> None:
+        from apps.intelligence.infrastructure import ta_completed_handler
+
+        ta_completed_handler.get_news_context_service = lambda: _PopulatedNewsLookup()
+
+        payload = {
+            "symbol": "RELIANCE",
+            "snapshot_id": "snap-news-4",
+            "exchange": "NSE",
+            "timeframe": "1D",
+            "snapshot_timestamp": "2026-07-28T10:00:00+00:00",
+            "indicators": {},
+            "price": {"close": "2500.00", "prev_close": "2450.00", "change_pct": "2.04"},
+        }
+        occurred_at = datetime(2026, 7, 28, 10, 0, 0, tzinfo=timezone.utc)
+        packet = _build_packet(payload, occurred_at)
+        assert "news" not in packet.data_quality.missing_sources
+        assert len(packet.news_context.headlines) == 1
+        assert packet.news_context.headlines[0].title == "RELIANCE Q2 profit beats estimates"
+        assert packet.news_context.aggregate_sentiment == AggregateSentiment.POSITIVE
+        assert packet.data_quality.quality_score == 1.0
 
     def test_quality_score_reflects_news_missing_penalty(self) -> None:
         payload = {

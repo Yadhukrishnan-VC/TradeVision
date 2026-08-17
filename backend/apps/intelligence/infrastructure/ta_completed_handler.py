@@ -10,9 +10,11 @@ from apps.eventbus.domain.events import DomainEvent
 from apps.eventbus.infrastructure.event_bus_factory import get_event_bus
 from apps.intelligence.models import PineOutput
 from apps.macro_context.application.macro_context_builder import get_context_builder
+from apps.news_feed.application.news_context_service import get_news_context_service
 from apps.technical_analysis.application.services import CANONICAL_FIELD_MAP
 from apps.technical_analysis.infrastructure.repositories import TASnapshotRepository
 from core.clock import get_clock
+from core.config import config
 from core.events.event_types import (
     BreadthContext,
     CircuitStatus,
@@ -241,6 +243,23 @@ def _build_macro_context() -> Any:
         return None
 
 
+def _build_news_context(symbol: str) -> tuple[NewsContext, bool]:
+    """Build the symbol's ``NewsContext`` from the ingested news store.
+
+    Returns ``(context, checked)``. ``checked=False`` means the lookup could
+    not run (kill-switched off, or the store is unavailable) — the caller must
+    keep ``missing: ["news"]`` as "never checked". A real lookup that finds
+    nothing also keeps the tag, per ADR-029 §5.
+    """
+    if not config.news_context_lookup_enabled:
+        return NewsContext(), False
+    try:
+        return get_news_context_service().build(symbol, as_of=get_clock().now())
+    except Exception as exc:
+        logger.warning("news_context_build_failed", extra={"symbol": symbol, "error": str(exc)})
+        return NewsContext(), False
+
+
 def _build_packet(payload: dict[str, Any], occurred_at: datetime) -> IntelligencePacket:
     symbol = payload.get("symbol", "UNKNOWN")
     indicators: dict[str, Any] = payload.get("indicators", {})
@@ -300,12 +319,15 @@ def _build_packet(payload: dict[str, Any], occurred_at: datetime) -> Intelligenc
         sensex_change_pct=_to_decimal(indicators.get("sensex_change_pct")) or Decimal("0"),
     )
 
-    # No real news source is wired up yet (the news_feed app is an intentionally
-    # empty scaffold pending NSE/BSE/Moneycontrol ToS review), so every packet
-    # assembled here uses the unchecked NewsContext() default. Tag that absence
-    # explicitly so "no news found" is distinguishable from "never checked".
+    # Real news lookup against the ingested news store (NEWS-FEED-1). The
+    # tag discipline: a lookup that never ran (kill-switch off or store
+    # error) AND a lookup that ran but found no headlines both keep
+    # ``missing: ["news"]`` — only a lookup that found headlines drops the
+    # tag and populates the packet (ADR-029 §5).
+    news_context, news_checked = _build_news_context(symbol)
     missing: list[str] = []
-    missing.append("news")
+    if not news_checked or not news_context.headlines:
+        missing.append("news")
     dq = DataQuality(
         quality_score=1.0 - (NEWS_MISSING_QUALITY_PENALTY * len(missing)),
         missing_sources=tuple(missing),
@@ -319,7 +341,7 @@ def _build_packet(payload: dict[str, Any], occurred_at: datetime) -> Intelligenc
         price_context=price_ctx,
         technical_context=tech_ctx,
         breadth_context=breadth_ctx,
-        news_context=NewsContext(),
+        news_context=news_context,
         macro_context=_build_macro_context(),
         data_quality=dq,
         regime=_detect_regime_value(indicators, price_data),

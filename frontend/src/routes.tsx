@@ -49,6 +49,7 @@ const BacktestDetail = lazy(() => import("@/pages/BacktestDetail").then((m) => (
 const WalkForward = lazy(() => import("@/pages/WalkForward").then((m) => ({ default: m.WalkForward })));
 const EdgeValidation = lazy(() => import("@/pages/EdgeValidation").then((m) => ({ default: m.EdgeValidation })));
 const CostSensitivity = lazy(() => import("@/pages/CostSensitivity").then((m) => ({ default: m.CostSensitivity })));
+const News = lazy(() => import("@/pages/News").then((m) => ({ default: m.News })));
 
 // Rules & Signals
 const Rules = lazy(() => import("@/pages/Rules").then((m) => ({ default: m.Rules })));
@@ -104,6 +105,7 @@ export function AppRoutes() {
       <Route path="/research/walk-forward" element={withShell(<Suspense fallback={<Loading />}><WalkForward /></Suspense>)} />
       <Route path="/research/edge-validation" element={withShell(<Suspense fallback={<Loading />}><EdgeValidation /></Suspense>)} />
       <Route path="/research/cost-sensitivity" element={withShell(<Suspense fallback={<Loading />}><CostSensitivity /></Suspense>)} />
+      <Route path="/news" element={withShell(<Suspense fallback={<Loading />}><News /></Suspense>)} />
 
       {/* Rules & Signals */}
       <Route path="/rules" element={withShell(<Suspense fallback={<Loading />}><Rules /></Suspense>)} />

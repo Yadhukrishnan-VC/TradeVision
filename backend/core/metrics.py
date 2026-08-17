@@ -251,3 +251,30 @@ MACRO_PROVIDER_LATENCY_SECONDS = Histogram(
     ["series_id"],
     buckets=(0.1, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0, 60.0),
 )
+
+# ---------------------------------------------------------------------------
+# NEWS-FEED-1 — licensed news provider ingestion
+# ---------------------------------------------------------------------------
+
+NEWS_INGESTED_TOTAL = Counter(
+    "tradevision_news_ingested_total",
+    "News items inserted per primary symbol and source",
+    ["symbol", "source"],
+)
+
+NEWS_INGESTION_ERRORS_TOTAL = Counter(
+    "tradevision_news_ingestion_errors_total",
+    "News ingestion errors per error type",
+    ["error_type"],  # error_type: provider
+)
+
+NEWS_PROVIDER_LATENCY_SECONDS = Histogram(
+    "tradevision_news_provider_latency_seconds",
+    "News provider fetch latency in seconds",
+    buckets=(0.1, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0),
+)
+
+NEWS_RATE_LIMIT_EXHAUSTED_TOTAL = Counter(
+    "tradevision_news_rate_limit_exhausted_total",
+    "Times the daily provider budget was exhausted (fetch skipped)",
+)

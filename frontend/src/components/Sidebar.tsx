@@ -12,6 +12,7 @@ import {
   ListChecks,
   type LucideIcon,
   MemoryStick,
+  Newspaper,
   PieChart,
   Radio,
   ScrollText,
@@ -65,6 +66,7 @@ const SECTIONS: NavSection[] = [
       { to: "/research/walk-forward", label: "Walk-Forward", icon: Activity },
       { to: "/research/edge-validation", label: "Edge Validation", icon: AlertTriangle },
       { to: "/research/cost-sensitivity", label: "Cost Sensitivity", icon: AlertTriangle },
+      { to: "/news", label: "News", icon: Newspaper },
     ],
   },
   {

@@ -14,14 +14,44 @@ from apps.intelligence.infrastructure.trading_signal_bridge import (
     handle_signal_created,
 )
 from core.events.event_types import (
+    AggregateSentiment,
     BreadthContext,
     CircuitStatus,
     DataQuality,
     IntelligencePacket,
+    MaterialityLevel,
     NewsContext,
+    NewsItem,
     PriceContext,
     TechnicalContext,
 )
+
+
+class _EmptyNewsLookup:
+    """NewsContextService stand-in: a real lookup that finds no headlines."""
+
+    def build(self, symbol: str, *, as_of=None) -> tuple[NewsContext, bool]:
+        return NewsContext(), True
+
+
+class _PopulatedNewsLookup:
+    """NewsContextService stand-in: a lookup that finds headlines."""
+
+    def build(self, symbol: str, *, as_of=None) -> tuple[NewsContext, bool]:
+        context = NewsContext(
+            headlines=(
+                NewsItem(
+                    title="RELIANCE Q2 profit beats estimates",
+                    source="Reuters",
+                    sentiment=AggregateSentiment.POSITIVE,
+                    materiality=MaterialityLevel.LOW,
+                    age_minutes=5,
+                    url="https://example.com/news/1",
+                ),
+            ),
+            aggregate_sentiment=AggregateSentiment.POSITIVE,
+        )
+        return context, True
 
 
 class TestTradingSignalBridge:
@@ -88,6 +118,10 @@ class TestTradingSignalBridge:
             patch("apps.intelligence.infrastructure.trading_signal_bridge.PineOutput.objects.filter") as mock_pine_filter,
             patch("apps.intelligence.infrastructure.trading_signal_bridge.get_event_bus") as mock_get_bus,
             patch("apps.intelligence.infrastructure.trading_signal_bridge.MarketContextCache") as mock_cache_cls,
+            patch(
+                "apps.intelligence.infrastructure.trading_signal_bridge.get_news_context_service",
+                return_value=_EmptyNewsLookup(),
+            ),
         ):
             mock_repo = MagicMock()
             mock_snapshot = MagicMock()
@@ -149,6 +183,10 @@ class TestTradingSignalBridge:
             patch("apps.intelligence.infrastructure.trading_signal_bridge.PineOutput.objects.filter") as mock_pine_filter,
             patch("apps.intelligence.infrastructure.trading_signal_bridge.get_event_bus") as mock_get_bus,
             patch("apps.intelligence.infrastructure.trading_signal_bridge.MarketContextCache") as mock_cache_cls,
+            patch(
+                "apps.intelligence.infrastructure.trading_signal_bridge.get_news_context_service",
+                return_value=_EmptyNewsLookup(),
+            ),
         ):
             mock_repo = MagicMock()
             mock_snapshot = MagicMock()
@@ -192,6 +230,10 @@ class TestTradingSignalBridge:
             patch("apps.intelligence.infrastructure.trading_signal_bridge.PineOutput.objects.filter") as mock_pine_filter,
             patch("apps.intelligence.infrastructure.trading_signal_bridge.get_event_bus") as mock_get_bus,
             patch("apps.intelligence.infrastructure.trading_signal_bridge.MarketContextCache") as mock_cache_cls,
+            patch(
+                "apps.intelligence.infrastructure.trading_signal_bridge.get_news_context_service",
+                return_value=_EmptyNewsLookup(),
+            ),
         ):
             mock_repo = MagicMock()
             mock_snapshot = MagicMock()
@@ -241,6 +283,10 @@ class TestTradingSignalBridge:
             patch("apps.intelligence.infrastructure.trading_signal_bridge.get_event_bus") as mock_get_bus,
             patch("apps.intelligence.infrastructure.trading_signal_bridge.MarketContextCache") as mock_cache_cls,
             patch(
+                "apps.intelligence.infrastructure.trading_signal_bridge.get_news_context_service",
+                return_value=_EmptyNewsLookup(),
+            ),
+            patch(
                 "apps.intelligence.infrastructure.trading_signal_bridge.MarketContextService.build_signal_context",
                 side_effect=_fake_build_signal_context,
             ),
@@ -263,7 +309,7 @@ class TestTradingSignalBridge:
         assert "news" in packet.data_quality.missing_sources
 
     @override_settings(MARKET_CONTEXT_SCORING_ENABLED=True)
-    def test_news_context_remains_unchecked_default(self) -> None:
+    def test_news_context_default_when_lookup_finds_nothing(self) -> None:
         event = DomainEvent.create(
             event_type="signals.SignalCreated",
             payload={
@@ -286,6 +332,10 @@ class TestTradingSignalBridge:
             patch("apps.intelligence.infrastructure.trading_signal_bridge.PineOutput.objects.filter") as mock_pine_filter,
             patch("apps.intelligence.infrastructure.trading_signal_bridge.get_event_bus") as mock_get_bus,
             patch("apps.intelligence.infrastructure.trading_signal_bridge.MarketContextCache") as mock_cache_cls,
+            patch(
+                "apps.intelligence.infrastructure.trading_signal_bridge.get_news_context_service",
+                return_value=_EmptyNewsLookup(),
+            ),
             patch(
                 "apps.intelligence.infrastructure.trading_signal_bridge.MarketContextService.build_signal_context",
                 side_effect=_fake_build_signal_context,
@@ -333,6 +383,10 @@ class TestTradingSignalBridge:
             patch("apps.intelligence.infrastructure.trading_signal_bridge.get_event_bus") as mock_get_bus,
             patch("apps.intelligence.infrastructure.trading_signal_bridge.MarketContextCache") as mock_cache_cls,
             patch(
+                "apps.intelligence.infrastructure.trading_signal_bridge.get_news_context_service",
+                return_value=_EmptyNewsLookup(),
+            ),
+            patch(
                 "apps.intelligence.infrastructure.trading_signal_bridge.MarketContextService.build_signal_context",
                 side_effect=_fake_build_signal_context,
             ),
@@ -354,3 +408,57 @@ class TestTradingSignalBridge:
         assert isinstance(packet, IntelligencePacket)
         expected = 1.0 - (NEWS_MISSING_QUALITY_PENALTY * len(packet.data_quality.missing_sources))
         assert packet.data_quality.quality_score == expected
+
+    @override_settings(MARKET_CONTEXT_SCORING_ENABLED=True)
+    def test_news_context_populated_when_lookup_finds_headlines(self) -> None:
+        event = DomainEvent.create(
+            event_type="signals.SignalCreated",
+            payload={
+                "symbol": "RELIANCE",
+                "signal_id": str(uuid.uuid4()),
+                "direction": "BUY",
+                "confidence_hint": 0.85,
+            },
+            correlation_id=uuid.uuid4(),
+        )
+
+        captured: dict[str, object] = {}
+
+        def _fake_build_signal_context(symbol, packet, trading_signal):
+            captured["packet"] = packet
+            return MagicMock()
+
+        with (
+            patch("apps.intelligence.infrastructure.trading_signal_bridge.TASnapshotRepository") as mock_repo_cls,
+            patch("apps.intelligence.infrastructure.trading_signal_bridge.PineOutput.objects.filter") as mock_pine_filter,
+            patch("apps.intelligence.infrastructure.trading_signal_bridge.get_event_bus") as mock_get_bus,
+            patch("apps.intelligence.infrastructure.trading_signal_bridge.MarketContextCache") as mock_cache_cls,
+            patch(
+                "apps.intelligence.infrastructure.trading_signal_bridge.get_news_context_service",
+                return_value=_PopulatedNewsLookup(),
+            ),
+            patch(
+                "apps.intelligence.infrastructure.trading_signal_bridge.MarketContextService.build_signal_context",
+                side_effect=_fake_build_signal_context,
+            ),
+        ):
+            mock_repo = MagicMock()
+            mock_repo.find_by_symbol.return_value = []
+            mock_repo_cls.return_value = mock_repo
+
+            mock_pine_qs = MagicMock()
+            mock_pine_qs.order_by.return_value.first.return_value = None
+            mock_pine_filter.return_value = mock_pine_qs
+
+            mock_get_bus.return_value = MagicMock()
+            mock_cache_cls.return_value = MagicMock()
+
+            handle_signal_created(event)
+
+        packet = captured["packet"]
+        assert isinstance(packet, IntelligencePacket)
+        assert "news" not in packet.data_quality.missing_sources
+        assert len(packet.news_context.headlines) == 1
+        assert packet.news_context.headlines[0].title == "RELIANCE Q2 profit beats estimates"
+        assert packet.news_context.aggregate_sentiment == AggregateSentiment.POSITIVE
+        assert packet.data_quality.quality_score == 1.0
