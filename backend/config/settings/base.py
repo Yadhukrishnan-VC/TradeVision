@@ -622,6 +622,23 @@ ZERODHA_API_KEY: str = config("ZERODHA_API_KEY", default="")
 ZERODHA_ACCESS_TOKEN: str = config("ZERODHA_ACCESS_TOKEN", default="")
 
 # ---------------------------------------------------------------------------
+# Broker execution — LIVE-BROKER-EXECUTION-1 (Phase 1 of 3: sandbox only).
+#
+# BROKER_ADAPTER selects the execution broker behind the settings-driven
+# factory in apps.execution.infrastructure.brokers (paper | zerodha).
+# BROKER_ENVIRONMENT is validated at Django startup (apps.execution.checks):
+# Phase 1 ONLY supports `sandbox`; a `live` value fails startup until the
+# Phase 2 explicit unlock exists (see docs/adr/ADR-030-*.md). The zerodha
+# adapter falls back to the shared Kite sandbox demo app when the API
+# key/secret are empty in sandbox mode — no real money is ever at risk.
+# ---------------------------------------------------------------------------
+BROKER_ADAPTER: str = config("BROKER_ADAPTER", default="paper")
+BROKER_ENVIRONMENT: str = config("BROKER_ENVIRONMENT", default="sandbox")
+ZERODHA_API_SECRET: str = config("ZERODHA_API_SECRET", default="")
+ZERODHA_REQUEST_TOKEN: str = config("ZERODHA_REQUEST_TOKEN", default="")
+ZERODHA_PRODUCT: str = config("ZERODHA_PRODUCT", default="MIS")
+
+# ---------------------------------------------------------------------------
 # Batch B kill switches — all default False until verified
 # ---------------------------------------------------------------------------
 STRATEGY_REGISTRY_ENABLED: bool = config("STRATEGY_REGISTRY_ENABLED", default=False, cast=bool)

@@ -239,6 +239,52 @@ class TradeVisionConfig:
         return getattr(settings, "ZERODHA_ACCESS_TOKEN", "")
 
     # ---------------------------------------------------------------------------
+    # Broker execution — LIVE-BROKER-EXECUTION-1 (Phase 1 of 3: sandbox only)
+    # ---------------------------------------------------------------------------
+
+    @property
+    def broker_adapter(self) -> str:
+        """Active execution broker adapter name (``paper`` | ``zerodha``)."""
+        from django.conf import settings
+
+        return getattr(settings, "BROKER_ADAPTER", "paper").lower()
+
+    @property
+    def broker_environment(self) -> str:
+        """Broker environment (``sandbox`` | ``live``).
+
+        Phase 1 (LIVE-BROKER-EXECUTION-1) only reaches ``sandbox``; a
+        configured ``live`` value fails Django startup via the execution
+        checks until the Phase 2 explicit unlock exists (ADR-030).
+        """
+        from django.conf import settings
+
+        return getattr(settings, "BROKER_ENVIRONMENT", "sandbox").lower()
+
+    @property
+    def zerodha_api_secret(self) -> str:
+        """Zerodha Kite Connect API secret (sandbox default is applied by the
+        adapter when empty)."""
+        from django.conf import settings
+
+        return getattr(settings, "ZERODHA_API_SECRET", "")
+
+    @property
+    def zerodha_request_token(self) -> str:
+        """Single-use Kite request token obtained out-of-band via the login
+        flow; exchanged for an access token by the adapter when set."""
+        from django.conf import settings
+
+        return getattr(settings, "ZERODHA_REQUEST_TOKEN", "")
+
+    @property
+    def zerodha_product(self) -> str:
+        """Kite product code used for execution orders (e.g. ``MIS``)."""
+        from django.conf import settings
+
+        return getattr(settings, "ZERODHA_PRODUCT", "MIS")
+
+    # ---------------------------------------------------------------------------
     # Batch M4 — REST polling bridge
     # ---------------------------------------------------------------------------
 
