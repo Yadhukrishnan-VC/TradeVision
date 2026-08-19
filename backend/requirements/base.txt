@@ -30,3 +30,11 @@ channels==4.3.2
 channels-redis==4.3.0
 Jinja2==3.1.6
 requests==2.34.2
+
+# ---------------------------------------------------------------------------
+# ASGI server — the backend container runs `daphne config.asgi:application`
+# (infra/docker/backend/Dockerfile.dev CMD + infra/docker-compose.yml), and
+# the entrypoint `exec`s it. Declared here so a fresh image build can boot;
+# previously only channels was present and daphne was never installed.
+# ---------------------------------------------------------------------------
+daphne==4.1.2

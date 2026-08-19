@@ -302,19 +302,25 @@ CELERY_TASK_ROUTES = {
     "apps.pipeline_health.infrastructure.tasks.evaluate_pipeline_health": {"queue": "maintenance"},
 }
 
+# Declared as kombu.Queue objects (not bare strings): celery 5.6+ builds
+# app.amqp.queues from this setting via `{q.name: q for q in queues}` and
+# crashes on plain strings when a worker is started with --queues. Queue
+# objects are also the documented form of the task_queues setting.
+from kombu import Queue as _KombuQueue  # noqa: E402
+
 CELERY_TASK_QUEUES = [
-    "webhooks",
-    "signals",
-    "analysis",
-    "ai_reasoning",
-    "decisions",
-    "execution",
-    "monitoring",
-    "portfolio",
-    "analytics",
-    "notifications",
-    "maintenance",
-    "market_data",
+    _KombuQueue("webhooks"),
+    _KombuQueue("signals"),
+    _KombuQueue("analysis"),
+    _KombuQueue("ai_reasoning"),
+    _KombuQueue("decisions"),
+    _KombuQueue("execution"),
+    _KombuQueue("monitoring"),
+    _KombuQueue("portfolio"),
+    _KombuQueue("analytics"),
+    _KombuQueue("notifications"),
+    _KombuQueue("maintenance"),
+    _KombuQueue("market_data"),
 ]
 
 # ---------------------------------------------------------------------------

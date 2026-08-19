@@ -4,7 +4,7 @@ services:
   # ---------------------------------------------------------------------------
   backend:
     volumes:
-      - ./backend:/app
+      - ../backend:/app
       - static-files:/app/staticfiles
       - media-files:/app/mediafiles
     environment:
@@ -17,25 +17,25 @@ services:
   # ---------------------------------------------------------------------------
   celery-worker-market:
     volumes:
-      - ./backend:/app
+      - ../backend:/app
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.development
 
   celery-worker-ai:
     volumes:
-      - ./backend:/app
+      - ../backend:/app
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.development
 
   celery-worker-default:
     volumes:
-      - ./backend:/app
+      - ../backend:/app
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.development
 
   celery-beat:
     volumes:
-      - ./backend:/app
+      - ../backend:/app
     environment:
       DJANGO_SETTINGS_MODULE: config.settings.development
 
@@ -44,7 +44,7 @@ services:
   # ---------------------------------------------------------------------------
   frontend:
     volumes:
-      - ./frontend:/app
+      - ../frontend:/app
       # Preserve node_modules inside the container (not overwritten by host mount)
       - /app/node_modules
     ports:
@@ -88,9 +88,30 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:5555/healthcheck 2>/dev/null | grep -q ok || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5555/healthcheck 2>/dev/null | grep -qi ok || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 30s
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------------------
+  # Adminer — lightweight web DB client for the development Postgres (dev only,
+  # not in prod). Login at http://localhost:8080: server=postgres, user=POSTGRES_USER,
+  # password=POSTGRES_PASSWORD, database=POSTGRES_DB (defaults from infra/.env).
+  # ---------------------------------------------------------------------------
+  adminer:
+    image: adminer:4
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+      ADMINER_DEFAULT_USER: ${POSTGRES_USER:-tradevision}
+      ADMINER_DEFAULT_PASSWORD: ${POSTGRES_PASSWORD:-tradevision_password}
+      ADMINER_DEFAULT_DB: ${POSTGRES_DB:-tradevision_db}
+    ports:
+      - "8080:8080"
+    networks:
+      - data
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped

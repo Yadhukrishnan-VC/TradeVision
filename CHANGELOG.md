@@ -6,6 +6,27 @@ All notable changes to TradeVision AI will be documented in this file.
 
 ## [Unreleased]
 
+### Local Bring-Up Fixes (2026-08-19)
+
+**Fixed (the full Docker stack now comes up healthy end-to-end):**
+- **PgBouncer unavailable image**: `bitnami/pgbouncer:1.23.1` no longer exists on Docker Hub; swapped to the maintained `edoburu/pgbouncer` image (same transaction pooling; `DATABASE_URL`-driven config; `psql`-based health check) in `infra/docker-compose.yml`
+- **Dev overlay source mounts**: `./backend:/app` / `./frontend:/app` in `infra/docker-compose.dev.yml` resolved to empty `infra/backend` / `infra/frontend` — now `../backend` / `../frontend`, so hot-reload mounts the real source
+- **Daphne never installed**: the backend container runs `daphne config.asgi:application` but no requirement declared it — added `daphne==4.1.2` to `backend/requirements/base.txt`
+- **Celery worker crash on startup**: `CELERY_TASK_QUEUES` was a list of bare strings; celery 5.6.x builds `app.amqp.queues` via `{q.name: q for q in queues}` and crashes once a worker starts with `--queues` — converted to `kombu.Queue` objects in `config/settings/base.py`
+- **Worker health checks**: targeted `celery@$HOSTNAME` but workers run as `worker-market@<host>` — now `inspect ping` without a node filter
+- **Nginx health check**: `http://localhost/nginx-health` resolved to IPv6 `::1` (connection refused) — now `127.0.0.1`
+- **Flower health check**: endpoint returns `OK` but the probe grepped for lowercase `ok` — now case-insensitive
+
+**Added:**
+- Dev-only **Adminer** service (`infra/docker-compose.dev.yml`) at `http://localhost:8080` (server `postgres`, credentials from `infra/.env`) for browser access to the Postgres database
+- Dev DB renamed to `tradevision_dev_db` in `infra/.env` to satisfy the `config.E002` dev-DB naming convention (documented in README)
+
+**Docs:** README blocker note updated — the full stack now comes up cleanly; `seed_admin` TypeError and `makemigrations --check` drift remain documented pre-existing issues
+
+---
+
+## [Unreleased]
+
 ### Risk Sophistication & Execution Realism (2026-08-19)
 
 **Added:**

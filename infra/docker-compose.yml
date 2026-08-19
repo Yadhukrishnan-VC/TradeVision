@@ -23,32 +23,28 @@ services:
     restart: unless-stopped
 
   pgbouncer:
-    image: bitnami/pgbouncer:1.23.1
+    image: edoburu/pgbouncer:latest
     environment:
-      POSTGRESQL_HOST: postgres
-      POSTGRESQL_PORT: 5432
-      POSTGRESQL_DATABASE: ${POSTGRES_DB}
-      POSTGRESQL_USERNAME: ${POSTGRES_USER}
-      POSTGRESQL_PASSWORD: ${POSTGRES_PASSWORD}
-      PGBOUNCER_DATABASE: ${POSTGRES_DB}
-      PGBOUNCER_POOL_MODE: transaction
-      PGBOUNCER_PORT: 6432
-      PGBOUNCER_MAX_CLIENT_CONN: 200
-      PGBOUNCER_DEFAULT_POOL_SIZE: 20
-      PGBOUNCER_MIN_POOL_SIZE: 5
-      PGBOUNCER_RESERVE_POOL_SIZE: 10
-      PGBOUNCER_STATS_USERS: ${POSTGRES_USER}
-      PGBOUNCER_AUTH_TYPE: scram-sha-256
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      AUTH_TYPE: scram-sha-256
+      POOL_MODE: transaction
+      LISTEN_PORT: 6432
+      MAX_CLIENT_CONN: 200
+      DEFAULT_POOL_SIZE: 20
+      MIN_POOL_SIZE: 5
+      RESERVE_POOL_SIZE: 10
+      STATS_USERS: ${POSTGRES_USER}
+      ADMIN_USERS: ${POSTGRES_USER}
     networks:
       - data
       - app
     depends_on:
       postgres:
         condition: service_healthy
-    # TCP probe — pgbouncer is a proxy; a successful TCP connection is the
-    # correct health signal. psql/pg_isready may not be in the image.
+    # psql-based probe — this image is Alpine (no bash), so the TCP probe used
+    # with the old bitnami image is not available here.
     healthcheck:
-      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/6432' 2>/dev/null && echo ok || exit 1"]
+      test: ["CMD-SHELL", "PGPASSWORD=${POSTGRES_PASSWORD} psql -h 127.0.0.1 -p 6432 -U ${POSTGRES_USER} -d ${POSTGRES_DB} -w -c 'SELECT 1' >/dev/null 2>&1 || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -126,7 +122,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "celery -A config.celery inspect ping -d celery@$$HOSTNAME --timeout 5 2>&1 | grep -q pong || exit 1"]
+      test: ["CMD-SHELL", "celery -A config.celery inspect ping --timeout 5 2>&1 | grep -q pong || exit 1"]
       interval: 60s
       timeout: 30s
       retries: 3
@@ -158,7 +154,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "celery -A config.celery inspect ping -d celery@$$HOSTNAME --timeout 5 2>&1 | grep -q pong || exit 1"]
+      test: ["CMD-SHELL", "celery -A config.celery inspect ping --timeout 5 2>&1 | grep -q pong || exit 1"]
       interval: 60s
       timeout: 30s
       retries: 3
@@ -190,7 +186,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "celery -A config.celery inspect ping -d celery@$$HOSTNAME --timeout 5 2>&1 | grep -q pong || exit 1"]
+      test: ["CMD-SHELL", "celery -A config.celery inspect ping --timeout 5 2>&1 | grep -q pong || exit 1"]
       interval: 60s
       timeout: 30s
       retries: 3
@@ -272,7 +268,7 @@ services:
       - backend
       - frontend
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost/nginx-health 2>/dev/null | grep -q healthy || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/nginx-health 2>/dev/null | grep -q healthy || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3

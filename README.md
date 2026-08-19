@@ -75,15 +75,21 @@ docker compose -f infra/docker-compose.yml -f infra/docker-compose.dev.yml up -d
   infra/docker-compose.dev.yml down` (add `-v` to also remove the
   Postgres/Redis data volumes).
 
-> **Known blocker — PgBouncer image is unavailable.**
-> The `pgbouncer` service pins `bitnami/pgbouncer:1.23.1`. Bitnami
-> migrated these images off Docker Hub and the tag no longer resolves
-> (`pull` returns "not found", as does every other `bitnami/pgbouncer`
-> tag including `latest`). The full stack therefore does **not** come up
-> cleanly in its current form. This is a pre-existing infrastructure bug
-> and is out of scope for this onboarding documentation to fix. See
-> [Findings](#findings). The data tier (Postgres + Redis) and the host
-> test suite are unaffected.
+> **Fixed — PgBouncer image was unavailable.**
+> The `pgbouncer` service previously pinned `bitnami/pgbouncer:1.23.1`,
+> which Bitnami migrated off Docker Hub (the tag no longer resolves). The
+> service now uses the maintained `edoburu/pgbouncer` image with the same
+> transaction-pooling configuration and a `psql`-based health check, so the
+> full stack comes up cleanly. Supporting fixes landed in the same pass:
+> the dev overlay's source mounts now point at `../backend`/`../frontend`
+> (they silently resolved to empty `infra/backend`/`infra/frontend`), `daphne`
+> is declared in `requirements/base.txt` (the container runs it but never
+> installed it), `CELERY_TASK_QUEUES` uses `kombu.Queue` objects (celery
+> 5.6 crashes on a bare string list once a worker starts with `--queues`),
+> the worker/nginx/flower health checks were corrected, and the dev DB is
+> named `tradevision_dev_db` to satisfy the `config.E002` dev-DB naming rule.
+> A dev-only Adminer service is available at `http://localhost:8080`
+> (server `postgres`, user/password/db from `infra/.env`).
 
 ## 3. Health checks
 
@@ -215,18 +221,15 @@ entirely unless you are actively working on live-market integration.
 
 ## Findings
 
-Pre-existing issues discovered while verifying local development (not
-fixed — out of scope for documentation):
+Issues discovered while verifying local development:
 
-1. **PgBouncer image unavailable (blocks full stack).**
-   `infra/docker-compose.yml` pins `bitnami/pgbouncer:1.23.1`, which no
-   longer resolves on Docker Hub (the whole `bitnami/pgbouncer`
-   repository is gone). `docker compose up` fails at the `pgbouncer`
-   service. Postgres, Redis, the backend image build, and the host test
-   suite are unaffected.
+1. **PgBouncer image unavailable — FIXED.** `bitnami/pgbouncer:1.23.1`
+   no longer resolves on Docker Hub; the service now uses
+   `edoburu/pgbouncer` (see the note in [section 2](#2-bring-up-the-stack)).
 2. **`seed_admin` management command raises `TypeError`.**
    `create_superuser` is called without `username`; the custom
    `accounts.User` uses Django's default `UserManager` which requires it.
+   Use `manage.py createsuperuser --username ...` instead.
 3. **`makemigrations --check` reports drift** in pre-existing apps
    (`rule_engine`, `signals_engine`, `trader_memory`). Unrelated to local
    setup and pre-existing.
