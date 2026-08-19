@@ -1,0 +1,4 @@
+symbol,expected_days,actual_days,coverage_pct,gap_count,zero_volume_days,ohlc_errors,date_range,is_sufficient
+RELIANCE,735,762,103.67,42,5,0,2023-07-21 to 2026-08-18,True
+TCS,735,762,103.67,42,5,0,2023-07-21 to 2026-08-18,True
+INFY,735,762,103.67,42,5,0,2023-07-21 to 2026-08-18,True

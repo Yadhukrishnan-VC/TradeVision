@@ -153,3 +153,88 @@ class Candle(TimestampedModel):
 
     def __str__(self) -> str:
         return f"Candle({self.instrument_id}, {self.timeframe}, {self.timestamp})"
+
+
+class SyncRun(TimestampedModel):
+    """Audit model for tracking historical data backfill/sync runs.
+
+    Each run records the source (zerodha, csv, yfinance), symbol, timeframe,
+    date range, rows written, and status. This enables querying and auditing
+    of all data ingestion operations.
+    """
+
+    class Status(models.TextChoices):
+        PENDING = "PENDING", "Pending"
+        RUNNING = "RUNNING", "Running"
+        COMPLETED = "COMPLETED", "Completed"
+        FAILED = "FAILED", "Failed"
+        PARTIAL = "PARTIAL", "Partial"
+
+    class Source(models.TextChoices):
+        ZERODHA = "zerodha", "Zerodha Kite Connect"
+        CSV = "csv", "CSV Import"
+        YFINANCE = "yfinance", "yfinance"
+
+    id = models.BigAutoField(primary_key=True)
+    source = models.CharField(
+        max_length=20,
+        choices=Source.choices,
+        db_index=True,
+        help_text="Data source for this sync run.",
+    )
+    symbol = models.CharField(
+        max_length=100,
+        db_index=True,
+        help_text="Trading symbol (e.g. RELIANCE).",
+    )
+    timeframe = models.CharField(
+        max_length=10,
+        db_index=True,
+        help_text="Aggregation interval (e.g. 1D, 1min).",
+    )
+    range_start = models.DateTimeField(
+        db_index=True,
+        help_text="Start of the date range (UTC).",
+    )
+    range_end = models.DateTimeField(
+        db_index=True,
+        help_text="End of the date range (UTC).",
+    )
+    rows_written = models.IntegerField(
+        default=0,
+        help_text="Number of candle rows written/updated.",
+    )
+    started_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text="When the sync run started.",
+    )
+    finished_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When the sync run finished.",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDING,
+        db_index=True,
+        help_text="Current status of the sync run.",
+    )
+    error_message = models.TextField(
+        blank=True,
+        default="",
+        help_text="Error message if the run failed.",
+    )
+
+    class Meta:
+        app_label = "market_data"
+        db_table = "market_data_syncrun"
+        verbose_name = "Sync Run"
+        verbose_name_plural = "Sync Runs"
+        indexes = [
+            models.Index(fields=["source", "symbol", "timeframe"], name="idx_syncrun_source_symbol_tf"),
+            models.Index(fields=["status", "started_at"], name="idx_syncrun_status_started"),
+        ]
+
+    def __str__(self) -> str:
+        return f"SyncRun({self.source}, {self.symbol}, {self.timeframe}, {self.status})"
