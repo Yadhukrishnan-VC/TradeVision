@@ -53,6 +53,22 @@ All notable changes to TradeVision AI will be documented in this file.
 **Remaining risks (documented):** final-bar close flush (end-of-sample liquidation convention), `price_source` wall-clock/sim-time `ValueError` (logged+swallowed), hardcoded 1M exposure cap, `order.created_at` stays wall-clock audit-only
 
 
+### Live/Paper Trading Readiness (2026-08-19)
+
+**Added:**
+- `requirements/base.txt` now declares the seven runtime deps restored by the remediation batch (exact pins: `django-prometheus==2.4.0`, `python-decouple==3.8`, `structlog==24.4.0`, `channels==4.3.2`, `channels-redis==4.3.0`, `Jinja2==3.1.6`, `requests==2.34.2`) with constraint comments — a fresh rebuild from requirements only now yields a working venv (`pip check` clean, `manage.py check` passes, zero manual installs). Fresh-rebuild transitive resolution moved celery/django-celery-*/Faker/django-stubs to newer allowed versions; full suite unchanged
+- `manage.py backfill_historical` — operator CLI wrapping `HistoricalSyncService.backfill` unchanged: `--provider/--symbols/--tokens/--timeframe/--from/--to/--days/--dry-run`; dry-run fetches and reports counts without persisting, real run persists via the service; per-instrument failure isolation + summary + exit 1 on any failure. Verified dry-run (2×2 bars, nothing persisted) and real run (10 candles persisted) against the sandbox DB with the `paper` provider
+- Startup system check `config.E001`/`config.E002` (registered via `apps/common/apps.py` `ready()`): fails loud when a live settings module (`prod`/`staging`) points at a DB whose name carries a `test` marker, or a dev settings module points at a DB with no `test`/`dev` marker; word-boundary marker matching (`dev` ≠ substring of `tradevision`); pytest harness settings exempt. Verified both directions fire and compliant pairs pass
+- `manage.py rule_gate_report` — per-rule × per-regime ADR-029 §4 gate visibility (`GO`/`NO_GO`/`INSUFFICIENT_DATA`/`NOT_VALIDATED`/`DISABLED`/`NO_CONFIG`), mirroring `_filter_by_gate` reasons; `--regime` filter, `--verbose` payloads; all verdict classes demonstrated against seeded configs
+- Regression tests (16): `config/tests/test_env_db_separation_check.py` (both directions + pass cases + substring guard + harness exemption), `apps/market_data/tests/unit/test_backfill_historical_command.py` (dry-run persists nothing, real run persists, unknown-symbol failure, `--from`/`--days` exclusivity), `apps/rule_engine/tests/unit/test_rule_gate_report_command.py` (all verdict rows + fireable counts)
+- `docs/LIVE_READINESS_BLOCKERS.md` — before/after per task, rebuild proof, dry-run/real-run and check outputs, gate report output, consequences
+
+**Changed:**
+- Dev DB convention: `manage.py` runs now require a DB name carrying a `test`/`dev` token (e.g. `POSTGRES_DB=tradevision_test`; already the value in `backend/.env`). `infra/docker-compose.yml` default `POSTGRES_DB=tradevision_db` now trips `config.E002` under dev settings — compose operators must use a `*_dev*`/`*_test*` name (documented, not fixed)
+
+**Findings:** CI check unaffected (harness settings exempt); no schema changes (`makemigrations --check` clean); pre-existing 34 failed / 15 errors unchanged
+
+
 ### Remediation Batch — Environment & Runtime (2026-08-19)
 
 **Fixed:**

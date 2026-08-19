@@ -14,3 +14,19 @@ cryptography>=43.0,<44
 pydantic>=2.9,<3
 gunicorn>=22.0,<23
 httpx>=0.27,<0.28
+
+# ---------------------------------------------------------------------------
+# Runtime dependencies imported by application code but previously declared in
+# NO requirements file (they had to be hand-installed into the local venv).
+# Pinned to the versions the codebase was validated against. Keep pinned:
+#   - django-prometheus 2.5.0+ requires Django!=5.0.*,<6.1 (excludes the pinned
+#     Django 5.0.x line), so it must stay on <2.5.
+#   - requests is imported by the zerodha/chartink/fred/marketaux providers.
+# ---------------------------------------------------------------------------
+django-prometheus==2.4.0
+python-decouple==3.8
+structlog==24.4.0
+channels==4.3.2
+channels-redis==4.3.0
+Jinja2==3.1.6
+requests==2.34.2
