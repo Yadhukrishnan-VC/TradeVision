@@ -4,6 +4,20 @@
 
 :root {
   color-scheme: light;
+  --tv-chart-grid: #f1f5f9; /* slate-100 */
+  --tv-chart-tick: #64748b; /* slate-500 */
+  --tv-chart-tooltip-bg: #ffffff;
+  --tv-chart-tooltip-border: #e2e8f0; /* slate-200 */
+  --tv-chart-tooltip-text: #1e293b; /* slate-800 */
+}
+
+.dark {
+  color-scheme: dark;
+  --tv-chart-grid: #1e293b; /* slate-800 */
+  --tv-chart-tick: #94a3b8; /* slate-400 */
+  --tv-chart-tooltip-bg: #0f172a; /* slate-900 */
+  --tv-chart-tooltip-border: #334155; /* slate-700 */
+  --tv-chart-tooltip-text: #e2e8f0; /* slate-200 */
 }
 
 html,
@@ -13,7 +27,7 @@ body,
 }
 
 body {
-  @apply bg-slate-50 text-slate-900 antialiased;
+  @apply bg-slate-50 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
     Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
 }
@@ -25,7 +39,7 @@ body {
 
 /* focus ring */
 *:focus-visible {
-  @apply outline-none ring-2 ring-indigo-500 ring-offset-2 ring-offset-white;
+  @apply outline-none ring-2 ring-indigo-500 ring-offset-2 ring-offset-white dark:ring-offset-slate-950;
 }
 
 /* custom scrollbar for long lists */
@@ -40,8 +54,14 @@ body {
   background: rgb(203 213 225); /* slate-300 */
   border-radius: 4px;
 }
+.dark .tv-scrollbar::-webkit-scrollbar-thumb {
+  background: rgb(51 65 85); /* slate-700 */
+}
 .tv-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgb(148 163 184); /* slate-400 */
+}
+.dark .tv-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgb(71 85 105); /* slate-600 */
 }
 
 /* Standard form input look (kept utility-class-only, not a Tailwind plugin). */
@@ -49,7 +69,11 @@ body {
   @apply w-full px-3 py-2 text-sm border border-slate-300 rounded-md bg-white text-slate-900 outline-none transition-colors;
   @apply focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500;
   @apply disabled:bg-slate-100 disabled:cursor-not-allowed;
+  @apply dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:disabled:bg-slate-900;
 }
 .tv-input::placeholder {
   color: rgb(148 163 184); /* slate-400 */
+}
+.dark .tv-input::placeholder {
+  color: rgb(100 116 139); /* slate-500 */
 }

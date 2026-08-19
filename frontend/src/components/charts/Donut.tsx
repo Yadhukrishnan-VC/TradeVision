@@ -52,7 +52,7 @@ export function Donut({ data, height = 240, centerLabel, centerValue }: DonutPro
             ))}
           </Pie>
           <Tooltip
-            contentStyle={{ fontSize: 11, border: "1px solid #e2e8f0", borderRadius: 6 }}
+            contentStyle={{ fontSize: 11, border: "1px solid var(--tv-chart-tooltip-border)", borderRadius: 6 }}
             formatter={(v: number, n: string) => [
               `${v.toLocaleString("en-IN", { maximumFractionDigits: 2 })} (${((v / total) * 100).toFixed(1)}%)`,
               n,

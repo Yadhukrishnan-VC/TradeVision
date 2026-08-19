@@ -18,7 +18,7 @@ export function RuleExecutions() {
     {
       key: "severity",
       header: "Severity",
-      cell: (r) => r.severity ? <Chip tone={r.severity === "CRITICAL" ? "rose" : r.severity === "HIGH" ? "amber" : "slate"}>{r.severity}</Chip> : <span className="text-slate-400">—</span>,
+      cell: (r) => r.severity ? <Chip tone={r.severity === "CRITICAL" ? "rose" : r.severity === "HIGH" ? "amber" : "slate"}>{r.severity}</Chip> : <span className="text-slate-400 dark:text-slate-500">—</span>,
       sortAccessor: (r) => r.severity || "",
     },
     {
@@ -26,14 +26,14 @@ export function RuleExecutions() {
       header: "Regime",
       cell: (r) => {
         const regime = (r.trigger_data?.regime) as string | undefined;
-        return regime ? <Chip tone="slate">{regime}</Chip> : <span className="text-slate-400">—</span>;
+        return regime ? <Chip tone="slate">{regime}</Chip> : <span className="text-slate-400 dark:text-slate-500">—</span>;
       },
       sortAccessor: (r) => (r.trigger_data?.regime as string) || "",
     },
     {
       key: "analysis_event_id",
       header: "Analysis event",
-      cell: (r) => <code className="text-[10px] text-slate-500">{r.analysis_event_id.slice(0, 8)}</code>,
+      cell: (r) => <code className="text-[10px] text-slate-500 dark:text-slate-400">{r.analysis_event_id.slice(0, 8)}</code>,
       sortAccessor: (r) => r.analysis_event_id,
     },
     { key: "created_at", header: "Time", cell: (r) => fmtDateTime(r.created_at), sortAccessor: (r) => r.created_at || "" },
@@ -42,8 +42,8 @@ export function RuleExecutions() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Rule Executions</h1>
-        <p className="text-sm text-slate-500 mt-1">GET /rule-engine/executions/</p>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Rule Executions</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">GET /rule-engine/executions/</p>
       </div>
       <Alert tone="warning" title="⚠ Contract not verified">Body shape not verified.</Alert>
       {state === "error" && error && (

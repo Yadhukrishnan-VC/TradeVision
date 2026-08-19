@@ -33,7 +33,7 @@ export function AnalyticsPnlDaily() {
 
   return (
     <AnalyticsLayout title="Daily Rollup" description="GET /dashboard/accounts/:accountId/pnl/daily">
-      {state === "loading" && <Card><div className="h-24 bg-slate-100 rounded animate-pulse" /></Card>}
+      {state === "loading" && <Card><div className="h-24 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" /></Card>}
       {state === "error" && error && <Alert tone="error" code={error.code} onRetry={refetch}>{error.message}</Alert>}
       {state === "empty" && <Card><EmptyState title="No daily data" /></Card>}
       {state === "success" && data && (
@@ -52,7 +52,7 @@ export function AnalyticsPnlDaily() {
               <div className="overflow-x-auto tv-scrollbar max-h-96">
                 <table className="min-w-full text-sm">
                   <thead>
-                    <tr className="border-b border-slate-200 text-xs text-slate-500">
+                    <tr className="border-b border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
                       <th className="px-3 py-2 text-left font-semibold">Date</th>
                       <th className="px-3 py-2 text-right font-semibold">Realized</th>
                       <th className="px-3 py-2 text-right font-semibold">Total PnL</th>
@@ -61,11 +61,11 @@ export function AnalyticsPnlDaily() {
                   </thead>
                   <tbody>
                     {series.map((p, i) => (
-                      <tr key={i} className="border-b border-slate-100">
+                      <tr key={i} className="border-b border-slate-100 dark:border-slate-800">
                         <td className="px-3 py-2">{p.label}</td>
-                        <td className={`px-3 py-2 font-mono text-right tabular-nums ${(data[i].realized_pnl ? toNum(data[i].realized_pnl) : 0)! > 0 ? "text-emerald-600" : (data[i].realized_pnl ? toNum(data[i].realized_pnl) : 0)! < 0 ? "text-rose-600" : "text-slate-500"}`}>{fmt(toNum(data[i].realized_pnl))}</td>
-                        <td className={`px-3 py-2 font-mono text-right tabular-nums ${p.value! > 0 ? "text-emerald-600" : p.value! < 0 ? "text-rose-600" : "text-slate-500"}`}>{fmt(p.value)}</td>
-                        <td className={`px-3 py-2 font-mono text-right tabular-nums ${cumulative[i].value! > 0 ? "text-emerald-600" : cumulative[i].value! < 0 ? "text-rose-600" : "text-slate-500"}`}>{fmt(cumulative[i].value)}</td>
+                        <td className={`px-3 py-2 font-mono text-right tabular-nums ${(data[i].realized_pnl ? toNum(data[i].realized_pnl) : 0)! > 0 ? "text-emerald-600" : (data[i].realized_pnl ? toNum(data[i].realized_pnl) : 0)! < 0 ? "text-rose-600" : "text-slate-500 dark:text-slate-400"}`}>{fmt(toNum(data[i].realized_pnl))}</td>
+                        <td className={`px-3 py-2 font-mono text-right tabular-nums ${p.value! > 0 ? "text-emerald-600" : p.value! < 0 ? "text-rose-600" : "text-slate-500 dark:text-slate-400"}`}>{fmt(p.value)}</td>
+                        <td className={`px-3 py-2 font-mono text-right tabular-nums ${cumulative[i].value! > 0 ? "text-emerald-600" : cumulative[i].value! < 0 ? "text-rose-600" : "text-slate-500 dark:text-slate-400"}`}>{fmt(cumulative[i].value)}</td>
                       </tr>
                     ))}
                   </tbody>

@@ -54,24 +54,24 @@ export function LineChartTV({
   return (
     <ResponsiveContainer width="100%" height={height}>
       <LineChart data={data} margin={{ top: 8, right: 16, bottom: 16, left: 0 }}>
-        <CartesianGrid stroke="#f1f5f9" strokeDasharray="3 3" />
+        <CartesianGrid stroke="var(--tv-chart-grid)" strokeDasharray="3 3" />
         <XAxis
           dataKey="x"
           type="number"
-          tick={{ fontSize: 10, fill: "#64748b" }}
+          tick={{ fontSize: 10, fill: "var(--tv-chart-tick)" }}
           tickLine={false}
           tickFormatter={fmtX}
-          label={xLabel ? { value: xLabel, position: "insideBottom", offset: -8, fontSize: 10, fill: "#64748b" } : undefined}
+          label={xLabel ? { value: xLabel, position: "insideBottom", offset: -8, fontSize: 10, fill: "var(--tv-chart-tick)" } : undefined}
         />
         <YAxis
-          tick={{ fontSize: 10, fill: "#64748b" }}
+          tick={{ fontSize: 10, fill: "var(--tv-chart-tick)" }}
           tickLine={false}
           width={56}
           tickFormatter={fmtY}
-          label={yLabel ? { value: yLabel, angle: -90, position: "insideLeft", fontSize: 10, fill: "#64748b" } : undefined}
+          label={yLabel ? { value: yLabel, angle: -90, position: "insideLeft", fontSize: 10, fill: "var(--tv-chart-tick)" } : undefined}
         />
         <Tooltip
-          contentStyle={{ fontSize: 11, border: "1px solid #e2e8f0", borderRadius: 6 }}
+          contentStyle={{ fontSize: 11, border: "1px solid var(--tv-chart-tooltip-border)", borderRadius: 6 }}
           formatter={(v: number) => [ttip(v), yLabel || "Value"]}
           labelFormatter={(l: number) => `${xLabel || "x"}: ${fmtX(l)}`}
         />

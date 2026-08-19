@@ -12,10 +12,10 @@ export function PortfolioSummary() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Portfolio Summary</h1>
-        <p className="text-sm text-slate-500 mt-1">GET /portfolio/ + /portfolio/positions/ (apps/portfolio)</p>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Portfolio Summary</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">GET /portfolio/ + /portfolio/positions/ (apps/portfolio)</p>
       </div>
-      {summary.state === "loading" && <Card><div className="h-24 bg-slate-100 rounded animate-pulse" /></Card>}
+      {summary.state === "loading" && <Card><div className="h-24 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" /></Card>}
       {summary.state === "error" && summary.error && <Alert tone="error" code={summary.error.code} onRetry={summary.refetch}>{summary.error.message}</Alert>}
       {summary.state === "empty" && <Card><EmptyState title="No portfolio data" /></Card>}
       {summary.state === "success" && summary.data && (
@@ -37,7 +37,7 @@ export function PortfolioSummary() {
           <div className="overflow-x-auto tv-scrollbar max-h-96">
             <table className="min-w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-200 text-xs text-slate-500">
+                <tr className="border-b border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
                   {["Symbol", "Side", "Qty", "Avg entry", "Current", "Unrealized PnL", "Exposure"].map((h) => (
                     <th key={h} className="px-3 py-2 text-left font-semibold">{h}</th>
                   ))}
@@ -45,13 +45,13 @@ export function PortfolioSummary() {
               </thead>
               <tbody>
                 {positions.data.map((p, i) => (
-                  <tr key={i} className="border-b border-slate-100">
+                  <tr key={i} className="border-b border-slate-100 dark:border-slate-800">
                     <td className="px-3 py-2 font-medium">{p.symbol}</td>
                     <td className="px-3 py-2">{p.side || "—"}</td>
                     <td className="px-3 py-2 font-mono text-right tabular-nums">{p.quantity || "—"}</td>
                     <td className="px-3 py-2 font-mono text-right tabular-nums">{fmtInr(p.avg_entry_price)}</td>
                     <td className="px-3 py-2 font-mono text-right tabular-nums">{p.current_price != null ? fmtInr(p.current_price) : "—"}</td>
-                    <td className={`px-3 py-2 font-mono text-right tabular-nums ${toNum(p.unrealized_pnl)! > 0 ? "text-emerald-600" : toNum(p.unrealized_pnl)! < 0 ? "text-rose-600" : "text-slate-500"}`}>{fmtInr(p.unrealized_pnl)}</td>
+                    <td className={`px-3 py-2 font-mono text-right tabular-nums ${toNum(p.unrealized_pnl)! > 0 ? "text-emerald-600" : toNum(p.unrealized_pnl)! < 0 ? "text-rose-600" : "text-slate-500 dark:text-slate-400"}`}>{fmtInr(p.unrealized_pnl)}</td>
                     <td className="px-3 py-2 font-mono text-right tabular-nums">{fmtInr(p.exposure)}</td>
                   </tr>
                 ))}

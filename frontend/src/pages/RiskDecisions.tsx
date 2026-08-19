@@ -16,15 +16,15 @@ export function RiskDecisions() {
     { key: "symbol", header: "Symbol", cell: (r) => r.symbol || "—", sortAccessor: (r) => r.symbol || "" },
     { key: "decision", header: "Decision", cell: (r) => r.decision ? <Chip tone={r.decision === "REJECTED" ? "rose" : r.decision === "APPROVED" ? "emerald" : "amber"}>{r.decision}</Chip> : "—", sortAccessor: (r) => r.decision || "" },
     { key: "severity", header: "Severity", cell: (r) => r.severity ? <Chip tone="amber">{r.severity}</Chip> : "—" },
-    { key: "reason", header: "Reason", cell: (r) => <span className="text-xs text-slate-600">{r.reason || "—"}</span> },
+    { key: "reason", header: "Reason", cell: (r) => <span className="text-xs text-slate-600 dark:text-slate-400">{r.reason || "—"}</span> },
     { key: "created_at", header: "Time", cell: (r) => fmtDateTime(r.created_at), sortAccessor: (r) => r.created_at || "" },
   ];
 
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Risk Decisions</h1>
-        <p className="text-sm text-slate-500 mt-1">GET /risk-management/decisions/</p>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Risk Decisions</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">GET /risk-management/decisions/</p>
       </div>
       <Alert tone="warning" title="⚠ Contract not verified">Body shape not verified.</Alert>
       {state === "error" && error && <Alert tone="error" code={error.code} onRetry={refetch}>{error.message}</Alert>}

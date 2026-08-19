@@ -17,7 +17,7 @@ export function AnalyticsRisk() {
 
   return (
     <AnalyticsLayout title="Risk Summary" description="GET /dashboard/accounts/:accountId/risk">
-      {state === "loading" && <Card><div className="h-24 bg-slate-100 rounded animate-pulse" /></Card>}
+      {state === "loading" && <Card><div className="h-24 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" /></Card>}
       {state === "error" && error && <Alert tone="error" code={error.code} onRetry={refetch}>{error.message}</Alert>}
       {state === "empty" && <Card><EmptyState title="No risk summary" /></Card>}
       {state === "success" && data && (
@@ -30,7 +30,7 @@ export function AnalyticsRisk() {
       )}
       {state === "success" && data && Array.isArray(data.active_alerts) && data.active_alerts.length > 0 && (
         <Card title="Active alerts">
-          <pre className="text-[10px] text-slate-700 overflow-x-auto tv-scrollbar">
+          <pre className="text-[10px] text-slate-700 dark:text-slate-300 overflow-x-auto tv-scrollbar">
             {JSON.stringify(data.active_alerts, null, 2)}
           </pre>
         </Card>

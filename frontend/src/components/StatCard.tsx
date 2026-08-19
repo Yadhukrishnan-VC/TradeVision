@@ -22,10 +22,10 @@ export function StatCard({
 }: StatCardProps) {
   const color =
     deltaDirection === "up"
-      ? "text-emerald-600"
+      ? "text-emerald-600 dark:text-emerald-400"
       : deltaDirection === "down"
-      ? "text-rose-600"
-      : "text-slate-500";
+      ? "text-rose-600 dark:text-rose-400"
+      : "text-slate-500 dark:text-slate-400";
   const Icon =
     deltaDirection === "up"
       ? ArrowUpRight
@@ -33,11 +33,11 @@ export function StatCard({
       ? ArrowDownRight
       : Minus;
   return (
-    <div className="bg-white border border-slate-200 shadow-sm rounded-lg p-4 flex flex-col gap-1">
-      <span className="text-xs uppercase tracking-wide text-slate-500">
+    <div className="bg-white border border-slate-200 shadow-sm rounded-lg p-4 flex flex-col gap-1 dark:bg-slate-900 dark:border-slate-800">
+      <span className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">
         {label}
       </span>
-      <span className="text-2xl font-semibold text-slate-900 tabular-nums">
+      <span className="text-2xl font-semibold text-slate-900 tabular-nums dark:text-slate-100">
         {value}
       </span>
       {delta && (
@@ -46,7 +46,7 @@ export function StatCard({
           {delta}
         </span>
       )}
-      {hint && <span className="text-xs text-slate-400">{hint}</span>}
+      {hint && <span className="text-xs text-slate-400 dark:text-slate-500">{hint}</span>}
     </div>
   );
 }

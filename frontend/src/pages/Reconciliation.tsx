@@ -25,8 +25,8 @@ export function Reconciliation() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Portfolio Reconciliation</h1>
-        <p className="text-sm text-slate-500 mt-1">GET /portfolio-reconciliation/drift/summary/ + /drift/</p>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Portfolio Reconciliation</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">GET /portfolio-reconciliation/drift/summary/ + /drift/</p>
       </div>
       <Alert tone="warning" title="⚠ Contract not verified">Body shape not verified.</Alert>
 

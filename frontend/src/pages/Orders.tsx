@@ -27,8 +27,8 @@ export function Orders() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Orders</h1>
-        <p className="text-sm text-slate-500 mt-1">GET /dashboard/orders/</p>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Orders</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">GET /dashboard/orders/</p>
       </div>
       {state === "error" && error && (
         <Alert tone="error" code={error.code} onRetry={refetch}>{error.message}</Alert>
@@ -51,7 +51,7 @@ export function Orders() {
         )}
       </Card>
       {data && data.count > data.results.length && (
-        <p className="text-xs text-slate-500">Showing {data.results.length} of {data.count}.</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400">Showing {data.results.length} of {data.count}.</p>
       )}
     </div>
   );

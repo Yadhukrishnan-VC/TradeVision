@@ -35,8 +35,8 @@ export function PipelineHealth() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Pipeline Health</h1>
-        <p className="text-sm text-slate-500 mt-1">GET /pipeline-health/ + GET /health/*</p>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Pipeline Health</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">GET /pipeline-health/ + GET /health/*</p>
       </div>
       <Alert tone="warning" title="⚠ /pipeline-health/ body not verified">
         Defensive rendering for pipeline-health; health/* endpoints are unauthenticated.
@@ -44,15 +44,15 @@ export function PipelineHealth() {
 
       <Card title="Health component checks" description="GET /api/v1/health/ + /health/<name>/">
         {checks.length === 0 ? (
-          <div className="text-sm text-slate-500 italic">Running checks…</div>
+          <div className="text-sm text-slate-500 dark:text-slate-400 italic">Running checks…</div>
         ) : (
           <ul className="divide-y divide-slate-100">
             {checks.map((c) => (
               <li key={c.name} className="py-2 flex items-center justify-between gap-3">
                 <div>
-                  <div className="text-sm font-medium text-slate-900">{c.name}</div>
+                  <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{c.name}</div>
                   {c.raw !== null && c.raw !== undefined && (
-                    <pre className="text-[10px] text-slate-500 mt-1 max-h-20 overflow-y-auto tv-scrollbar">
+                    <pre className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 max-h-20 overflow-y-auto tv-scrollbar">
                       {JSON.stringify(c.raw, null, 2)}
                     </pre>
                   )}
@@ -69,7 +69,7 @@ export function PipelineHealth() {
       {state === "error" && error && <Alert tone="error" code={error.code} onRetry={refetch}>{error.message}</Alert>}
       <Card title="Pipeline status" description="GET /pipeline-health/">
         {state === "loading" ? (
-          <div className="h-24 bg-slate-100 rounded animate-pulse" />
+          <div className="h-24 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
         ) : state === "empty" || !data ? (
           <EmptyState title="No pipeline health data" />
         ) : (
@@ -79,9 +79,9 @@ export function PipelineHealth() {
             <KV k="Staleness (s)" v={data.staleness_seconds !== null && data.staleness_seconds !== undefined ? fmtDecimal(data.staleness_seconds, 0) : "—"} />
             {data.components && (
               <div className="md:col-span-3">
-                <dt className="text-xs text-slate-500 mb-1">Components</dt>
+                <dt className="text-xs text-slate-500 dark:text-slate-400 mb-1">Components</dt>
                 <dd>
-                  <pre className="text-[10px] text-slate-700 bg-slate-50 p-3 rounded-md overflow-x-auto tv-scrollbar">
+                  <pre className="text-[10px] text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-950 p-3 rounded-md overflow-x-auto tv-scrollbar">
                     {JSON.stringify(data.components, null, 2)}
                   </pre>
                 </dd>
@@ -97,8 +97,8 @@ export function PipelineHealth() {
 function KV({ k, v }: { k: string; v: React.ReactNode }) {
   return (
     <div>
-      <dt className="text-xs text-slate-500">{k}</dt>
-      <dd className="text-sm text-slate-900 mt-0.5">{v || "—"}</dd>
+      <dt className="text-xs text-slate-500 dark:text-slate-400">{k}</dt>
+      <dd className="text-sm text-slate-900 dark:text-slate-100 mt-0.5">{v || "—"}</dd>
     </div>
   );
 }

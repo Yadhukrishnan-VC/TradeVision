@@ -58,8 +58,8 @@ export function Watchlist() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Watchlist</h1>
-        <p className="text-sm text-slate-500 mt-1">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Watchlist</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
           GET /watchlist/ · DELETE /:instrument_token/ ·{" "}
           <span className="text-amber-700">PATCH deferred (contract not verified)</span>
         </p>
@@ -82,9 +82,9 @@ export function Watchlist() {
 
       {deleteTarget && (
         <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 space-y-4">
-            <h2 className="text-lg font-semibold text-slate-900">Remove from watchlist?</h2>
-            <p className="text-sm text-slate-600">
+          <div className="bg-white dark:bg-slate-900 rounded-lg shadow-xl max-w-md w-full p-6 space-y-4">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Remove from watchlist?</h2>
+            <p className="text-sm text-slate-600 dark:text-slate-400">
               Remove <span className="font-medium">{deleteTarget.tradingsymbol || deleteTarget.symbol || deleteTarget.instrument_token}</span> from your watchlist?
             </p>
             {deleteError && <Alert tone="error" code={deleteError.code}>{deleteError.message}</Alert>}

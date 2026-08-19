@@ -14,7 +14,7 @@ export function Tabs({ tabs, initialKey }: { tabs: TabDef[]; initialKey?: string
   return (
     <div>
       <div
-        className="flex gap-1 border-b border-slate-200 mb-4 overflow-x-auto"
+        className="flex gap-1 border-b border-slate-200 dark:border-slate-800 mb-4 overflow-x-auto"
         role="tablist"
       >
         {tabs.map((t) => (
@@ -25,8 +25,8 @@ export function Tabs({ tabs, initialKey }: { tabs: TabDef[]; initialKey?: string
             onClick={() => setActive(t.key)}
             className={`px-3 py-2 text-sm font-medium whitespace-nowrap border-b-2 -mb-px transition-colors ${
               t.key === current?.key
-                ? "border-indigo-600 text-indigo-700"
-                : "border-transparent text-slate-500 hover:text-slate-700"
+                ? "border-indigo-600 text-indigo-700 dark:text-indigo-400"
+                : "border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
             }`}
           >
             {t.label}

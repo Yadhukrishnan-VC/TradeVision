@@ -25,19 +25,19 @@ export function Rules() {
     {
       key: "severity_override",
       header: "Severity",
-      cell: (r) => (r.severity_override ? <Chip tone="amber">{r.severity_override}</Chip> : <span className="text-slate-400 text-xs">default</span>),
+      cell: (r) => (r.severity_override ? <Chip tone="amber">{r.severity_override}</Chip> : <span className="text-slate-400 dark:text-slate-500 text-xs">default</span>),
       sortAccessor: (r) => r.severity_override || "",
     },
     {
       key: "validated_regimes",
       header: "ADR-029 gate (regimes)",
-      cell: () => <span className="text-slate-400 text-xs">—</span>,
+      cell: () => <span className="text-slate-400 dark:text-slate-500 text-xs">—</span>,
     },
     {
       key: "parameters",
       header: "Parameters",
       cell: (r) => (
-        <code className="text-[10px] text-slate-500 truncate inline-block max-w-xs">
+        <code className="text-[10px] text-slate-500 dark:text-slate-400 truncate inline-block max-w-xs">
           {Object.keys(r.parameters || {}).length > 0 ? JSON.stringify(r.parameters) : "{}"}
         </code>
       ),
@@ -47,8 +47,8 @@ export function Rules() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Rule Configs</h1>
-        <p className="text-sm text-slate-500 mt-1">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Rule Configs</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
           GET /rule-engine/configs/ · Read-only (no config-write contract exists)
         </p>
       </div>
@@ -70,7 +70,7 @@ export function Rules() {
           />
         )}
       </Card>
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-slate-500 dark:text-slate-400">
         ADR-029 gate statuses (GO / NO_GO / INSUFFICIENT_DATA) are stored on the model but not exposed by the configs API — column shows —.
       </p>
     </div>

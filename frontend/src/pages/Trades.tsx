@@ -57,8 +57,8 @@ export function Trades() {
     <div className="space-y-4">
       <div className="flex items-baseline justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Trade History</h1>
-          <p className="text-sm text-slate-500 mt-1">GET /dashboard/trades/history/</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Trade History</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">GET /dashboard/trades/history/</p>
         </div>
         <Button variant="secondary" loading={exporting} onClick={handleExport}>
           Request export
@@ -89,7 +89,7 @@ export function Trades() {
         )}
       </Card>
       {data && data.count > data.results.length && (
-        <p className="text-xs text-slate-500">Showing {data.results.length} of {data.count}.</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400">Showing {data.results.length} of {data.count}.</p>
       )}
     </div>
   );

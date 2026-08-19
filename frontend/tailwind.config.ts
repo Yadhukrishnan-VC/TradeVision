@@ -4,6 +4,7 @@ import type { Config } from "tailwindcss";
 // The markdown package explicitly forbids custom theme extensions; semantic
 // colors (profit/loss, status, regime) are encoded as utility classes in components.
 export default {
+  darkMode: "class",
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
   theme: {
     extend: {

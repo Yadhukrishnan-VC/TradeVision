@@ -22,7 +22,7 @@ export function RawIngestionEvents() {
       cell: (r) => (
         <details>
           <summary className="text-xs text-indigo-600 cursor-pointer">view</summary>
-          <pre className="text-[10px] text-slate-700 mt-1 max-h-40 overflow-y-auto tv-scrollbar">
+          <pre className="text-[10px] text-slate-700 dark:text-slate-300 mt-1 max-h-40 overflow-y-auto tv-scrollbar">
             {JSON.stringify(r.raw_payload, null, 2)}
           </pre>
         </details>
@@ -33,8 +33,8 @@ export function RawIngestionEvents() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Raw Ingestion Events</h1>
-        <p className="text-sm text-slate-500 mt-1">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Raw Ingestion Events</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
           GET /ingestion/raw-events/ ·{" "}
           <span className="text-amber-700">secondary, read-only operational view</span>
         </p>

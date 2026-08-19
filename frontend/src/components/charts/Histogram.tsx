@@ -22,16 +22,16 @@ export function Histogram({ bins, data, height = 200, color = "#4f46e5" }: Histo
   return (
     <ResponsiveContainer width="100%" height={height}>
       <BarChart data={arr} margin={{ top: 8, right: 8, bottom: 8, left: 0 }}>
-        <CartesianGrid stroke="#f1f5f9" strokeDasharray="3 3" />
-        <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#64748b" }} tickLine={false} />
+        <CartesianGrid stroke="var(--tv-chart-grid)" strokeDasharray="3 3" />
+        <XAxis dataKey="label" tick={{ fontSize: 10, fill: "var(--tv-chart-tick)" }} tickLine={false} />
         <YAxis
-          tick={{ fontSize: 10, fill: "#64748b" }}
+          tick={{ fontSize: 10, fill: "var(--tv-chart-tick)" }}
           tickLine={false}
           width={40}
           allowDecimals={false}
         />
         <Tooltip
-          contentStyle={{ fontSize: 11, border: "1px solid #e2e8f0", borderRadius: 6 }}
+          contentStyle={{ fontSize: 11, border: "1px solid var(--tv-chart-tooltip-border)", borderRadius: 6 }}
           formatter={(v: number) => [v, "Count"]}
         />
         <Bar dataKey="count" fill={color} isAnimationActive={false} />

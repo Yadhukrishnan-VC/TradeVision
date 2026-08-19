@@ -32,13 +32,13 @@ export function AnalyticsLayout({
         ]}
       />
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">{title}</h1>
-        <p className="text-sm text-slate-500 mt-1">{description}</p>
-        <p className="text-xs text-slate-400 mt-1">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{title}</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{description}</p>
+        <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
           Account <code className="text-[10px]">{accountId}</code>
         </p>
       </div>
-      <nav className="flex gap-1 border-b border-slate-200 text-sm">
+      <nav className="flex gap-1 border-b border-slate-200 dark:border-slate-800 text-sm">
         {[
           { to: `/analytics/${accountId}/pnl`, label: "PnL" },
           { to: `/analytics/${accountId}/pnl/daily`, label: "Daily Rollup" },
@@ -48,7 +48,7 @@ export function AnalyticsLayout({
           <Link
             key={t.to}
             to={t.to}
-            className="px-3 py-1.5 text-slate-600 hover:text-slate-900 border-b-2 border-transparent hover:border-slate-300"
+            className="px-3 py-1.5 text-slate-600 dark:text-slate-400 hover:text-slate-900 border-b-2 border-transparent hover:border-slate-300"
           >
             {t.label}
           </Link>

@@ -20,11 +20,11 @@ export function HoldingDetail() {
           { label: symbol || "—" },
         ]}
       />
-      <h1 className="text-2xl font-bold text-slate-900">Holding — {symbol}</h1>
+      <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Holding — {symbol}</h1>
 
       {state === "loading" && (
         <Card>
-          <div className="h-24 bg-slate-100 rounded animate-pulse" />
+          <div className="h-24 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
         </Card>
       )}
       {state === "error" && error && (
@@ -47,8 +47,8 @@ export function HoldingDetail() {
             <StatCard label="Opened at" value={fmtDate(data.opened_at)} />
           </div>
           <Card title="Account">
-            <code className="text-xs text-slate-700">{data.account_id}</code>
-            <div className="text-xs text-slate-500 mt-2">
+            <code className="text-xs text-slate-700 dark:text-slate-300">{data.account_id}</code>
+            <div className="text-xs text-slate-500 dark:text-slate-400 mt-2">
               <span className={pnlColor(data.unrealized_pnl)}>
                 Unrealized PnL: {fmtInr(data.unrealized_pnl)}
               </span>

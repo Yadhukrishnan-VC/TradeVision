@@ -15,14 +15,14 @@ export function DashboardHome() {
     <div className="space-y-6">
       <div className="flex items-baseline justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Dashboard</h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Dashboard</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
             Live trading-core snapshot · account{" "}
             <code className="text-xs">{data?.account_id?.slice(0, 8) || "—"}</code>
           </p>
         </div>
         {data?.last_updated_at && (
-          <span className="text-xs text-slate-400">Updated {fmtTimeAgo(data.last_updated_at)}</span>
+          <span className="text-xs text-slate-400 dark:text-slate-500">Updated {fmtTimeAgo(data.last_updated_at)}</span>
         )}
       </div>
 
@@ -72,9 +72,9 @@ export function DashboardHome() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card title="Market session">
               <div className="text-sm">
-                <span className="font-medium text-slate-900">{data.market_session_status || "—"}</span>
+                <span className="font-medium text-slate-900 dark:text-slate-100">{data.market_session_status || "—"}</span>
                 {data.last_updated_at && (
-                  <div className="text-xs text-slate-500 mt-1">Last updated {fmtTimeAgo(data.last_updated_at)}</div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">Last updated {fmtTimeAgo(data.last_updated_at)}</div>
                 )}
               </div>
             </Card>

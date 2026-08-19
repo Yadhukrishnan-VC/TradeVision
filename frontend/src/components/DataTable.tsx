@@ -82,11 +82,11 @@ export function DataTable<T>({
       <div className="overflow-x-auto tv-scrollbar">
         <table className="min-w-full text-sm">
           <thead>
-            <tr className="border-b border-slate-200">
+            <tr className="border-b border-slate-200 dark:border-slate-800">
               {columns.map((c) => (
                 <th
                   key={c.key}
-                  className={`px-3 py-2 text-xs font-semibold text-slate-500 ${
+                  className={`px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 ${
                     c.numeric ? "text-right" : "text-left"
                   }`}
                 >
@@ -113,7 +113,7 @@ export function DataTable<T>({
     <div className="overflow-x-auto tv-scrollbar">
       <table className="min-w-full text-sm">
         <thead>
-          <tr className="border-b border-slate-200">
+          <tr className="border-b border-slate-200 dark:border-slate-800">
             {columns.map((c) => {
               const sortable = !!c.sortAccessor;
               const active = sortKey === c.key;
@@ -122,7 +122,7 @@ export function DataTable<T>({
                   key={c.key}
                   className={`px-3 py-2 text-xs font-semibold text-slate-500 select-none ${
                     c.numeric ? "text-right" : "text-left"
-                  } ${sortable ? "cursor-pointer hover:text-slate-700" : ""}`}
+                  } ${sortable ? "cursor-pointer hover:text-slate-700 dark:hover:text-slate-200" : ""}`}
                   onClick={() => toggleSort(c)}
                   aria-sort={
                     active ? (sortDir === "asc" ? "ascending" : "descending") : "none"
@@ -151,7 +151,7 @@ export function DataTable<T>({
             <tr
               key={rowKey(row, i)}
               onClick={onRowClick ? () => onRowClick(row) : undefined}
-              className={`border-b border-slate-100 ${onRowClick ? "cursor-pointer hover:bg-slate-50" : ""} ${
+              className={`border-b border-slate-100 dark:border-slate-800 ${onRowClick ? "cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800" : ""} ${
                 compact ? "h-9" : "h-11"
               }`}
             >

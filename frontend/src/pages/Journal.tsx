@@ -61,7 +61,7 @@ function JournalList() {
         r.outcome ? (
           <Chip tone={outcomeTone[r.outcome] || "slate"}>{r.outcome}</Chip>
         ) : (
-          <span className="text-slate-400">—</span>
+          <span className="text-slate-400 dark:text-slate-500">—</span>
         ),
       sortAccessor: (r) => r.outcome || "",
     },
@@ -69,7 +69,7 @@ function JournalList() {
       key: "realized_pnl",
       header: "Realized PnL",
       cell: (r) =>
-        r.realized_pnl != null ? <code className="text-xs">{r.realized_pnl}</code> : <span className="text-slate-400">—</span>,
+        r.realized_pnl != null ? <code className="text-xs">{r.realized_pnl}</code> : <span className="text-slate-400 dark:text-slate-500">—</span>,
       sortAccessor: (r) => r.realized_pnl || "",
     },
     {
@@ -89,8 +89,8 @@ function JournalList() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Trade Journal</h1>
-        <p className="text-sm text-slate-500 mt-1">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Trade Journal</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
           GET /journal/entries/ · read-only · requires <code>?account_id=&lt;uuid&gt;</code>
         </p>
       </div>
@@ -125,8 +125,8 @@ function JournalDetail({ correlationId }: { correlationId: string }) {
           { label: correlationId.slice(0, 8) },
         ]}
       />
-      <h1 className="text-2xl font-bold text-slate-900">Journal entry</h1>
-      {state === "loading" && <Card><div className="h-24 bg-slate-100 rounded animate-pulse" /></Card>}
+      <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Journal entry</h1>
+      {state === "loading" && <Card><div className="h-24 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" /></Card>}
       {state === "error" && error && <Alert tone="error" code={error.code} onRetry={refetch}>{error.message}</Alert>}
       {state === "empty" && <Card><EmptyState title="Entry not found" /></Card>}
       {state === "success" && data && (
@@ -143,31 +143,31 @@ function JournalDetail({ correlationId }: { correlationId: string }) {
             <KV k="Position ID" v={data.position_id ? <code className="text-xs">{data.position_id}</code> : "—"} />
           </dl>
           {data.signal_snapshot && (
-            <div className="mt-4 pt-4 border-t border-slate-200">
-              <div className="text-xs text-slate-500 mb-1">Signal snapshot</div>
-              <pre className="text-xs text-slate-700 bg-slate-50 p-3 rounded-md overflow-x-auto tv-scrollbar">
+            <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+              <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Signal snapshot</div>
+              <pre className="text-xs text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-950 p-3 rounded-md overflow-x-auto tv-scrollbar">
                 {JSON.stringify(data.signal_snapshot, null, 2)}
               </pre>
             </div>
           )}
           {data.decision_snapshot && (
-            <div className="mt-4 pt-4 border-t border-slate-200">
-              <div className="text-xs text-slate-500 mb-1">Decision snapshot</div>
-              <pre className="text-xs text-slate-700 bg-slate-50 p-3 rounded-md overflow-x-auto tv-scrollbar">
+            <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+              <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Decision snapshot</div>
+              <pre className="text-xs text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-950 p-3 rounded-md overflow-x-auto tv-scrollbar">
                 {JSON.stringify(data.decision_snapshot, null, 2)}
               </pre>
             </div>
           )}
           {Array.isArray(data.order_events) && data.order_events.length > 0 && (
-            <div className="mt-4 pt-4 border-t border-slate-200">
-              <div className="text-xs text-slate-500 mb-1">Order events ({data.order_events.length})</div>
+            <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+              <div className="text-xs text-slate-500 dark:text-slate-400 mb-1">Order events ({data.order_events.length})</div>
               <div className="space-y-2">
                 {data.order_events.map((e) => (
-                  <div key={e.event_id} className="text-xs bg-slate-50 p-2 rounded">
-                    <div className="text-slate-500">
+                  <div key={e.event_id} className="text-xs bg-slate-50 dark:bg-slate-950 p-2 rounded">
+                    <div className="text-slate-500 dark:text-slate-400">
                       {e.event_type} · <code>{e.event_id.slice(0, 8)}</code> · {fmtDateTime(e.occurred_at)}
                     </div>
-                    <pre className="text-slate-700 mt-1 overflow-x-auto tv-scrollbar">
+                    <pre className="text-slate-700 dark:text-slate-300 mt-1 overflow-x-auto tv-scrollbar">
                       {JSON.stringify(e.payload, null, 2)}
                     </pre>
                   </div>
@@ -185,8 +185,8 @@ function JournalDetail({ correlationId }: { correlationId: string }) {
 function KV({ k, v }: { k: string; v: React.ReactNode }) {
   return (
     <div>
-      <dt className="text-xs text-slate-500">{k}</dt>
-      <dd className="text-sm text-slate-900 mt-0.5">{v || "—"}</dd>
+      <dt className="text-xs text-slate-500 dark:text-slate-400">{k}</dt>
+      <dd className="text-sm text-slate-900 dark:text-slate-100 mt-0.5">{v || "—"}</dd>
     </div>
   );
 }

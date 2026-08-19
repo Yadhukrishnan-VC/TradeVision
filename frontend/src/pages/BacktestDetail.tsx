@@ -156,7 +156,7 @@ export function BacktestDetail() {
           ]}
         />
         <Card title="Loading backtest run…">
-          <div className="flex items-center gap-2 text-sm text-slate-600 py-6 justify-center">
+          <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 py-6 justify-center">
             <Spinner /> Fetching run status…
           </div>
         </Card>
@@ -216,11 +216,11 @@ export function BacktestDetail() {
 
           {status === "PENDING" || status === "RUNNING" ? (
             <Card title="In progress">
-              <div className="flex items-center gap-2 text-sm text-slate-600 py-4">
+              <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 py-4">
                 <Spinner />
                 <span>Run is {status}. Polling for updates…</span>
               </div>
-              <div className="text-xs text-slate-500">
+              <div className="text-xs text-slate-500 dark:text-slate-400">
                 Status checks every 2s. Polling will stop when COMPLETED or FAILED.
               </div>
             </Card>
@@ -326,10 +326,10 @@ export function BacktestDetail() {
       />
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
             Backtest — {run?.symbol}
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
             {fmtDate(run?.range_start)} → {fmtDate(run?.range_end)}
             {run?.timeframe ? ` · ${run.timeframe}` : ""}
           </p>
@@ -346,8 +346,8 @@ export function BacktestDetail() {
 function Meta({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div>
-      <dt className="text-xs text-slate-500">{label}</dt>
-      <dd className="text-sm text-slate-900 mt-0.5">{value || "—"}</dd>
+      <dt className="text-xs text-slate-500 dark:text-slate-400">{label}</dt>
+      <dd className="text-sm text-slate-900 dark:text-slate-100 mt-0.5">{value || "—"}</dd>
     </div>
   );
 }
@@ -360,7 +360,7 @@ function ByRegimeTab({ stats }: { stats: RunStats }) {
       <div className="overflow-x-auto tv-scrollbar">
         <table className="min-w-full text-sm">
           <thead>
-            <tr className="border-b border-slate-200 text-xs text-slate-500">
+            <tr className="border-b border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
               {["Regime", "Trades", "Win rate", "Expectancy", "PF", "Net PnL", "Max DD %"].map((h) => (
                 <th key={h} className="px-3 py-2 text-left font-semibold">
                   {h}
@@ -370,7 +370,7 @@ function ByRegimeTab({ stats }: { stats: RunStats }) {
           </thead>
           <tbody>
             {rows.map(([regime, b]) => (
-              <tr key={regime} className="border-b border-slate-100">
+              <tr key={regime} className="border-b border-slate-100 dark:border-slate-800">
                 <td className="px-3 py-2"><Chip tone={regimeTone(regime)}>{regime}</Chip></td>
                 <td className="px-3 py-2 font-mono text-right tabular-nums">{fmtInt(b.trade_count)}</td>
                 <td className="px-3 py-2 font-mono text-right tabular-nums">{fmtPct(b.win_rate)}</td>
@@ -395,7 +395,7 @@ function ByRuleTab({ stats }: { stats: RunStats }) {
       <div className="overflow-x-auto tv-scrollbar">
         <table className="min-w-full text-sm">
           <thead>
-            <tr className="border-b border-slate-200 text-xs text-slate-500">
+            <tr className="border-b border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
               {["Rule", "Trades", "Win rate", "Expectancy", "PF", "Net PnL", "Max DD %"].map((h) => (
                 <th key={h} className="px-3 py-2 text-left font-semibold">
                   {h}
@@ -405,7 +405,7 @@ function ByRuleTab({ stats }: { stats: RunStats }) {
           </thead>
           <tbody>
             {rows.map(([rid, b]) => (
-              <tr key={rid} className="border-b border-slate-100">
+              <tr key={rid} className="border-b border-slate-100 dark:border-slate-800">
                 <td className="px-3 py-2"><Chip tone="violet">{rid}</Chip></td>
                 <td className="px-3 py-2 font-mono text-right tabular-nums">{fmtInt(b.trade_count)}</td>
                 <td className="px-3 py-2 font-mono text-right tabular-nums">{fmtPct(b.win_rate)}</td>
@@ -416,10 +416,10 @@ function ByRuleTab({ stats }: { stats: RunStats }) {
               </tr>
             ))}
             {(stats.unattributed_trade_count ?? 0) > 0 && (
-              <tr className="border-b border-slate-100 bg-slate-50">
+              <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
                 <td className="px-3 py-2"><Chip tone="slate">unattributed</Chip></td>
                 <td className="px-3 py-2 font-mono text-right tabular-nums">{fmtInt(stats.unattributed_trade_count)}</td>
-                <td colSpan={5} className="px-3 py-2 text-xs text-slate-400 italic">
+                <td colSpan={5} className="px-3 py-2 text-xs text-slate-400 dark:text-slate-500 italic">
                   Trades not attributable to any rule via correlation_id → RuleExecution.analysis_event_id
                 </td>
               </tr>
@@ -454,8 +454,8 @@ function IsOosTab({ stats }: { stats: RunStats }) {
 
 function BucketPanel({ label, b }: { label: string; b: RunStats["in_sample"] }) {
   return (
-    <div className="border border-slate-200 rounded-md p-3">
-      <div className="text-xs font-semibold text-slate-700 mb-2">{label}</div>
+    <div className="border border-slate-200 dark:border-slate-800 rounded-md p-3">
+      <div className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">{label}</div>
       <dl className="grid grid-cols-2 gap-2 text-xs">
         <KV k="Trades" v={fmtInt(b.trade_count)} />
         <KV k="Win rate" v={fmtPct(b.win_rate)} />
@@ -473,8 +473,8 @@ function BucketPanel({ label, b }: { label: string; b: RunStats["in_sample"] }) 
 function KV({ k, v }: { k: string; v: React.ReactNode }) {
   return (
     <div>
-      <dt className="text-slate-500">{k}</dt>
-      <dd className="font-mono tabular-nums text-slate-900">{v}</dd>
+      <dt className="text-slate-500 dark:text-slate-400">{k}</dt>
+      <dd className="font-mono tabular-nums text-slate-900 dark:text-slate-100">{v}</dd>
     </div>
   );
 }
@@ -482,13 +482,13 @@ function KV({ k, v }: { k: string; v: React.ReactNode }) {
 function ReturnsHistogram({ decimals, label }: { decimals?: string[]; label: string }) {
   if (!decimals || decimals.length === 0) {
     return (
-      <div className="text-xs text-slate-400 italic">{label}: no returns array.</div>
+      <div className="text-xs text-slate-400 dark:text-slate-500 italic">{label}: no returns array.</div>
     );
   }
   // Bin the returns into ~10 buckets between min and max.
   const nums = decimals.map(toNum).filter((n): n is number => n !== null);
   if (nums.length === 0) {
-    return <div className="text-xs text-slate-400 italic">{label}: no parseable returns.</div>;
+    return <div className="text-xs text-slate-400 dark:text-slate-500 italic">{label}: no parseable returns.</div>;
   }
   const min = Math.min(...nums);
   const max = Math.max(...nums);
@@ -505,7 +505,7 @@ function ReturnsHistogram({ decimals, label }: { decimals?: string[]; label: str
   }));
   return (
     <div>
-      <div className="text-xs font-semibold text-slate-700 mb-1">{label}</div>
+      <div className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">{label}</div>
       <HistogramLocal data={data} />
     </div>
   );

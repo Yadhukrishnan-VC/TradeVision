@@ -17,9 +17,9 @@ export function RuleDetail() {
           { label: ruleId || "—" },
         ]}
       />
-      <h1 className="text-2xl font-bold text-slate-900">Rule — {ruleId}</h1>
+      <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Rule — {ruleId}</h1>
 
-      {state === "loading" && <Card><div className="h-24 bg-slate-100 rounded animate-pulse" /></Card>}
+      {state === "loading" && <Card><div className="h-24 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" /></Card>}
       {state === "error" && error && <Alert tone="error" code={error.code} onRetry={refetch}>{error.message}</Alert>}
       {state === "empty" && <Card><EmptyState title="Rule not found" /></Card>}
 
@@ -29,19 +29,19 @@ export function RuleDetail() {
             <dl className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
               <KV k="Rule ID" v={<Chip tone="violet">{data.rule_id}</Chip>} />
               <KV k="Enabled" v={<Chip tone={data.enabled ? "emerald" : "slate"}>{String(data.enabled)}</Chip>} />
-              <KV k="Severity override" v={data.severity_override ? <Chip tone="amber">{data.severity_override}</Chip> : <span className="text-slate-400 text-xs">default</span>} />
+              <KV k="Severity override" v={data.severity_override ? <Chip tone="amber">{data.severity_override}</Chip> : <span className="text-slate-400 dark:text-slate-500 text-xs">default</span>} />
             </dl>
           </Card>
 
           <Card title="ADR-029 validation gate" description="validated_regimes is stored on the model but NOT serialized by the configs API">
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-slate-500 dark:text-slate-400">
               — (not exposed). Gate statuses per regime are computed by RuleValidationService and
               persisted in the DB; the configs endpoint does not return them.
             </p>
           </Card>
 
           <Card title="Parameters" description="parameters (JSON)">
-            <pre className="text-xs text-slate-700 bg-slate-50 p-3 rounded-md overflow-x-auto tv-scrollbar">
+            <pre className="text-xs text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-950 p-3 rounded-md overflow-x-auto tv-scrollbar">
               {JSON.stringify(data.parameters || {}, null, 2)}
             </pre>
           </Card>
@@ -56,8 +56,8 @@ export function RuleDetail() {
 function KV({ k, v }: { k: string; v: React.ReactNode }) {
   return (
     <div>
-      <dt className="text-xs text-slate-500">{k}</dt>
-      <dd className="text-sm text-slate-900 mt-0.5">{v || "—"}</dd>
+      <dt className="text-xs text-slate-500 dark:text-slate-400">{k}</dt>
+      <dd className="text-sm text-slate-900 dark:text-slate-100 mt-0.5">{v || "—"}</dd>
     </div>
   );
 }

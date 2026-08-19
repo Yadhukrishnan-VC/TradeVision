@@ -59,7 +59,7 @@ export function Recommendations() {
             <Button variant="danger" onClick={() => { setPending(r); setAction("reject"); }}>Reject</Button>
           </div>
         ) : (
-          <span className="text-xs text-slate-400 italic">resolved</span>
+          <span className="text-xs text-slate-400 dark:text-slate-500 italic">resolved</span>
         ),
     },
   ];
@@ -67,8 +67,8 @@ export function Recommendations() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Recommendations</h1>
-        <p className="text-sm text-slate-500 mt-1">GET /recommendations/ · accept/reject require confirmation</p>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Recommendations</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">GET /recommendations/ · accept/reject require confirmation</p>
       </div>
       <Alert tone="warning" title="⚠ Contract not verified">Body shape not verified.</Alert>
       {state === "error" && error && <Alert tone="error" code={error.code} onRetry={refetch}>{error.message}</Alert>}
@@ -85,11 +85,11 @@ export function Recommendations() {
       {/* Confirmation modal */}
       {pending && action && (
         <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 space-y-4">
-            <h2 className="text-lg font-semibold text-slate-900">
+          <div className="bg-white dark:bg-slate-900 rounded-lg shadow-xl max-w-md w-full p-6 space-y-4">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
               {action === "accept" ? "Accept recommendation?" : "Reject recommendation?"}
             </h2>
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-slate-600 dark:text-slate-400">
               You are about to {action} recommendation{" "}
               <code className="text-xs">{pending.id.slice(0, 8)}</code>
               {pending.symbol ? ` for ${pending.symbol}` : ""}.

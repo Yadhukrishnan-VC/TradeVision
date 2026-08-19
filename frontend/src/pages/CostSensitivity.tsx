@@ -71,8 +71,8 @@ export function CostSensitivity() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Cost Sensitivity</h1>
-        <p className="text-sm text-slate-500 mt-1">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Cost Sensitivity</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
           Commission × slippage grid sweep. Per-rule breakeven detection and survivability classification.
         </p>
       </div>
@@ -95,7 +95,7 @@ export function CostSensitivity() {
             <Field label="Range end">
               <input type="date" className="tv-input" value={rangeEnd} onChange={(e) => setRangeEnd(e.target.value)} required disabled={loading} />
             </Field>
-            <div className="md:col-span-3 grid grid-cols-3 gap-2 text-xs text-slate-500">
+            <div className="md:col-span-3 grid grid-cols-3 gap-2 text-xs text-slate-500 dark:text-slate-400">
               <div>Commission (start / end / step)</div>
               <div>Slippage (start / end / step)</div>
               <div></div>
@@ -139,8 +139,8 @@ export function CostSensitivity() {
       {data && (
         <div className="space-y-4">
           <Card title="Grid summary">
-            <div className="text-sm text-slate-600">
-              <span className="font-medium text-slate-900">{data.grid_points_run}</span> grid points run.
+            <div className="text-sm text-slate-600 dark:text-slate-400">
+              <span className="font-medium text-slate-900 dark:text-slate-100">{data.grid_points_run}</span> grid points run.
             </div>
           </Card>
 
@@ -151,7 +151,7 @@ export function CostSensitivity() {
               <div className="overflow-x-auto tv-scrollbar">
                 <table className="min-w-full text-sm">
                   <thead>
-                    <tr className="border-b border-slate-200 text-xs text-slate-500">
+                    <tr className="border-b border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
                       {["Rule", "Expectancy @ min", "Expectancy @ max", "Breakeven commission", "Breakeven slippage (bps)", "Classification"].map((h) => (
                         <th key={h} className="px-3 py-2 text-left font-semibold">{h}</th>
                       ))}
@@ -159,7 +159,7 @@ export function CostSensitivity() {
                   </thead>
                   <tbody>
                     {Object.entries(data.by_rule).map(([rid, r]) => (
-                      <tr key={rid} className="border-b border-slate-100">
+                      <tr key={rid} className="border-b border-slate-100 dark:border-slate-800">
                         <td className="px-3 py-2"><Chip tone="violet">{r.rule_id}</Chip></td>
                         <td className="px-3 py-2 font-mono text-right tabular-nums">₹{fmtDecimal(r.expectancy_at_min_cost)}</td>
                         <td className="px-3 py-2 font-mono text-right tabular-nums">₹{fmtDecimal(r.expectancy_at_max_cost)}</td>
@@ -219,7 +219,7 @@ function RuleChart({
     breakevenX = rule.breakeven_commission_rate !== null ? series.length - 1 : null;
   }
   return (
-    <div className="border border-slate-200 rounded-md p-3">
+    <div className="border border-slate-200 dark:border-slate-800 rounded-md p-3">
       <div className="flex items-center justify-between mb-2 gap-2">
         <Chip tone="violet">{rid}</Chip>
         <Chip tone={classificationTone(rule.classification)}>{rule.classification}</Chip>

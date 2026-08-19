@@ -20,15 +20,15 @@ export function Positions() {
     { key: "quantity", header: "Qty", numeric: true, cell: (r) => fmtDecimal(r.quantity || "0", 0), sortAccessor: (r) => toNum(r.quantity) },
     { key: "avg_cost", header: "Avg cost", numeric: true, cell: (r) => fmtInr(r.avg_cost), sortAccessor: (r) => toNum(r.avg_cost) },
     { key: "market_value", header: "Market value", numeric: true, cell: (r) => fmtInr(r.market_value), sortAccessor: (r) => toNum(r.market_value) },
-    { key: "unrealized_pnl", header: "Unrealized PnL", numeric: true, cell: (r) => <span className={toNum(r.unrealized_pnl)! > 0 ? "text-emerald-600" : toNum(r.unrealized_pnl)! < 0 ? "text-rose-600" : "text-slate-500"}>{fmtInr(r.unrealized_pnl)}</span>, sortAccessor: (r) => toNum(r.unrealized_pnl) },
+    { key: "unrealized_pnl", header: "Unrealized PnL", numeric: true, cell: (r) => <span className={toNum(r.unrealized_pnl)! > 0 ? "text-emerald-600" : toNum(r.unrealized_pnl)! < 0 ? "text-rose-600" : "text-slate-500 dark:text-slate-400"}>{fmtInr(r.unrealized_pnl)}</span>, sortAccessor: (r) => toNum(r.unrealized_pnl) },
     { key: "opened_at", header: "Opened", cell: (r) => fmtDateTime(r.opened_at), sortAccessor: (r) => r.opened_at || "" },
   ];
 
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Live Positions</h1>
-        <p className="text-sm text-slate-500 mt-1">GET /dashboard/positions/live/</p>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Live Positions</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">GET /dashboard/positions/live/</p>
       </div>
 
       {state === "error" && error && (
@@ -52,7 +52,7 @@ export function Positions() {
         )}
       </Card>
       {data && data.count > data.results.length && (
-        <p className="text-xs text-slate-500">Showing {data.results.length} of {data.count}. Use pagination endpoint to load more.</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400">Showing {data.results.length} of {data.count}. Use pagination endpoint to load more.</p>
       )}
     </div>
   );

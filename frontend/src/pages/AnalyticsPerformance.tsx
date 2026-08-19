@@ -17,7 +17,7 @@ export function AnalyticsPerformance() {
 
   return (
     <AnalyticsLayout title="Performance" description="GET /dashboard/accounts/:accountId/performance">
-      {state === "loading" && <Card><div className="h-24 bg-slate-100 rounded animate-pulse" /></Card>}
+      {state === "loading" && <Card><div className="h-24 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" /></Card>}
       {state === "error" && error && <Alert tone="error" code={error.code} onRetry={refetch}>{error.message}</Alert>}
       {state === "empty" && <Card><EmptyState title="No performance data" /></Card>}
       {state === "success" && data && (

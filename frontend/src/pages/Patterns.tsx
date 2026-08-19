@@ -62,8 +62,8 @@ export function Patterns() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Pattern Analysis</h1>
-        <p className="text-sm text-slate-500 mt-1">GET /pattern-engine/runs/ + /historical-vectors/</p>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Pattern Analysis</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">GET /pattern-engine/runs/ + /historical-vectors/</p>
       </div>
       <Alert tone="warning" title="⚠ Contract not verified">Body shape not verified.</Alert>
       {runsFetch.error && <Alert tone="error" code={runsFetch.error.code} onRetry={runsFetch.refetch}>{runsFetch.error.message}</Alert>}

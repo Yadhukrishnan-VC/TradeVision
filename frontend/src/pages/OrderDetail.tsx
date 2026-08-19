@@ -19,9 +19,9 @@ export function OrderDetail() {
           { label: id?.slice(0, 8) || "—" },
         ]}
       />
-      <h1 className="text-2xl font-bold text-slate-900">Order detail</h1>
+      <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Order detail</h1>
 
-      {state === "loading" && <Card><div className="h-24 bg-slate-100 rounded animate-pulse" /></Card>}
+      {state === "loading" && <Card><div className="h-24 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" /></Card>}
       {state === "error" && error && <Alert tone="error" code={error.code} onRetry={refetch}>{error.message}</Alert>}
       {state === "empty" && <Card><EmptyState title="Order not found" /></Card>}
 
@@ -54,8 +54,8 @@ export function OrderDetail() {
 function KV({ k, v }: { k: string; v: React.ReactNode }) {
   return (
     <div>
-      <dt className="text-slate-500">{k}</dt>
-      <dd className="text-slate-900 mt-0.5">{v || "—"}</dd>
+      <dt className="text-slate-500 dark:text-slate-400">{k}</dt>
+      <dd className="text-slate-900 dark:text-slate-100 mt-0.5">{v || "—"}</dd>
     </div>
   );
 }

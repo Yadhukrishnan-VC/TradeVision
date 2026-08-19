@@ -46,12 +46,12 @@ export function News() {
             href={r.url || "#"}
             target="_blank"
             rel="noreferrer"
-            className="text-sm text-slate-800 hover:text-indigo-600 hover:underline"
+            className="text-sm text-slate-800 dark:text-slate-200 hover:text-indigo-600 hover:underline"
           >
             {r.headline || "—"}
           </a>
           {r.body ? (
-            <p className="text-xs text-slate-500 mt-0.5 truncate">{r.body}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">{r.body}</p>
           ) : null}
         </div>
       ),
@@ -78,7 +78,7 @@ export function News() {
         r.sentiment_score !== null && r.sentiment_score !== undefined ? (
           <Chip tone={sentimentTone(r.sentiment_score)}>{r.sentiment_score}</Chip>
         ) : (
-          <span className="text-slate-400">--</span>
+          <span className="text-slate-400 dark:text-slate-500">--</span>
         ),
       sortAccessor: (r) => (r.sentiment_score ? parseFloat(r.sentiment_score) : -99),
     },
@@ -95,8 +95,8 @@ export function News() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">News Feed</h1>
-        <p className="text-sm text-slate-500 mt-1">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">News Feed</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
           GET /api/v1/news/ · read-only, ingested headlines + provider sentiment
         </p>
       </div>
@@ -109,7 +109,7 @@ export function News() {
             setPage(1);
           }}
           placeholder="Filter by symbol (e.g. RELIANCE)"
-          className="px-3 py-1.5 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 w-64"
+          className="px-3 py-1.5 text-sm border border-slate-300 dark:border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 w-64"
         />
         {data && (
           <div className="flex items-center gap-2">
@@ -120,7 +120,7 @@ export function News() {
             >
               Prev
             </Button>
-            <span className="text-xs text-slate-500">
+            <span className="text-xs text-slate-500 dark:text-slate-400">
               Page {page} of {totalPages} · {data.count} items
             </span>
             <Button

@@ -62,10 +62,10 @@ export function EquityCurve({
             <stop offset="100%" stopColor="#4f46e5" stopOpacity={0.05} />
           </linearGradient>
         </defs>
-        <CartesianGrid stroke="#f1f5f9" strokeDasharray="3 3" />
-        <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#64748b" }} tickLine={false} />
+        <CartesianGrid stroke="var(--tv-chart-grid)" strokeDasharray="3 3" />
+        <XAxis dataKey="label" tick={{ fontSize: 10, fill: "var(--tv-chart-tick)" }} tickLine={false} />
         <YAxis
-          tick={{ fontSize: 10, fill: "#64748b" }}
+          tick={{ fontSize: 10, fill: "var(--tv-chart-tick)" }}
           tickLine={false}
           width={56}
           tickFormatter={(v: number) =>
@@ -75,7 +75,7 @@ export function EquityCurve({
         <Tooltip
           contentStyle={{
             fontSize: 11,
-            border: "1px solid #e2e8f0",
+            border: "1px solid var(--tv-chart-tooltip-border)",
             borderRadius: 6,
           }}
           formatter={(v: number) => [`₹${v.toLocaleString("en-IN")}`, "Equity"]}

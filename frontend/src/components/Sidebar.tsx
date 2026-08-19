@@ -107,27 +107,27 @@ export function Sidebar({
 }) {
   return (
     <aside
-      className={`shrink-0 h-screen border-r border-slate-200 bg-white flex flex-col transition-all ${
+      className={`shrink-0 h-screen border-r border-slate-200 bg-white flex flex-col transition-all dark:border-slate-800 dark:bg-slate-900 ${
         collapsed ? "w-16" : "w-64"
       }`}
     >
-      <div className="h-14 flex items-center justify-between px-3 border-b border-slate-200 shrink-0">
+      <div className="h-14 flex items-center justify-between px-3 border-b border-slate-200 shrink-0 dark:border-slate-800">
         <div className="flex items-center gap-2 min-w-0">
           <div className="w-8 h-8 rounded-md bg-indigo-600 text-white flex items-center justify-center font-bold text-sm shrink-0">
             TV
           </div>
           {!collapsed && (
             <div className="min-w-0">
-              <div className="text-sm font-semibold text-slate-900 truncate">
+              <div className="text-sm font-semibold text-slate-900 truncate dark:text-slate-100">
                 TradeVision
               </div>
-              <div className="text-[10px] text-slate-500 truncate">Research Console</div>
+              <div className="text-[10px] text-slate-500 truncate dark:text-slate-400">Research Console</div>
             </div>
           )}
         </div>
         <button
           onClick={onToggle}
-          className="text-slate-400 hover:text-slate-600 shrink-0"
+          className="text-slate-400 hover:text-slate-600 shrink-0 dark:hover:text-slate-200"
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
           {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
@@ -137,7 +137,7 @@ export function Sidebar({
         {SECTIONS.map((section) => (
           <div key={section.title} className="mb-3">
             {!collapsed && (
-              <div className="px-3 py-1 text-[10px] uppercase tracking-wider text-slate-400 font-semibold">
+              <div className="px-3 py-1 text-[10px] uppercase tracking-wider text-slate-400 font-semibold dark:text-slate-500">
                 {section.title}
               </div>
             )}
@@ -152,8 +152,8 @@ export function Sidebar({
                         collapsed ? "justify-center" : ""
                       } ${
                         isActive
-                          ? "bg-indigo-50 text-indigo-700 font-medium"
-                          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                          ? "bg-indigo-50 text-indigo-700 font-medium dark:bg-indigo-950 dark:text-indigo-300"
+                          : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
                       }`
                     }
                     title={collapsed ? item.label : undefined}
@@ -168,7 +168,7 @@ export function Sidebar({
         ))}
       </nav>
       {!collapsed && (
-        <div className="px-3 py-2 border-t border-slate-200 text-[10px] text-slate-400 shrink-0">
+        <div className="px-3 py-2 border-t border-slate-200 text-[10px] text-slate-400 shrink-0 dark:border-slate-800 dark:text-slate-500">
           Research evidence rendered honestly. No fabricated results.
         </div>
       )}

@@ -56,8 +56,8 @@ export function EdgeValidation() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Edge Validation</h1>
-        <p className="text-sm text-slate-500 mt-1">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Edge Validation</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
           Per-rule empirical edge at two cost levels: baseline (zero cost) vs realistic cost.
         </p>
       </div>
@@ -135,7 +135,7 @@ export function EdgeValidation() {
               <div className="overflow-x-auto tv-scrollbar">
                 <table className="min-w-full text-sm">
                   <thead>
-                    <tr className="border-b border-slate-200 text-xs text-slate-500">
+                    <tr className="border-b border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
                       <th className="px-3 py-2 text-left font-semibold">Rule</th>
                       <th className="px-3 py-2 text-center font-semibold">Baseline (0 cost)</th>
                       <th className="px-3 py-2 text-center font-semibold">Realistic cost</th>
@@ -144,7 +144,7 @@ export function EdgeValidation() {
                   </thead>
                   <tbody>
                     {Object.entries(data.by_rule).map(([rid, e]) => (
-                      <tr key={rid} className="border-b border-slate-100">
+                      <tr key={rid} className="border-b border-slate-100 dark:border-slate-800">
                         <td className="px-3 py-2"><Chip tone="violet">{rid}</Chip></td>
                         <td className="px-3 py-2 text-center"><HasEdgeChip v={e.baseline_has_edge} /></td>
                         <td className="px-3 py-2 text-center"><HasEdgeChip v={e.realistic_cost_has_edge} /></td>
@@ -152,7 +152,7 @@ export function EdgeValidation() {
                           {e.flipped ? (
                             <Chip tone="amber">flipped</Chip>
                           ) : (
-                            <span className="text-slate-400 text-xs">—</span>
+                            <span className="text-slate-400 dark:text-slate-500 text-xs">—</span>
                           )}
                         </td>
                       </tr>
@@ -186,8 +186,8 @@ function EdgeCriterionPanel({ c }: { c: EdgeCriterion }) {
       <KV k="profit_factor_greater_than_one" v={c.profit_factor_greater_than_one} />
       <KV k="min_trades" v={String(c.min_trades)} />
       <div className="md:col-span-2">
-        <dt className="text-slate-500">insufficient_data</dt>
-        <dd className="text-slate-700">{c.insufficient_data}</dd>
+        <dt className="text-slate-500 dark:text-slate-400">insufficient_data</dt>
+        <dd className="text-slate-700 dark:text-slate-300">{c.insufficient_data}</dd>
       </div>
     </dl>
   );
@@ -207,16 +207,16 @@ function PerRuleDrilldown({ data }: { data: EdgeValidationResponse }) {
         const byRule = level === "baseline" ? baselineByRule : realisticByRule;
         const report = level === "baseline" ? data.baseline : data.realistic_cost;
         return (
-          <div key={level} className="border border-slate-200 rounded-md p-3">
-            <div className="text-xs font-semibold text-slate-700 mb-2 flex items-center gap-2">
+          <div key={level} className="border border-slate-200 dark:border-slate-800 rounded-md p-3">
+            <div className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-2">
               <span>{level === "baseline" ? "Baseline (0 cost)" : "Realistic cost"}</span>
-              <span className="text-slate-400">·</span>
+              <span className="text-slate-400 dark:text-slate-500">·</span>
               <span className="font-mono">{report.commission_rate} commission / {report.slippage_bps} bps slippage</span>
             </div>
             <div className="overflow-x-auto tv-scrollbar">
               <table className="min-w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-200 text-xs text-slate-500">
+                  <tr className="border-b border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
                     {["Rule", "Trades", "Win rate", "Expectancy", "PF", "Sharpe", "Sortino", "Max DD %", "Has edge"].map((h) => (
                       <th key={h} className="px-3 py-2 text-left font-semibold">{h}</th>
                     ))}
@@ -227,15 +227,15 @@ function PerRuleDrilldown({ data }: { data: EdgeValidationResponse }) {
                     const r = byRule[rid] as EdgeRuleReport | undefined;
                     if (!r) {
                       return (
-                        <tr key={rid} className="border-b border-slate-100">
-                          <td colSpan={9} className="px-3 py-2 text-xs text-slate-400 italic">
+                        <tr key={rid} className="border-b border-slate-100 dark:border-slate-800">
+                          <td colSpan={9} className="px-3 py-2 text-xs text-slate-400 dark:text-slate-500 italic">
                             {rid}: no report at {level}
                           </td>
                         </tr>
                       );
                     }
                     return (
-                      <tr key={rid} className="border-b border-slate-100">
+                      <tr key={rid} className="border-b border-slate-100 dark:border-slate-800">
                         <td className="px-3 py-2"><Chip tone="violet">{r.rule_id}</Chip></td>
                         <td className="px-3 py-2 font-mono text-right tabular-nums">{fmtDecimal(r.trade_count, 0)}</td>
                         <td className="px-3 py-2 font-mono text-right tabular-nums">{fmtPct(r.win_rate)}</td>
@@ -255,7 +255,7 @@ function PerRuleDrilldown({ data }: { data: EdgeValidationResponse }) {
         );
       })}
       {/* Hint about has_edge tone */}
-      <div className="text-[11px] text-slate-500 italic">
+      <div className="text-[11px] text-slate-500 dark:text-slate-400 italic">
         has_edge tone: <span className="text-emerald-700">emerald = true</span> ·
         <span className="text-rose-700"> rose = false</span> ·
         <span className="text-amber-700"> amber = null (insufficient data — never treated as False)</span>
@@ -269,8 +269,8 @@ function PerRuleDrilldown({ data }: { data: EdgeValidationResponse }) {
 function KV({ k, v }: { k: string; v: React.ReactNode }) {
   return (
     <div>
-      <dt className="text-slate-500">{k}</dt>
-      <dd className="font-mono tabular-nums text-slate-900">{v}</dd>
+      <dt className="text-slate-500 dark:text-slate-400">{k}</dt>
+      <dd className="font-mono tabular-nums text-slate-900 dark:text-slate-100">{v}</dd>
     </div>
   );
 }

@@ -22,8 +22,8 @@ export function Audit() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Audit Log</h1>
-        <p className="text-sm text-slate-500 mt-1">GET /audit/entries/ · read-only, authoritative</p>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Audit Log</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">GET /audit/entries/ · read-only, authoritative</p>
       </div>
       {state === "error" && error && <Alert tone="error" code={error.code} onRetry={refetch}>{error.message}</Alert>}
       <Card>

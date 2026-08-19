@@ -39,8 +39,8 @@ export function Portfolio() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Portfolio Composition</h1>
-        <p className="text-sm text-slate-500 mt-1">Account <code className="text-xs">{data.account_id?.slice(0, 8) || "—"}</code></p>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Portfolio Composition</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Account <code className="text-xs">{data.account_id?.slice(0, 8) || "—"}</code></p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -69,7 +69,7 @@ export function Portfolio() {
             <div className="overflow-x-auto tv-scrollbar max-h-96">
               <table className="min-w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-200 text-xs text-slate-500">
+                  <tr className="border-b border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
                     {["Symbol", "Qty", "Avg cost", "Market value", "Alloc %", "Unrealized PnL"].map((h) => (
                       <th key={h} className="px-3 py-2 text-left font-semibold">{h}</th>
                     ))}
@@ -77,13 +77,13 @@ export function Portfolio() {
                 </thead>
                 <tbody>
                   {holdings.map((h: Holding) => (
-                    <tr key={h.symbol} className="border-b border-slate-100 hover:bg-slate-50">
+                    <tr key={h.symbol} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50">
                       <td className="px-3 py-2"><Link to={`/portfolio/holdings/${encodeURIComponent(h.symbol)}`} className="text-indigo-600 hover:underline">{h.symbol}</Link></td>
                       <td className="px-3 py-2 font-mono text-right tabular-nums">{h.quantity}</td>
                       <td className="px-3 py-2 font-mono text-right tabular-nums">{fmtInr(h.avg_cost)}</td>
                       <td className="px-3 py-2 font-mono text-right tabular-nums">{fmtInr(h.market_value)}</td>
                       <td className="px-3 py-2 font-mono text-right tabular-nums">{toNum(h.allocation_pct) !== null ? `${toNum(h.allocation_pct)!.toFixed(2)}%` : "--"}</td>
-                      <td className={`px-3 py-2 font-mono text-right tabular-nums ${toNum(h.unrealized_pnl)! > 0 ? "text-emerald-600" : toNum(h.unrealized_pnl)! < 0 ? "text-rose-600" : "text-slate-500"}`}>{fmtInr(h.unrealized_pnl)}</td>
+                      <td className={`px-3 py-2 font-mono text-right tabular-nums ${toNum(h.unrealized_pnl)! > 0 ? "text-emerald-600" : toNum(h.unrealized_pnl)! < 0 ? "text-rose-600" : "text-slate-500 dark:text-slate-400"}`}>{fmtInr(h.unrealized_pnl)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -100,14 +100,14 @@ function LoadingPortfolio() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Portfolio Composition</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Portfolio Composition</h1>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {[0, 1, 2].map((i) => (
-          <div key={i} className="bg-white border border-slate-200 shadow-sm rounded-lg p-4">
-            <div className="h-3 w-20 bg-slate-200 rounded animate-pulse mb-2" />
-            <div className="h-6 w-28 bg-slate-200 rounded animate-pulse mb-2" />
-            <div className="h-2.5 w-16 bg-slate-100 rounded animate-pulse" />
+          <div key={i} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm rounded-lg p-4">
+            <div className="h-3 w-20 bg-slate-200 dark:bg-slate-700 rounded animate-pulse mb-2" />
+            <div className="h-6 w-28 bg-slate-200 dark:bg-slate-700 rounded animate-pulse mb-2" />
+            <div className="h-2.5 w-16 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
           </div>
         ))}
       </div>

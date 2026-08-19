@@ -40,8 +40,8 @@ export function KillSwitch() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Kill Switch</h1>
-        <p className="text-sm text-slate-500 mt-1">GET/POST /risk-management/kill-switch/</p>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Kill Switch</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">GET/POST /risk-management/kill-switch/</p>
       </div>
       {!canControl && (
         <Alert tone="warning" title="Permission required">
@@ -50,7 +50,7 @@ export function KillSwitch() {
           <code>{user?.role || "viewer"}</code>.
         </Alert>
       )}
-      {state === "loading" && <Card><div className="h-24 bg-slate-100 rounded animate-pulse" /></Card>}
+      {state === "loading" && <Card><div className="h-24 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" /></Card>}
       {state === "error" && error && <Alert tone="error" code={error.code} onRetry={refetch}>{error.message}</Alert>}
       {state === "success" && data && (
         <Card title="Current state">
@@ -90,17 +90,17 @@ export function KillSwitch() {
 
       {pending && (
         <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 space-y-4">
-            <h2 className="text-lg font-semibold text-slate-900">
+          <div className="bg-white dark:bg-slate-900 rounded-lg shadow-xl max-w-md w-full p-6 space-y-4">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
               {pending === "activate" ? "Activate kill switch?" : "Deactivate kill switch?"}
             </h2>
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-slate-600 dark:text-slate-400">
               {pending === "activate"
                 ? "This will halt all new trading activity. Existing positions are not affected."
                 : "This will resume trading activity."}
             </p>
             <label className="block">
-              <span className="block text-xs font-medium text-slate-700 mb-1">Reason (optional)</span>
+              <span className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Reason (optional)</span>
               <input className="tv-input" value={reason} onChange={(e) => setReason(e.target.value)} disabled={busy} />
             </label>
             {actionError && <Alert tone="error" code={actionError.code}>{actionError.message}</Alert>}
@@ -120,8 +120,8 @@ export function KillSwitch() {
 function KV({ k, v }: { k: string; v: React.ReactNode }) {
   return (
     <div>
-      <dt className="text-xs text-slate-500">{k}</dt>
-      <dd className="text-sm text-slate-900 mt-0.5">{v || "—"}</dd>
+      <dt className="text-xs text-slate-500 dark:text-slate-400">{k}</dt>
+      <dd className="text-sm text-slate-900 dark:text-slate-100 mt-0.5">{v || "—"}</dd>
     </div>
   );
 }

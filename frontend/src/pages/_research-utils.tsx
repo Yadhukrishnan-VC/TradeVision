@@ -83,9 +83,9 @@ export function Field({
 }) {
   return (
     <label className="block">
-      <span className="block text-xs font-medium text-slate-700 mb-1">{label}</span>
+      <span className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">{label}</span>
       {children}
-      {hint && <span className="block text-[10px] text-slate-400 mt-0.5">{hint}</span>}
+      {hint && <span className="block text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">{hint}</span>}
     </label>
   );
 }
@@ -93,7 +93,7 @@ export function Field({
 /** Non-blocking warning about backend execution config. */
 export function SyncResearchWarning() {
   return (
-    <div className="text-[11px] text-slate-500 italic">
+    <div className="text-[11px] text-slate-500 dark:text-slate-400 italic">
       Note: this endpoint runs synchronously. If the backend's Celery is not in
       eager mode, it may hang or fail. The client uses a 120s timeout; manual
       retry only.
@@ -118,7 +118,7 @@ export function ResearchActions({
           type="button"
           onClick={onReset}
           disabled={loading}
-          className="text-xs text-slate-500 hover:text-slate-700 underline disabled:opacity-50"
+          className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-700 underline disabled:opacity-50"
         >
           Clear result
         </button>

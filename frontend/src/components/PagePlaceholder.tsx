@@ -19,15 +19,15 @@ export function PagePlaceholder({ title, path, dataSource, phase }: PagePlacehol
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">{title}</h1>
-        <code className="text-xs text-slate-500">{path}</code>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{title}</h1>
+        <code className="text-xs text-slate-500 dark:text-slate-400">{path}</code>
       </div>
       <Alert tone="info" title={`Phase ${phase} — placeholder`}>
         This page is part of the planned phased rollout. It will be wired to its
         documented data source once its phase is reached.
       </Alert>
       <Card title="Documented data source">
-        <div className="text-sm text-slate-700 space-y-1">{dataSource}</div>
+        <div className="text-sm text-slate-700 dark:text-slate-300 space-y-1">{dataSource}</div>
       </Card>
     </div>
   );

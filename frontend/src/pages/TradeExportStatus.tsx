@@ -32,9 +32,9 @@ export function TradeExportStatus() {
         ]}
       />
       <div className="flex items-baseline justify-between">
-        <h1 className="text-2xl font-bold text-slate-900">Trade export</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Trade export</h1>
         {polling && (
-          <span className="text-xs text-slate-500 flex items-center gap-1">
+          <span className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
             <RefreshCw className="w-3 h-3 animate-spin" />
             Polling…
           </span>
@@ -49,7 +49,7 @@ export function TradeExportStatus() {
 
       {!data && !error && (
         <Card>
-          <div className="h-24 bg-slate-100 rounded animate-pulse" />
+          <div className="h-24 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
         </Card>
       )}
 
@@ -65,8 +65,8 @@ export function TradeExportStatus() {
           </dl>
 
           {data.file_url ? (
-            <div className="mt-4 pt-4 border-t border-slate-200">
-              <p className="text-xs text-slate-600 mb-2">
+            <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+              <p className="text-xs text-slate-600 dark:text-slate-400 mb-2">
                 Download is available. Click below to retrieve the file.
               </p>
               <a href={data.file_url} target="_blank" rel="noopener noreferrer">
@@ -77,8 +77,8 @@ export function TradeExportStatus() {
               </a>
             </div>
           ) : (
-            <div className="mt-4 pt-4 border-t border-slate-200">
-              <p className="text-xs text-slate-500 italic">
+            <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+              <p className="text-xs text-slate-500 dark:text-slate-400 italic">
                 No download URL provided in the response. If the status is
                 COMPLETED but no URL appears, the backend may use a different
                 delivery mechanism (e.g. async email) or the job is still
@@ -103,8 +103,8 @@ export function TradeExportStatus() {
 function KV({ k, v }: { k: string; v: React.ReactNode }) {
   return (
     <div>
-      <dt className="text-xs text-slate-500">{k}</dt>
-      <dd className="text-sm text-slate-900 mt-0.5">{v || "—"}</dd>
+      <dt className="text-xs text-slate-500 dark:text-slate-400">{k}</dt>
+      <dd className="text-sm text-slate-900 dark:text-slate-100 mt-0.5">{v || "—"}</dd>
     </div>
   );
 }

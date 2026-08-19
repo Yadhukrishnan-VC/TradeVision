@@ -61,8 +61,8 @@ export function WalkForward() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Walk-Forward Validation</h1>
-        <p className="text-sm text-slate-500 mt-1">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Walk-Forward Validation</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
           Rolling OOS validation across sliding time windows.
         </p>
       </div>
@@ -147,7 +147,7 @@ export function WalkForward() {
             <div className="overflow-x-auto tv-scrollbar">
               <table className="min-w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-200 text-xs text-slate-500">
+                  <tr className="border-b border-slate-200 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
                     {["#", "Range", "IS trades", "OOS trades", "IS expectancy", "OOS expectancy", "OOS Sharpe", "OOS win rate", "Status"].map((h) => (
                       <th key={h} className="px-3 py-2 text-left font-semibold">{h}</th>
                     ))}
@@ -155,7 +155,7 @@ export function WalkForward() {
                 </thead>
                 <tbody>
                   {data.windows.map((w) => (
-                    <tr key={w.window_index} className="border-b border-slate-100">
+                    <tr key={w.window_index} className="border-b border-slate-100 dark:border-slate-800">
                       <td className="px-3 py-2">W{w.window_index + 1}</td>
                       <td className="px-3 py-2 text-xs">{w.range_start.slice(0, 10)} → {w.range_end.slice(0, 10)}</td>
                       <td className="px-3 py-2 font-mono text-right tabular-nums">{fmtDecimal(w.in_sample_trade_count, 0)}</td>
@@ -194,8 +194,8 @@ function DistributionPanel({
   };
   const positivePct = entry.count > 0 ? (entry.count_positive / entry.count) * 100 : 0;
   return (
-    <div className="border border-slate-200 rounded-md p-3">
-      <div className="text-xs font-semibold text-slate-700 mb-2">{label}</div>
+    <div className="border border-slate-200 dark:border-slate-800 rounded-md p-3">
+      <div className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">{label}</div>
       <dl className="grid grid-cols-2 gap-2 text-xs">
         <KV k="Count" v={fmtDecimal(entry.count, 0)} />
         <KV k="Positive" v={`${fmtDecimal(entry.count_positive, 0)} (${fmtDecimal(positivePct, 1)}%)`} />
@@ -210,8 +210,8 @@ function DistributionPanel({
 function KV({ k, v }: { k: string; v: React.ReactNode }) {
   return (
     <div>
-      <dt className="text-slate-500">{k}</dt>
-      <dd className="font-mono tabular-nums text-slate-900">{v}</dd>
+      <dt className="text-slate-500 dark:text-slate-400">{k}</dt>
+      <dd className="font-mono tabular-nums text-slate-900 dark:text-slate-100">{v}</dd>
     </div>
   );
 }

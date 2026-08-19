@@ -29,8 +29,8 @@ export function BacktestList() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Backtests</h1>
-        <p className="text-sm text-slate-500 mt-1">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Backtests</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
           Create a new backtest run, then poll its status while it executes.
         </p>
       </div>
@@ -64,21 +64,21 @@ export function BacktestList() {
                   className="min-w-0 flex-1 hover:bg-slate-50 rounded -mx-2 px-2 py-1"
                 >
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-medium text-slate-900">{r.symbol}</span>
+                    <span className="font-medium text-slate-900 dark:text-slate-100">{r.symbol}</span>
                     {r.timeframe && (
-                      <code className="text-xs text-slate-500">{r.timeframe}</code>
+                      <code className="text-xs text-slate-500 dark:text-slate-400">{r.timeframe}</code>
                     )}
                     <Chip tone={runStatusTone(r.status)}>{r.status}</Chip>
                   </div>
-                  <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-2 flex-wrap">
+                  <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-2 flex-wrap">
                     <span>{fmtDate(r.range_start)} → {fmtDate(r.range_end)}</span>
                     <span>·</span>
-                    <code className="font-mono text-[10px] text-slate-400">{r.run_id.slice(0, 8)}</code>
+                    <code className="font-mono text-[10px] text-slate-400 dark:text-slate-500">{r.run_id.slice(0, 8)}</code>
                   </div>
                 </Link>
                 <button
                   onClick={() => handleRemoved(r.run_id)}
-                  className="text-slate-400 hover:text-rose-600 shrink-0 p-1"
+                  className="text-slate-400 dark:text-slate-500 hover:text-rose-600 shrink-0 p-1"
                   aria-label="Remove from recent"
                   title="Remove from recent"
                 >
