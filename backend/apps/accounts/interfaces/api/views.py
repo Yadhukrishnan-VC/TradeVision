@@ -29,6 +29,7 @@ class LoginView(APIView):
 
     permission_classes = [AllowAny]
     authentication_classes = []
+    throttle_scope = "auth"
 
     def post(self, request: Request, *args: Any, **kwargs: Any) -> Response:
         serializer = LoginSerializer(data=request.data)
@@ -89,6 +90,7 @@ class TokenRefreshView(APIView):
 
     permission_classes = [AllowAny]
     authentication_classes = []
+    throttle_scope = "auth"
 
     def post(self, request: Request, *args: Any, **kwargs: Any) -> Response:
         serializer = TokenRefreshSerializer(data=request.data)
@@ -126,6 +128,7 @@ class APIKeyViewSet(generics.ListCreateAPIView, generics.DestroyAPIView):
 
     serializer_class = APIKeySerializer
     permission_classes = [IsAuthenticated]
+    throttle_scope = "api_keys"
 
     def get_queryset(self):
         return APIKey.objects.filter(user=self.request.user)

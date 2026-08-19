@@ -221,6 +221,20 @@ REST_FRAMEWORK = {
     "EXCEPTION_HANDLER": "apps.common.infrastructure.drf_exception_handler.custom_exception_handler",
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 20,
+    # API rate limiting (WS2). Counters live in the configured cache backend
+    # (Redis in production; DummyCache in tests is inert — a no-op that never
+    # triggers). Rates are env-overridable per environment.
+    "DEFAULT_THROTTLE_CLASSES": (
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+        "rest_framework.throttling.ScopedRateThrottle",
+    ),
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": os.environ.get("THROTTLE_RATE_ANON", "120/hour"),
+        "user": os.environ.get("THROTTLE_RATE_USER", "6000/hour"),
+        "auth": os.environ.get("THROTTLE_RATE_AUTH", "15/min"),
+        "api_keys": os.environ.get("THROTTLE_RATE_API_KEYS", "30/hour"),
+    },
 }
 
 from datetime import timedelta  # noqa: E402
