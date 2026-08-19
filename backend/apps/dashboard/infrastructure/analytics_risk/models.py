@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+from uuid import uuid4
+
 from django.db import models
 
 
 class PnLSnapshot(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid4)
     account_id = models.UUIDField(db_index=True)
     snapshot_at = models.DateTimeField()
     realized_pnl = models.DecimalField(max_digits=20, decimal_places=8, default=0)
@@ -26,7 +28,7 @@ class PnLSnapshot(models.Model):
 
 
 class PnLDailyRollup(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid4)
     account_id = models.UUIDField(db_index=True)
     trading_date = models.DateField()
     realized_pnl = models.DecimalField(max_digits=20, decimal_places=8, default=0)
@@ -50,7 +52,7 @@ class PnLDailyRollup(models.Model):
 
 
 class PerformanceSnapshot(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid4)
     account_id = models.UUIDField(db_index=True)
     period = models.CharField(max_length=10)
     computed_at = models.DateTimeField(auto_now=True)
@@ -78,7 +80,7 @@ class PerformanceSnapshot(models.Model):
 
 
 class RiskMetricSnapshot(models.Model):
-    id = models.UUIDField(primary_key=True)
+    id = models.UUIDField(primary_key=True, default=uuid4)
     account_id = models.UUIDField(db_index=True)
     snapshot_at = models.DateTimeField()
     total_exposure = models.DecimalField(max_digits=20, decimal_places=8, default=0)
@@ -97,7 +99,7 @@ class RiskMetricSnapshot(models.Model):
 
 
 class RiskAlertProjection(models.Model):
-    alert_id = models.UUIDField(primary_key=True)
+    alert_id = models.UUIDField(primary_key=True, default=uuid4)
     account_id = models.UUIDField(db_index=True)
     alert_type = models.CharField(max_length=50)
     severity = models.CharField(max_length=20)

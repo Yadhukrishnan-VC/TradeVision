@@ -4,6 +4,7 @@ from datetime import date, datetime
 from uuid import UUID
 
 from rest_framework import status
+from rest_framework.exceptions import NotFound
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -24,7 +25,21 @@ from apps.dashboard.interfaces.api.analytics_risk.serializers import (
 )
 
 
-class PnLAnalyticsView(APIView):
+class AccountOwnershipMixin:
+    """Require the URL ``account_id`` to be the caller's own account.
+
+    ``request.user`` is the real user for both JWT and API-key auth
+    (``APIKeyAuthentication`` resolves the key to its owning user), so a
+    single identity check covers both paths. Returns 404 — not 403 — so the
+    existence of other accounts is not disclosed.
+    """
+
+    def _ensure_own_account(self, request: Request, account_id: UUID) -> None:
+        if str(request.user.id) != str(account_id):
+            raise NotFound()
+
+
+class PnLAnalyticsView(AccountOwnershipMixin, APIView):
     permission_classes = [HasDashboardReadPnlAnalytics]
 
     def __init__(self, **kwargs: object) -> None:
@@ -32,6 +47,7 @@ class PnLAnalyticsView(APIView):
         self._service = PnLAnalyticsService()
 
     def get(self, request: Request, account_id: UUID) -> Response:
+        self._ensure_own_account(request, account_id)
         query_ser = PeriodQuerySerializer(data=request.query_params)
         if not query_ser.is_valid():
             return Response(query_ser.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -64,7 +80,7 @@ class PnLAnalyticsView(APIView):
         return Response({"error": "Not implemented"}, status=status.HTTP_501_NOT_IMPLEMENTED)
 
 
-class DailyRollupView(APIView):
+class DailyRollupView(AccountOwnershipMixin, APIView):
     permission_classes = [HasDashboardReadPnlAnalytics]
 
     def __init__(self, **kwargs: object) -> None:
@@ -72,6 +88,7 @@ class DailyRollupView(APIView):
         self._service = PnLAnalyticsService()
 
     def get(self, request: Request, account_id: UUID) -> Response:
+        self._ensure_own_account(request, account_id)
         date_from_str = request.query_params.get("date_from")
         date_to_str = request.query_params.get("date_to")
 
@@ -103,7 +120,7 @@ class DailyRollupView(APIView):
         return Response(ser.data)
 
 
-class PerformanceView(APIView):
+class PerformanceView(AccountOwnershipMixin, APIView):
     permission_classes = [HasDashboardReadPerformanceMetrics]
 
     def __init__(self, **kwargs: object) -> None:
@@ -111,6 +128,7 @@ class PerformanceView(APIView):
         self._service = PerformanceService()
 
     def get(self, request: Request, account_id: UUID) -> Response:
+        self._ensure_own_account(request, account_id)
         query_ser = PeriodQuerySerializer(data=request.query_params)
         if not query_ser.is_valid():
             return Response(query_ser.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -134,7 +152,7 @@ class PerformanceView(APIView):
         return Response(ser.data)
 
 
-class RiskSummaryView(APIView):
+class RiskSummaryView(AccountOwnershipMixin, APIView):
     permission_classes = [HasDashboardReadRisk]
 
     def __init__(self, **kwargs: object) -> None:
@@ -142,6 +160,7 @@ class RiskSummaryView(APIView):
         self._service = RiskService()
 
     def get(self, request: Request, account_id: UUID) -> Response:
+        self._ensure_own_account(request, account_id)
         summary = self._service.get_summary(account_id)
         ser = RiskSummaryResponseSerializer(
             {
