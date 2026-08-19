@@ -54,6 +54,10 @@ class RiskDecisionListView(ListAPIView):
         if status_value:
             filters["status"] = status_value.upper()
         decisions = self._repository.list(**filters)
+        page = self.paginate_queryset(decisions)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
         serializer = self.get_serializer(decisions, many=True)
         return Response(serializer.data)
 

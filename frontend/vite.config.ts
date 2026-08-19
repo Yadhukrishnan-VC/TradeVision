@@ -19,6 +19,19 @@ export default defineConfig({
     port: 3000,
     host: true,
     strictPort: true,
+    // Proxy API + WebSocket traffic to the Django backend so the relative
+    // API_BASE_URL (/api/v1) works from the Vite dev server without a
+    // separate nginx in front. Both containers share the compose network.
+    proxy: {
+      "/api": {
+        target: "http://backend:8000",
+        changeOrigin: true,
+      },
+      "/ws": {
+        target: "ws://backend:8000",
+        ws: true,
+      },
+    },
     // Restrict Vite's file-system scope so it doesn't try to process files
     // under skills/ or upload/ (which contain reference HTML that imports
     // packages like `three` not present in this project's node_modules).

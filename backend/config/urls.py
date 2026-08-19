@@ -11,6 +11,7 @@ URL structure:
 
 from __future__ import annotations
 
+from django.conf import settings
 from django.contrib import admin
 from django.urls import include, path
 from django_prometheus import exports as prometheus_exports
@@ -96,3 +97,8 @@ urlpatterns = [
     # Read-only ingested headlines + provider sentiment; paginated.
     path("api/v1/news/", include("apps.news_feed.interfaces.api.urls")),
 ]
+
+# Django Debug Toolbar (development only) — registers the "djdt" namespace
+# its panels reverse against when rendering the toolbar.
+if settings.DEBUG and "debug_toolbar" in settings.INSTALLED_APPS:
+    urlpatterns.append(path("__debug__/", include("debug_toolbar.urls")))

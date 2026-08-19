@@ -27,6 +27,68 @@ All notable changes to TradeVision AI will be documented in this file.
 
 ## [Unreleased]
 
+### Frontend↔Backend Connection & Login (2026-08-19)
+
+**Fixed (the login page now works end-to-end):**
+- **Stale Vite config shadowing**: generated `frontend/vite.config.js` / `frontend/vite.config.d.ts` build artifacts took precedence over `vite.config.ts` (Vite resolves `.js` first), so the dev proxy was never active — artifacts removed
+- **Vite dev proxy**: `frontend/vite.config.ts` now proxies `/api` → `http://backend:8000` and `/ws` → `ws://backend:8000`, so the relative `API_BASE_URL` (`/api/v1`) works directly on `http://localhost:5173` without nginx
+- **Django Debug Toolbar `NoReverseMatch`**: with `DEBUG=True` the toolbar's panels `reverse("djdt:render_panel")` but the `djdt` namespace was never registered, 500-ing every successful request (login included) — `config/urls.py` now appends `__debug__/` → `debug_toolbar.urls` when DEBUG and the app are enabled
+- **`seed_admin` `TypeError`**: `create_superuser` was called without `username`; the command now derives a unique `username` from the email local-part
+
+**Verified:** `POST /api/v1/auth/login/` (`admin` / `changeme123`) returns `{access, refresh, user}` through both `http://localhost:5173` (Vite proxy) and `http://localhost` (nginx); `/auth/me/` and `/auth/refresh/` work; invalid credentials return 401. Host test run: 121 passed (accounts + common).
+
+---
+
+## [Unreleased]
+
+### Dashboard Migrations Registered & Applied (2026-08-19)
+
+**Fixed (`/api/v1/dashboard/home/summary/` returned 500):**
+- The `dashboard` app's migrations were stranded in nested packages
+  (`apps/dashboard/infrastructure/{trading_core,analytics_risk}/migrations/`)
+  that Django never loads, so every `dashboard` read-model table (including
+  `dashboard_homesummary`) was missing. The nested packages are removed and a
+  real `apps/dashboard/migrations/0001_initial.py` was generated with
+  `makemigrations` covering all current models — `makemigrations --check` is
+  now clean for the whole project
+- The orphaned `0002_timescaledb_hypertables` migration (never applied) was
+  dropped: the `PnLSnapshot` / `RiskMetricSnapshot` UUID primary keys exclude
+  `snapshot_at`, which TimescaleDB rejects for hypertables, and no code uses
+  TimescaleDB features (`time_bucket`, `create_hypertable`, …) — the tables
+  are plain Postgres
+- Applied the migration to the dev DB; all 12 `dashboard_*` tables now exist
+
+**Verified:** endpoint returns the designed 404 (`account-summary-not-initialized`,
+no projection data yet) instead of 500; unauthenticated → 401. Dashboard suite:
+189 passed.
+
+---
+
+## [Unreleased]
+
+### List Endpoints Return Paginated Envelopes (2026-08-19)
+
+**Fixed (`/risk`, `/recommendations`, `/memory` pages failed to render):**
+- `RiskDecisionListView`, `RecommendationListView`, and `MemoryEntryListView`
+  overrode `get()` and returned bare arrays, bypassing the global
+  `PageNumberPagination` (`DEFAULT_PAGINATION_CLASS`, `PAGE_SIZE=20`). The
+  frontend's `apiGetPaged` expects `{count, next, previous, results}`, so
+  `data.results.length` threw and the pages crashed
+- All three views now paginate via `paginate_queryset` + `get_paginated_response`
+  (falling back to a plain response if pagination is disabled), matching the
+  dashboard/signals/patterns/news endpoints that already paginate
+
+**Verified:** `/risk-management/decisions/`, `/recommendations/`, and
+`/trader-memory/entries/` return `{"count": 0, "next": null, "previous": null,
+"results": []}`; risk_management suite 62 passed. Remaining known gaps (out of
+scope): `/watchlist/` requires an `account_id` query param the frontend never
+sends, and `/portfolio-reconciliation/drift/`, `/ingestion/raw-events/`,
+`/audit/entries/` require API-key scopes the default `admin` viewer user lacks.
+
+---
+
+## [Unreleased]
+
 ### Risk Sophistication & Execution Realism (2026-08-19)
 
 **Added:**

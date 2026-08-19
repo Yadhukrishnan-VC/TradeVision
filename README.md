@@ -144,16 +144,14 @@ One idempotent helper exists:
   `admin@tradevision.ai` / `changeme123`), skipping if it already
   exists.
 
-> **Known bug — `seed_admin` currently fails.**
-> The command calls `User.objects.create_superuser(email=..., password=...)`
-> without a `username`, but the custom `accounts.User` uses Django's
-> default `UserManager` (per migration `0004`), whose `create_superuser`
-> requires `username`. Running it raises
-> `TypeError: UserManager.create_superuser() missing 1 required
-> positional argument: 'username'` (verified empirically). It is a
-> pre-existing bug and out of scope for this documentation to fix.
+The command derives `username` from the email local-part (falling back to
+`admin` with a numeric suffix if taken), so it runs cleanly:
 
-A working alternative while the bug exists:
+```bash
+docker compose -f infra/docker-compose.yml -f infra/docker-compose.dev.yml exec backend python manage.py seed_admin
+```
+
+Alternatively, create a superuser interactively:
 
 ```bash
 docker compose -f infra/docker-compose.yml -f infra/docker-compose.dev.yml exec backend python manage.py createsuperuser --username admin --email admin@tradevision.ai
@@ -226,10 +224,32 @@ Issues discovered while verifying local development:
 1. **PgBouncer image unavailable — FIXED.** `bitnami/pgbouncer:1.23.1`
    no longer resolves on Docker Hub; the service now uses
    `edoburu/pgbouncer` (see the note in [section 2](#2-bring-up-the-stack)).
-2. **`seed_admin` management command raises `TypeError`.**
-   `create_superuser` is called without `username`; the custom
-   `accounts.User` uses Django's default `UserManager` which requires it.
-   Use `manage.py createsuperuser --username ...` instead.
-3. **`makemigrations --check` reports drift** in pre-existing apps
-   (`rule_engine`, `signals_engine`, `trader_memory`). Unrelated to local
-   setup and pre-existing.
+2. **`seed_admin` management command raised `TypeError` — FIXED.**
+   `create_superuser` was called without `username`. The command now
+   derives a unique `username` from the email local-part. Log in at
+   `http://localhost:5173/login` with `admin` / `changeme123`.
+3. **`makemigrations --check` reports drift** — **FIXED.** The `dashboard`
+   app's migrations lived in nested packages
+   (`apps/dashboard/infrastructure/{trading_core,analytics_risk}/migrations/`)
+   that Django never loads, so every `dashboard` read-model table was missing
+   (e.g. `GET /api/v1/dashboard/home/summary/` 500'd on
+   `relation "dashboard_homesummary" does not exist`). The nested packages were
+   removed and `apps/dashboard/migrations/0001_initial.py` generated from the
+   current models; `makemigrations --check` is now clean for the whole project.
+   The orphaned TimescaleDB hypertable migration was dropped (UUID primary keys
+   exclude the partitioning column, which TimescaleDB rejects, and nothing uses
+   TimescaleDB features).
+4. **List endpoints returned bare arrays — FIXED.** `RiskDecisionListView`,
+   `RecommendationListView`, and `MemoryEntryListView` overrode `get()` and
+   bypassed DRF's global `PageNumberPagination`, so the `/risk`,
+   `/recommendations`, and `/memory` pages crashed (`data.results.length` was
+   undefined). The three views now return `{count, next, previous, results}`
+   envelopes like the dashboard/signals/patterns/news endpoints.
+4. **Vite did not proxy `/api` to Django — FIXED.** The frontend
+   container had stale generated `vite.config.js`/`vite.config.d.ts`
+   artifacts shadowing `vite.config.ts`; those are removed and the TS
+   config now proxies `/api` and `/ws` to `backend:8000`, so the relative
+   `API_BASE_URL` works directly on `http://localhost:5173`. A dev-only
+   `__debug__/` URL pattern was also added to the root URLconf so the
+   Django Debug Toolbar's `djdt` namespace resolves (previously every
+   successful request 500'd with `NoReverseMatch`).

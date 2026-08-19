@@ -45,7 +45,12 @@ class TestRiskDecisionListAPI:
         response = api_client.get(DECISIONS_PATH)
 
         assert response.status_code == status.HTTP_200_OK
-        assert response.data == []
+        assert response.data == {
+            "count": 0,
+            "next": None,
+            "previous": None,
+            "results": [],
+        }
 
 
 class TestKillSwitchListAPI:

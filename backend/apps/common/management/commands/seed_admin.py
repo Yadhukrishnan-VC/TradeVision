@@ -84,7 +84,8 @@ class Command(BaseCommand):
             logger.info("seed_admin_skipped", extra={"email": email})
             return
 
-        User.objects.create_superuser(email=email, password=password)
+        username = self._derive_username(User, email)
+        User.objects.create_superuser(username=username, email=email, password=password)
 
         self.stdout.write(
             self.style.SUCCESS(f"✓ Superuser created: {email}")
@@ -98,3 +99,19 @@ class Command(BaseCommand):
                     "Set ADMIN_PASSWORD before deploying to production."
                 )
             )
+
+    @staticmethod
+    def _derive_username(User: object, email: str) -> str:
+        """
+        Derive a unique username from the email local-part.
+
+        Falls back to ``admin`` and appends a numeric suffix if the
+        candidate is already taken (the ``User.username`` column is unique).
+        """
+        base = email.split("@", 1)[0].strip() or "admin"
+        candidate = base
+        suffix = 1
+        while User.objects.filter(username=candidate).exists():
+            suffix += 1
+            candidate = f"{base}{suffix}"
+        return candidate
