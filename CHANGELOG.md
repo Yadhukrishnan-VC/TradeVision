@@ -53,6 +53,20 @@ All notable changes to TradeVision AI will be documented in this file.
 **Remaining risks (documented):** final-bar close flush (end-of-sample liquidation convention), `price_source` wall-clock/sim-time `ValueError` (logged+swallowed), hardcoded 1M exposure cap, `order.created_at` stays wall-clock audit-only
 
 
+### Remediation Batch — Environment & Runtime (2026-08-19)
+
+**Fixed:**
+- ENV-1 (Django version drift): rebuilt `backend/.venv` from `requirements/dev.txt` → Django 5.0.14 (was 6.0.7 vs pin `django>=5.0,<5.1`); restored undeclared runtime deps (`python-decouple`, `structlog`, `channels`, `channels-redis`, `django-prometheus==2.4.0`, `Jinja2`, `requests`) at old-venv-compatible versions; `pip check` clean
+- ENV-2 (migration drift): generated + applied 4 non-destructive migrations for `recommendations`, `rule_engine`, `signals_engine`, `trader_memory` — root cause was `help_text` drift on BaseModel fields (no-op `AlterField`s) and `Meta.indexes` without explicit `name=` (4 `ALTER INDEX … RENAME`); `makemigrations --check --dry-run` now exits 0
+- ENV-3 (prompt templates silently failing): `PromptManager._load_templates` logged `extra={"filename": …}` — a reserved `LogRecord` attribute — so `logger.info` raised on every iteration, was swallowed by the broad `except`, and reported `prompt_template_load_failed` for all 11 event types while persistence never ran. Renamed key to `template_filename`. Codebase-wide audit for the same mistake found+fixed two more live instances: `instrument_sync_complete` `extra={"created"}` → `created_count` (crashed end-of-sync log), DRF exception handler `extra={"message"}` → `error_message` (crashed on every API error response)
+
+**Added:**
+- `apps/ai_engine/tests/test_prompt_manager_regression.py` (3 tests: all 11 templates load, no load-failure when INFO enabled, all 11 versions persist) — verified to fail against the old bug
+- `docs/REMEDIATION_BATCH_ENV_RUNTIME.md` — root causes, migration rationale, before/after logs, raw verification output, findings
+
+**Findings (documented, not fixed):** runtime deps undeclared in requirements files (notably `requests`, imported by 4 provider modules); `django-prometheus>=2.5` excludes Django 5.0.x; `recommendations` migration `0004` filename/content mismatch (Django-6-generated, dropped renames); stray `opencv-python-headless` in old venv; `psql` not installed; 34 pre-existing failed / 15 pre-existing errors unchanged
+
+
 ### Batch M4 — Portfolio & Capital Management (2026-08-03)
 
 **Added:**

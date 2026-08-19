@@ -1051,6 +1051,12 @@ All of the following must pass before merge:
 - Integration tests (against real DB containers in CI)
 - Coverage gate
 
+### 17.4 Remediation Batch — Environment & Runtime (2026-08-19)
+
+- Local venv rebuilt to the declared Django line (`>=5.0,<5.1` → Django 5.0.14; was 6.0.7); `pip check` clean.
+- Migration drift in `recommendations`, `rule_engine`, `signals_engine`, `trader_memory` closed with 4 non-destructive migrations (BaseModel `help_text` drift → no-op `AlterField`s; `Meta.indexes` lacking explicit `name=` → 4 `ALTER INDEX … RENAME`); `makemigrations --check --dry-run` exits 0.
+- Reserved-`LogRecord`-attribute logging bug fixed in `prompt_manager._load_templates` (all 11 prompt templates were silently failing to load) plus two same-class instances (`instrument_sync_complete` `created`, DRF exception handler `message`). Regression-pinned by `apps/ai_engine/tests/test_prompt_manager_regression.py` (3 tests, verified to fail against the old bug). See `docs/REMEDIATION_BATCH_ENV_RUNTIME.md`.
+
 ---
 
 ## 18. Backup and Recovery

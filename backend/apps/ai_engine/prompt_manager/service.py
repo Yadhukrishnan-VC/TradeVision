@@ -51,7 +51,7 @@ class PromptManager:
                     "prompt_template_loaded",
                     extra={
                         "event_type": event_type,
-                        "filename": filename,
+                        "template_filename": filename,
                         "version": version,
                     },
                 )

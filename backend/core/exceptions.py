@@ -191,7 +191,7 @@ def custom_exception_handler(exc: Exception, context: dict) -> Response | None:
             extra={
                 "status_code": response.status_code,
                 "exception_type": type(exc).__name__,
-                "message": response.data["error"]["message"],
+                "error_message": response.data["error"]["message"],
             },
         )
     else:

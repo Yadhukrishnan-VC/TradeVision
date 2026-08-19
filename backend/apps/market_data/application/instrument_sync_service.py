@@ -77,7 +77,11 @@ class InstrumentSyncService:
 
         logger.info(
             "instrument_sync_complete",
-            extra={"created": created, "updated": updated, "deactivated": deactivated},
+            extra={
+                "created_count": created,
+                "updated": updated,
+                "deactivated": deactivated,
+            },
         )
         return {"created": created, "updated": updated, "deactivated": deactivated}
 
