@@ -53,6 +53,20 @@ All notable changes to TradeVision AI will be documented in this file.
 **Remaining risks (documented):** final-bar close flush (end-of-sample liquidation convention), `price_source` wall-clock/sim-time `ValueError` (logged+swallowed), hardcoded 1M exposure cap, `order.created_at` stays wall-clock audit-only
 
 
+### Edge Validation — Machinery Build + Honest Non-Verdict (2026-08-19)
+
+**Added:**
+- `docs/EDGE_VALIDATION_REPORT.md` — evidence-based report proving the real-data prerequisite is unmet (10 synthetic candles across both dev DBs, no Kite credentials, zero backtest runs), per-rule × per-regime verdict = INSUFFICIENT-DATA with `validated_regimes` left completely untouched (no writes, not even placeholders), the statistical-significance machinery below, the labeled synthetic pipeline smoke test, and the data-source/cost/rate-limit path required to run the real validation
+- `apps/backtesting/domain/significance.py` — pure shuffled-baseline significance comparator (net-new, reusable): sign-flip permutation test at matching trade frequency, observed mean vs null distribution, one-sided p-value + z-score, `verdict` ∈ SIGNIFICANT / NOT_SIGNIFICANT / None; below `min_trades` (default 10) the test is not attempted (`INSUFFICIENT_TRADES`), so no sample can produce a spurious verdict; deterministic via `seed`
+- `apps/backtesting/tests/test_significance.py` (9 tests) — ground-truth tests with known answers: a literally-random strategy → NOT_SIGNIFICANT, an injected obvious edge → SIGNIFICANT, sub-min samples → no verdict, determinism, Decimal input, argument validation
+- `apps/backtesting/tests/test_edge_validation_smoke.py` (4 tests) — ⚠️ SYNTHETIC SMOKE TEST, NOT EDGE EVIDENCE: replays TA snapshots built from the 10 stored synthetic candles through the real event chain and drives `EdgeValidationService.evaluate` + `WalkForwardService.execute` + `CostSensitivityService.execute` + the significance wiring (fills → per-rule net trade P&L → significance); asserts only no-crash + well-formed schema, never a performance magnitude, and never touches `validated_regimes`
+
+**Changed:**
+- `apps/backtesting/` test suite: 166 passed (new significance + smoke tests included, zero regressions)
+
+**Not done (honestly):** no rule is marked GO or NO-GO — every (rule, regime) pair is INSUFFICIENT-DATA because no real data exists to validate against. The ADR-029 §4 gate stays closed, which is its job
+
+
 ### Live/Paper Trading Readiness (2026-08-19)
 
 **Added:**
