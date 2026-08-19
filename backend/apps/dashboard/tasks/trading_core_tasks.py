@@ -76,7 +76,7 @@ def reconcile_positions_snapshot_deprecated(account_id: str) -> dict[str, Any]:
 def reconcile_open_positions(account_id: str) -> dict[str, Any]:
     logger.info("Reconciling open positions", extra={"account_id": account_id})
     open_positions = PositionSnapshot.objects.filter(account_id=account_id, is_open=True)
-    symbol_count = open_positions.values("symbol").annotate(count=Count("id"))
+    symbol_count = open_positions.values("symbol").annotate(count=Count("position_id"))
     return {
         "account_id": account_id,
         "symbols": list(symbol_count),
@@ -128,7 +128,7 @@ def reconcile_orders_deprecated(account_id: str) -> dict[str, Any]:
     order_count = OrderSnapshot.objects.filter(account_id=account_id).count()
     status_counts = OrderSnapshot.objects.filter(account_id=account_id).values(
         "status"
-    ).annotate(count=Count("id"))
+    ).annotate(count=Count("order_id"))
     return {
         "account_id": account_id,
         "order_count": order_count,
