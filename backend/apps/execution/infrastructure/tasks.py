@@ -90,10 +90,18 @@ def handle_risk_approved(
     default_retry_delay=DEFAULT_RETRY_DELAY,
 )
 def process_order(self, order_id: str, correlation_id: str = "") -> dict:
-    """Run one order through the paper broker to fills and the portfolio.
+    """Run one order through the configured broker adapter to fills and the
+    portfolio.
+
+    The broker comes from the settings-driven factory
+    (``BROKER_ADAPTER`` env; default ``paper``) — swapping brokers is a
+    config change, never a code change. In Phase 1 of LIVE-BROKER-EXECUTION-1
+    the only reachable zerodha environment is ``sandbox`` (ADR-030).
 
     Idempotent on ``order_id``: terminal orders and already-applied fills are
     skipped, so retries never double-publish or double-fill.
     """
-    engine = ExecutionEngine()
+    from apps.execution.infrastructure.brokers import get_broker_adapter
+
+    engine = ExecutionEngine(broker=get_broker_adapter())
     return engine.execute_order(uuid.UUID(order_id))

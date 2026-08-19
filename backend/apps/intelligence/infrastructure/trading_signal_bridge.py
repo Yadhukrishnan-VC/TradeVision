@@ -11,8 +11,10 @@ from apps.intelligence.infrastructure.market_context_cache import MarketContextC
 from apps.intelligence.models import PineOutput
 from apps.intelligence.services import MarketContextService, SignalContextRef
 from apps.macro_context.application.macro_context_builder import get_context_builder
+from apps.news_feed.application.news_context_service import get_news_context_service
 from apps.technical_analysis.infrastructure.repositories import TASnapshotRepository
 from core.clock import get_clock
+from core.config import config
 from core.events.event_types import (
     BreadthContext,
     CircuitStatus,
@@ -132,6 +134,23 @@ def _build_macro_context() -> Any:
         return None
 
 
+def _build_news_context(symbol: str) -> tuple[NewsContext, bool]:
+    """Build the symbol's ``NewsContext`` from the ingested news store.
+
+    Returns ``(context, checked)``. ``checked=False`` means the lookup could
+    not run (kill-switched off, or the store is unavailable) — the caller must
+    keep ``missing: ["news"]`` as "never checked". A real lookup that finds
+    nothing also keeps the tag, per ADR-029 §5.
+    """
+    if not config.news_context_lookup_enabled:
+        return NewsContext(), False
+    try:
+        return get_news_context_service().build(symbol, as_of=get_clock().now())
+    except Exception as exc:
+        logger.warning("news_context_build_failed", extra={"symbol": symbol, "error": str(exc)})
+        return NewsContext(), False
+
+
 def handle_signal_created(event: DomainEvent) -> None:
     payload = event.payload
     symbol = payload.get("symbol", "")
@@ -145,13 +164,16 @@ def handle_signal_created(event: DomainEvent) -> None:
 
     service = MarketContextService()
 
-    # No real news source is wired up yet (the news_feed app is an intentionally
-    # empty scaffold pending NSE/BSE/Moneycontrol ToS review), so the packet uses
-    # the unchecked NewsContext() default. Tag that absence explicitly so "no
-    # news found" is distinguishable from "never checked", and reflect the same
-    # per-source penalty used at the ta_completed_handler assembly site.
+    # Real news lookup against the ingested news store (NEWS-FEED-1). The
+    # tag discipline: a lookup that never ran (kill-switch off or store
+    # error) AND a lookup that ran but found no headlines both keep
+    # ``missing: ["news"]`` — only a lookup that found headlines drops the
+    # tag and populates the packet (ADR-029 §5). Same per-source penalty as
+    # the ta_completed_handler assembly site.
+    news_context, news_checked = _build_news_context(symbol)
     missing: list[str] = []
-    missing.append("news")
+    if not news_checked or not news_context.headlines:
+        missing.append("news")
 
     packet = IntelligencePacket(
         symbol=symbol,
@@ -184,7 +206,7 @@ def handle_signal_created(event: DomainEvent) -> None:
             nifty_change_pct=breadth_data.get("nifty_change_pct", Decimal("0")),
             sensex_change_pct=breadth_data.get("sensex_change_pct", Decimal("0")),
         ),
-        news_context=NewsContext(),
+        news_context=news_context,
         macro_context=_build_macro_context(),
         data_quality=DataQuality(
             quality_score=1.0 - (NEWS_MISSING_QUALITY_PENALTY * len(missing)),

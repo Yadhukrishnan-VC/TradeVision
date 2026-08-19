@@ -110,6 +110,9 @@ LOCAL_APPS: list[str] = [
     # Provider ingest + provenance store; consumed by the intelligence
     # context scoring as an additive context dimension.
     "apps.macro_context",
+    # NEWS-FEED-1 — Licensed news provider (Marketaux). Ingested headlines +
+    # provider sentiment; surfaces into IntelligencePacket.news_context.
+    "apps.news_feed",
 ]
 
 THIRD_PARTY_APPS = []
@@ -421,6 +424,16 @@ RECONCILIATION_BEAT_INTERVAL_SECONDS: int = config(
 )
 
 # ---------------------------------------------------------------------------
+# NEWS-FEED-1 — beat cadence for the periodic news ingestion task.
+#
+# Defined before CELERY_BEAT_SCHEDULE (below) because the schedule entry
+# references it directly. All other news settings live in their own block.
+# ---------------------------------------------------------------------------
+NEWS_POLL_INTERVAL_SECONDS: int = config(
+    "NEWS_POLL_INTERVAL_SECONDS", default=900, cast=int
+)
+
+# ---------------------------------------------------------------------------
 # Celery Beat schedule — market_data periodic tasks
 #
 # Only arg-free periodic tasks are scheduled here. ``refresh_candles`` and
@@ -505,6 +518,16 @@ CELERY_BEAT_SCHEDULE = {
     "ingest-macro-series": {
         "task": "apps.macro_context.infrastructure.tasks.ingest_macro_series",
         "schedule": crontab(hour=14, minute=5),
+        "options": {"queue": "maintenance"},
+    },
+    # NEWS-FEED-1 — polls the licensed news provider (Marketaux) for the
+    # configured NEWS_POLL_SYMBOLS every NEWS_POLL_INTERVAL_SECONDS (default
+    # 15 min). Dedup on (source, url) makes re-runs idempotent; the daily
+    # provider budget is enforced in the service, so an exhausted budget is a
+    # logged skip, never an error.
+    "ingest-news": {
+        "task": "apps.news_feed.infrastructure.tasks.ingest_news",
+        "schedule": NEWS_POLL_INTERVAL_SECONDS,
         "options": {"queue": "maintenance"},
     },
 }
@@ -599,6 +622,23 @@ ZERODHA_API_KEY: str = config("ZERODHA_API_KEY", default="")
 ZERODHA_ACCESS_TOKEN: str = config("ZERODHA_ACCESS_TOKEN", default="")
 
 # ---------------------------------------------------------------------------
+# Broker execution — LIVE-BROKER-EXECUTION-1 (Phase 1 of 3: sandbox only).
+#
+# BROKER_ADAPTER selects the execution broker behind the settings-driven
+# factory in apps.execution.infrastructure.brokers (paper | zerodha).
+# BROKER_ENVIRONMENT is validated at Django startup (apps.execution.checks):
+# Phase 1 ONLY supports `sandbox`; a `live` value fails startup until the
+# Phase 2 explicit unlock exists (see docs/adr/ADR-030-*.md). The zerodha
+# adapter falls back to the shared Kite sandbox demo app when the API
+# key/secret are empty in sandbox mode — no real money is ever at risk.
+# ---------------------------------------------------------------------------
+BROKER_ADAPTER: str = config("BROKER_ADAPTER", default="paper")
+BROKER_ENVIRONMENT: str = config("BROKER_ENVIRONMENT", default="sandbox")
+ZERODHA_API_SECRET: str = config("ZERODHA_API_SECRET", default="")
+ZERODHA_REQUEST_TOKEN: str = config("ZERODHA_REQUEST_TOKEN", default="")
+ZERODHA_PRODUCT: str = config("ZERODHA_PRODUCT", default="MIS")
+
+# ---------------------------------------------------------------------------
 # Batch B kill switches — all default False until verified
 # ---------------------------------------------------------------------------
 STRATEGY_REGISTRY_ENABLED: bool = config("STRATEGY_REGISTRY_ENABLED", default=False, cast=bool)
@@ -642,6 +682,53 @@ MACRO_BACKFILL_START_DATE: str = os.environ.get(
 # Kill switch for the daily ingestion task (off disables only the task).
 MACRO_INGESTION_ENABLED: bool = config(
     "MACRO_INGESTION_ENABLED", default=True, cast=bool
+)
+
+# ---------------------------------------------------------------------------
+# NEWS-FEED-1 — licensed news provider (Marketaux)
+# ---------------------------------------------------------------------------
+# Active provider implementation: "marketaux" (live API) or "fake" (canned
+# headlines for tests/dev without an API key).
+NEWS_PROVIDER: str = config("NEWS_PROVIDER", default="marketaux")
+# Marketaux API key (https://www.marketaux.com). Free tier: 100 requests/day,
+# ~3 articles per request.
+NEWS_API_KEY: str = os.environ.get("NEWS_API_KEY", "")
+# Marketaux API base URL (versioned root, without the endpoint path).
+NEWS_API_BASE_URL: str = config(
+    "NEWS_API_BASE_URL", default="https://api.marketaux.com/v1"
+)
+# Per-request HTTP timeout for news fetches (seconds).
+NEWS_REQUEST_TIMEOUT_SECONDS: int = config(
+    "NEWS_REQUEST_TIMEOUT_SECONDS", default=20, cast=int
+)
+# Kill switch for the periodic ingestion task (off disables only the task).
+NEWS_INGESTION_ENABLED: bool = config(
+    "NEWS_INGESTION_ENABLED", default=True, cast=bool
+)
+# Comma-separated symbols polled by the ingestion task (e.g. "RELIANCE,TCS").
+NEWS_POLL_SYMBOLS: str = config("NEWS_POLL_SYMBOLS", default="")
+# Articles requested per provider call (Marketaux free tier returns ≤3).
+# Articles requested per provider call (Marketaux free tier returns ≤3).
+NEWS_ARTICLES_PER_REQUEST: int = config(
+    "NEWS_ARTICLES_PER_REQUEST", default=3, cast=int
+)
+# Rolling window (minutes) for which news is fetched/considered fresh. Also the
+# IntelligencePacket NewsContext lookback window.
+NEWS_LOOKBACK_MINUTES: int = config(
+    "NEWS_LOOKBACK_MINUTES", default=1440, cast=int
+)
+# Hard daily provider call budget (Marketaux free tier = 100). Enforced by the
+# ingestion service BEFORE any fetch; exhaustion is a logged skip, not an error.
+NEWS_RATE_LIMIT_CALLS_PER_DAY: int = config(
+    "NEWS_RATE_LIMIT_CALLS_PER_DAY", default=100, cast=int
+)
+# Max headlines surfaced into an IntelligencePacket NewsContext per symbol.
+NEWS_MAX_HEADLINES: int = config("NEWS_MAX_HEADLINES", default=5, cast=int)
+# Kill switch for the IntelligencePacket news-context lookup. Off → the packet
+# carries the unchecked NewsContext() default and keeps missing:["news"]
+# ("never checked", ADR-029 §5).
+NEWS_CONTEXT_LOOKUP_ENABLED: bool = config(
+    "NEWS_CONTEXT_LOOKUP_ENABLED", default=True, cast=bool
 )
 
 # ---------------------------------------------------------------------------

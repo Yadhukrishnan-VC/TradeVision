@@ -1,0 +1,41 @@
+{
+  "api_root": "https://sandbox.kite.trade",
+  "demo_app": "sandboxdemo",
+  "description": "Recorded Kite sandbox order lifecycle shapes (source: kite.trade/docs/connect/v3/sandbox/). Encodes the response shapes Kite returns for orders() / place_order() / order_history() / cancel_order() in the shared sandbox demo app, so the adapter can be integration-tested without live calls in CI.",
+  "orders": [
+    {
+      "order_id": "240817000000001",
+      "tag": "PRIOR-ORDER-TAG",
+      "status": "CANCELLED",
+      "exchange": "NSE",
+      "tradingsymbol": "TCS",
+      "transaction_type": "BUY",
+      "product": "MIS",
+      "order_type": "LIMIT",
+      "price": 4100.0,
+      "quantity": 1
+    }
+  ],
+  "history": {
+    "240817000000001": [
+      {
+        "order_id": "240817000000001",
+        "status": "PENDING",
+        "price": 4100.0,
+        "quantity": 1,
+        "filled_quantity": 0
+      },
+      {
+        "order_id": "240817000000001",
+        "status": "CANCELLED",
+        "price": 4100.0,
+        "quantity": 1,
+        "filled_quantity": 0
+      }
+    ]
+  },
+  "place_new": {
+    "order_id": "240817000000002",
+    "status": "OPEN"
+  }
+}

@@ -239,6 +239,52 @@ class TradeVisionConfig:
         return getattr(settings, "ZERODHA_ACCESS_TOKEN", "")
 
     # ---------------------------------------------------------------------------
+    # Broker execution — LIVE-BROKER-EXECUTION-1 (Phase 1 of 3: sandbox only)
+    # ---------------------------------------------------------------------------
+
+    @property
+    def broker_adapter(self) -> str:
+        """Active execution broker adapter name (``paper`` | ``zerodha``)."""
+        from django.conf import settings
+
+        return getattr(settings, "BROKER_ADAPTER", "paper").lower()
+
+    @property
+    def broker_environment(self) -> str:
+        """Broker environment (``sandbox`` | ``live``).
+
+        Phase 1 (LIVE-BROKER-EXECUTION-1) only reaches ``sandbox``; a
+        configured ``live`` value fails Django startup via the execution
+        checks until the Phase 2 explicit unlock exists (ADR-030).
+        """
+        from django.conf import settings
+
+        return getattr(settings, "BROKER_ENVIRONMENT", "sandbox").lower()
+
+    @property
+    def zerodha_api_secret(self) -> str:
+        """Zerodha Kite Connect API secret (sandbox default is applied by the
+        adapter when empty)."""
+        from django.conf import settings
+
+        return getattr(settings, "ZERODHA_API_SECRET", "")
+
+    @property
+    def zerodha_request_token(self) -> str:
+        """Single-use Kite request token obtained out-of-band via the login
+        flow; exchanged for an access token by the adapter when set."""
+        from django.conf import settings
+
+        return getattr(settings, "ZERODHA_REQUEST_TOKEN", "")
+
+    @property
+    def zerodha_product(self) -> str:
+        """Kite product code used for execution orders (e.g. ``MIS``)."""
+        from django.conf import settings
+
+        return getattr(settings, "ZERODHA_PRODUCT", "MIS")
+
+    # ---------------------------------------------------------------------------
     # Batch M4 — REST polling bridge
     # ---------------------------------------------------------------------------
 
@@ -467,6 +513,99 @@ class TradeVisionConfig:
         from django.conf import settings
 
         return bool(getattr(settings, "MACRO_INGESTION_ENABLED", True))
+
+    # ---------------------------------------------------------------------------
+    # NEWS-FEED-1 — licensed news provider
+    # ---------------------------------------------------------------------------
+
+    @property
+    def news_provider(self) -> str:
+        """Active news provider name (``marketaux`` or ``fake``)."""
+        from django.conf import settings
+
+        return str(getattr(settings, "NEWS_PROVIDER", "marketaux")).lower()
+
+    @property
+    def news_api_key(self) -> str:
+        """Marketaux API key (provider authentication)."""
+        from django.conf import settings
+
+        return str(getattr(settings, "NEWS_API_KEY", ""))
+
+    @property
+    def news_api_base_url(self) -> str:
+        """Marketaux API base URL (without the endpoint path)."""
+        from django.conf import settings
+
+        return str(getattr(settings, "NEWS_API_BASE_URL", "https://api.marketaux.com/v1"))
+
+    @property
+    def news_request_timeout_seconds(self) -> int:
+        """Per-request HTTP timeout for the news provider (seconds)."""
+        from django.conf import settings
+
+        return int(getattr(settings, "NEWS_REQUEST_TIMEOUT_SECONDS", 20))
+
+    @property
+    def news_ingestion_enabled(self) -> bool:
+        """Kill switch for the periodic news ingestion task."""
+        from django.conf import settings
+
+        return bool(getattr(settings, "NEWS_INGESTION_ENABLED", True))
+
+    @property
+    def news_poll_symbols(self) -> list[str]:
+        """Watchlist symbols polled by the news ingestion task."""
+        from django.conf import settings
+
+        raw = str(getattr(settings, "NEWS_POLL_SYMBOLS", ""))
+        return [s.strip().upper() for s in raw.split(",") if s.strip()]
+
+    @property
+    def news_poll_interval_seconds(self) -> int:
+        """Seconds between Beat-scheduled news ingestion runs (default 15 min)."""
+        from django.conf import settings
+
+        return int(getattr(settings, "NEWS_POLL_INTERVAL_SECONDS", 900))
+
+    @property
+    def news_articles_per_request(self) -> int:
+        """Articles requested per provider call (Marketaux free tier returns ≤3)."""
+        from django.conf import settings
+
+        return int(getattr(settings, "NEWS_ARTICLES_PER_REQUEST", 3))
+
+    @property
+    def news_lookback_minutes(self) -> int:
+        """Rolling window (minutes) for which news is fetched/considered fresh."""
+        from django.conf import settings
+
+        return int(getattr(settings, "NEWS_LOOKBACK_MINUTES", 1440))
+
+    @property
+    def news_rate_limit_calls_per_day(self) -> int:
+        """Hard daily provider call budget (Marketaux free tier = 100)."""
+        from django.conf import settings
+
+        return int(getattr(settings, "NEWS_RATE_LIMIT_CALLS_PER_DAY", 100))
+
+    @property
+    def news_max_headlines(self) -> int:
+        """Max headlines surfaced into an IntelligencePacket NewsContext."""
+        from django.conf import settings
+
+        return int(getattr(settings, "NEWS_MAX_HEADLINES", 5))
+
+    @property
+    def news_context_lookup_enabled(self) -> bool:
+        """Kill switch for the IntelligencePacket news-context lookup.
+
+        Off → the packet carries the unchecked ``NewsContext()`` default and
+        keeps ``missing: ["news"]`` ("never checked", ADR-029 §5).
+        """
+        from django.conf import settings
+
+        return bool(getattr(settings, "NEWS_CONTEXT_LOOKUP_ENABLED", True))
 
     # ---------------------------------------------------------------------------
     # Celery queue names

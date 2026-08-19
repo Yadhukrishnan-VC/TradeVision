@@ -18,20 +18,26 @@ export type Severity = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL" | string;
 export type GateStatus = "GO" | "NO_GO" | "INSUFFICIENT_DATA" | string;
 
 /**
- * RuleConfig — VERIFIED model field set.
- * `validated_regimes` is a JSON object { "<regime>": "GO"|"NO_GO"|"INSUFFICIENT_DATA" }.
+ * RuleConfig — VERIFIED against backend (2026-08-17).
+ * `validated_regimes` is stored on the model but NOT serialized by the API
+ * (configs response: id, rule_id, enabled, parameters, severity_override,
+ * created_at, updated_at). Field kept optional; only populated from DB/ORM reads.
  */
 export interface RuleConfig {
+  id: string;
   rule_id: RuleId;
   enabled: boolean;
   parameters: Record<string, unknown>;
   severity_override: Severity | null;
-  validated_regimes: Record<string, GateStatus>;
+  created_at: string;
+  updated_at: string;
+  validated_regimes?: Record<string, GateStatus>;
   [key: string]: unknown;
 }
 
-/** RuleExecution — VERIFIED model field set. */
+/** RuleExecution — VERIFIED against backend (2026-08-17). */
 export interface RuleExecution {
+  id: string;
   analysis_event_id: string;
   rule_id: RuleId;
   symbol: string;
@@ -40,7 +46,7 @@ export interface RuleExecution {
     regime?: string;
     [key: string]: unknown;
   };
-  published_event_id?: string | null;
-  created_at?: string | null;
+  published_event_id: string | null;
+  created_at: string;
   [key: string]: unknown;
 }

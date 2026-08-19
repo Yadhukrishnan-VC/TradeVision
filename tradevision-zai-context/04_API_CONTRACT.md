@@ -1,6 +1,6 @@
 # 04 — API Contract (Verified Endpoints + Response Shapes)
 
-Base URL: `/api/v1`. All responses are JSON. Errors follow `{"error": {code, message, details?}}` (see 01). List endpoints paginate with `{count, next, previous, results}` (PAGE_SIZE=20).
+Base URL: `/api/v1`. All responses are JSON. Errors follow `{"error": {code, message, details?}}` (see 01). Most list endpoints paginate with `{count, next, previous, results}` (PAGE_SIZE=20); exceptions that return **bare arrays** are flagged per-section (notably journal `entries/`, rule-engine `configs/` + `executions/`, portfolio `positions/`).
 Numeric Decimal fields are serialized as **strings** (`str(...)`), not JSON numbers. Treat them as strings and convert client-side.
 
 Legend: ✅ = exact shape verified in source · ⚠ = endpoint verified, exact body requires verification.
@@ -70,24 +70,52 @@ Note: there is NO dedicated equity-curve endpoint — the equity/returns chart i
 
 ---
 
-## Journal — `/api/v1/journal/` (✅ endpoints, ⚠ bodies)
+## Journal — `/api/v1/journal/` (✅ VERIFIED live 2026-08-17)
 
-`GET entries/`, `GET entries/<uuid:correlation_id>/`.
-SOURCE: `backend/apps/journal/interfaces/api/urls.py`
+| Method | Path | Purpose | Verified body |
+|---|---|---|---|
+| GET | `entries/` | List journal entries (requires `?account_id=<uuid>`) | **BARE ARRAY** (NOT paginated) of `JournalEntrySerializer` items (below); 400 `{"error":{"code":"missing_account_id","message":"account_id query parameter is required."}}` when `account_id` missing |
+| GET | `entries/<uuid:correlation_id>/` | One entry by correlation_id | ⚠ currently ALWAYS 500: `views.py:37` calls `uuid.UUID(correlation_id)` on a value the `<uuid:>` route already converted to `UUID` → `AttributeError: 'UUID' object has no attribute 'replace'`; the 404 branch is unreachable. Success body = same `JournalEntrySerializer` item as the list. See GAPS. |
 
-## Audit — `/api/v1/audit/` (✅ endpoints, ⚠ bodies)
+Entry item (verified): `correlation_id` (UUID string), `account_id` (UUID string), `signal_snapshot` (object|null; observed keys `symbol, account_id, confidence, signal_type`), `decision_snapshot` (object|null; `symbol, decision, quantity, account_id`), `order_events` (array|null; each `{event_type, event_id, occurred_at, payload}` where payload = raw event payload e.g. `{side, symbol, order_id, quantity, account_id}`), `position_id` (UUID string|null), `outcome` (`"won"|"lost"|"breakeven"|null`), `realized_pnl` (decimal string|null, e.g. `"0.00000000"`), `finalized` (bool), `finalized_at` (ISO|null), `created_at` (**always null**), `updated_at` (**always null** — snapshot dataclass has no such fields).
 
-`GET entries/`. SOURCE: `backend/apps/audit_log/urls.py`
+Filter: `?finalized=true` verified.
 
-## Rule Engine — `/api/v1/rule-engine/` (✅ endpoints, ⚠ bodies)
+SOURCE: `backend/apps/journal/interfaces/api/urls.py`, `views.py`
 
-| Method | Path | Purpose |
-|---|---|---|
-| GET | `configs/` | List RuleConfigs (rule_id, enabled, parameters, severity_override, validated_regimes) |
-| GET | `configs/<rule_id>/` | One RuleConfig |
-| GET | `executions/` | List RuleExecutions (analysis_event_id, rule_id, symbol, severity, trigger_data) |
+## Audit — `/api/v1/audit/` (✅ VERIFIED live 2026-08-17)
 
-SOURCE: `backend/apps/rule_engine/interfaces/api/views.py`, `urls.py`; model in `apps/rule_engine/infrastructure/models.py`
+| Method | Path | Purpose | Verified body |
+|---|---|---|---|
+| GET | `entries/` | Audit log | **Paginated** `{count, next, previous, results}` (PAGE_SIZE=20); requires `staff`/`owner` role (403 otherwise, verified) |
+
+Entry item (verified): `id` (UUID string), `actor` (`"system"|"user"|"ai"`), `action` (e.g. `accounts.UserLoggedIn`, `rule_engine.RuleFired`, `signals.SignalCreated`, `journal.EntryFinalized`), `target_type` (event prefix, e.g. `signals`, `rule_engine`), `target_id` (UUID string), `metadata` (JSON event payload; for `rule_engine.RuleFired` includes `symbol, rule_id, severity, event_type, occurred_at, trigger_data, analysis_event_id`), `occurred_at` (ISO), `created_at` (ISO).
+
+Logins are audited automatically (`accounts.UserLoggedIn`). `?target_type=` filter verified.
+
+SOURCE: `backend/apps/audit_log/urls.py`
+
+## Rule Engine — `/api/v1/rule-engine/` (✅ VERIFIED live 2026-08-17)
+
+| Method | Path | Purpose | Verified body |
+|---|---|---|---|
+| GET | `configs/` | List RuleConfigs | **BARE ARRAY** (NOT paginated) of `RuleConfig` items |
+| GET | `configs/<rule_id>/` | One RuleConfig | same shape; 404 → Problem detail `{"type":"urn:tradevision:error:rule-config-not-found","title":"Rule config <id> not found","status":404,"instance":"/api/v1/rule-engine/configs/<id>/"}` (no `correlation_id`) |
+| GET | `executions/` | List RuleExecutions | **BARE ARRAY** (NOT paginated) of `RuleExecution` items; `?rule_id=` filter verified |
+
+`RuleConfig` item (verified): `{id, rule_id, enabled, parameters, severity_override, created_at, updated_at}`. ⚠ `validated_regimes` is **NOT exposed** by the API — it is stored on the model but the serializer omits it (see GAPS).
+
+`RuleExecution` item (verified): `{id, analysis_event_id, rule_id, symbol, severity, trigger_data, published_event_id, created_at}`. `published_event_id` = the rule-fired event UUID; `id` is unique (multiple rules share the same `analysis_event_id`).
+
+`trigger_data` keys observed per rule:
+- `price_movement_v1`: `regime, change_pct, current_price, threshold_pct`
+- `volume_spike_v1`: `regime, ratio, volume, avg_volume_20d, threshold_multiplier`
+- `breakout_v1`: `regime, bb_upper, bb_upper_break[, resistance_break, resistance_level]`
+- `long_momentum_v1`: `regime, setup, vwap, ema_20, volume, stop_loss, stop_loss_basis, change_pct, entry_price, volume_ratio, avg_volume_10d, opening_15m_low, opening_15m_open`
+- `high_beta_breakout_v1`: `regime, setup, rsi_14, volume, bb_upper, entry_price, volume_ratio, avg_volume_5d`
+- `short_breakdown_v1`: `regime, setup, vwap, rsi_14, volume, direction, entry_price, volume_ratio, avg_volume_10d`
+
+SOURCE: `backend/apps/rule_engine/interfaces/api/views.py`, `urls.py`, `serializers.py`; model in `apps/rule_engine/infrastructure/models.py`
 
 ---
 
@@ -207,12 +235,13 @@ Bucket shape (per regime/rule/IS/OOS): `trade_count, win_count, loss_count, gros
 - `/api/v1/watchlist/`: `GET ""`, `POST reorder/`, `GET|DELETE|PATCH <instrument_token>/`. SOURCE: `apps/watchlist/interfaces/api/urls.py` — verified: `GET` requires `?account_id=<uuid>` (400 without); 403 if the account is not owned by the caller; returns array of enriched items
 - `/api/v1/pipeline-health/`: `GET ""`. SOURCE: `apps/pipeline_health/interfaces/api/urls.py` — verified: `{heartbeats:[]}`
 - `/api/v1/portfolio-reconciliation/`: `GET drift/summary/`, `GET drift/`. SOURCE: `apps/portfolio_reconciliation/interfaces/api/urls.py` — verified: `drift/summary/` → `{classification_breakdown:{}, total_records, last_run_at}`; `drift/` → paginated
-- `/api/v1/journal/`: `GET entries/` (requires `?account_id=`), `GET entries/<uuid:correlation_id>/`. SOURCE: `apps/journal/interfaces/api/urls.py`
-- `/api/v1/audit/`: `GET entries/`. SOURCE: `apps/audit_log/urls.py` — verified: paginated
-- `/api/v1/rule-engine/`: `GET configs/` (→ `[]`), `GET configs/<rule_id>/`, `GET executions/` (→ `[]`). SOURCE: `apps/rule_engine/interfaces/api/urls.py`
+- `/api/v1/journal/`: `GET entries/` (requires `?account_id=`, 400 without), `GET entries/<uuid:correlation_id>/`. SOURCE: `apps/journal/interfaces/api/urls.py` — verified 2026-08-17: `entries/` → **bare array** (NOT paginated); `entries/<correlation_id>/` currently always 500s (view bug, see GAPS)
+- `/api/v1/audit/`: `GET entries/`. SOURCE: `apps/audit_log/urls.py` — verified: paginated, `staff`/`owner` required
+- `/api/v1/rule-engine/`: `GET configs/`, `GET configs/<rule_id>/`, `GET executions/`. SOURCE: `apps/rule_engine/interfaces/api/urls.py` — verified 2026-08-17: `configs/` and `executions/` are **bare arrays** (NOT paginated); configs omit `validated_regimes`
+- `/api/v1/news/`: `GET ""` (paginated, optional `?symbol=`), `GET <uuid>/`. SOURCE: `apps/news_feed/interfaces/api/urls.py` — verified 2026-08-17 (NEWS-FEED-1): `GET ""` → paginated `{count,next,previous,results}` of `{id, source, headline, body, url, published_at, ingested_at, symbols[], sentiment_score, sentiment_label}`. `sentiment_score` is a **string** (`"0.4200"`) or `null` (provider returned none → render `--`); `sentiment_label` is always `null` in this batch (ADR-029 — no provider supplies a label, never hand-rolled). Default `PAGE_SIZE=20`; `?symbol=RELIANCE` filters the JSON `symbols` array.
 
 ## Endpoint Count
 
-- Mounted root prefixes: 22 total (`backend/config/urls.py`: 20 × `api/v1` + `/admin/` + `/metrics/`).
-- Individual routes enumerated above: 67 (exact count across mounted `urls.py` files).
-- Live verification completed 2026-08-16 against the staging backend: every ⚠ endpoint now has a verified status code + body shape (see the tables above). Remaining known gaps are documented in `08_GAPS_BLACKLIST_AND_ASSUMPTIONS.md` (notably: trade-export needs a Celery worker/broker; no dedicated equity-curve endpoint).
+- Mounted root prefixes: 23 total (`backend/config/urls.py`: 21 × `api/v1` + `/admin/` + `/metrics/`).
+- Individual routes enumerated above: 69 (exact count across mounted `urls.py` files).
+- Live verification completed 2026-08-16/17: every ⚠ endpoint now has a verified status code + body shape (see the tables above), including the previously-unverified Journal, Audit, and Rule Engine bodies (verified live 2026-08-17). News Feed (`/api/v1/news/`) added + shape-verified with the NEWS-FEED-1 batch (2026-08-17). Remaining known gaps are documented in `08_GAPS_BLACKLIST_AND_ASSUMPTIONS.md` (notably: trade-export needs a Celery worker/broker; no dedicated equity-curve endpoint; journal detail `entries/<correlation_id>/` always 500s due to a view bug; journal/rule-engine lists are bare arrays, not paginated; `created_at`/`updated_at` always null on journal items; rule-engine configs do not expose `validated_regimes`).
