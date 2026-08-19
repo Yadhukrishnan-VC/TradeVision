@@ -16,7 +16,17 @@ class PnLConsumer(AsyncJsonWebsocketConsumer):
         self._debounce = PnLWebSocketDebounceCache()
 
     async def connect(self) -> None:
-        self._account_id = self.scope["url_route"]["kwargs"]["account_id"]
+        user = self.scope.get("user")
+        if user is None or not user.is_authenticated:
+            await self.close(code=4029)
+            return
+
+        account_id = self.scope["url_route"]["kwargs"]["account_id"]
+        if str(account_id) != str(user.id):
+            await self.close(code=4029)
+            return
+
+        self._account_id = str(account_id)
 
         await self.channel_layer.group_add(
             f"pnl_{self._account_id}",
@@ -46,7 +56,17 @@ class RiskConsumer(AsyncJsonWebsocketConsumer):
         self._debounce = RiskDebounceCache()
 
     async def connect(self) -> None:
-        self._account_id = self.scope["url_route"]["kwargs"]["account_id"]
+        user = self.scope.get("user")
+        if user is None or not user.is_authenticated:
+            await self.close(code=4029)
+            return
+
+        account_id = self.scope["url_route"]["kwargs"]["account_id"]
+        if str(account_id) != str(user.id):
+            await self.close(code=4029)
+            return
+
+        self._account_id = str(account_id)
 
         await self.channel_layer.group_add(
             f"risk_{self._account_id}",
