@@ -106,3 +106,5 @@ temp/
 *.tmp
 *.bak
 *.orig
+data/nifty50_daily/
+backend/data/nifty50_daily/
