@@ -35,6 +35,24 @@ All notable changes to TradeVision AI will be documented in this file.
 
 ## [Unreleased]
 
+### Batch 2 — Research Integrity Suite (2026-08-19)
+
+**Added:**
+- Adversarial test suite `backend/tests/research_integrity/` (17 tests, self-contained conftest, real event-chain replay: TA ingestion → event bus → intelligence → rule_engine → risk_management → execution → paper broker) covering the seven research-integrity attacks: same-candle execution, look-ahead bias, future-data leakage, IS/OOS contamination, walk-forward contamination, timestamp leakage, survivorship bias
+- Deterministic adversarial datasets: bars with missing `open`, bars outside/on the inclusive range boundaries, duplicate bar timestamps, per-window contaminating trades, wall-clock-vs-simulated-time splits
+- `docs/RESEARCH_INTEGRITY.md` — attacks attempted, findings, fixes, remaining risks
+- `tests/` added to pytest `testpaths` so the suite runs with the default suite
+
+**Fixed:**
+- RESEARCH-INTEGRITY-1 (IS/OOS contamination): `BacktestStatsService.run_stats` partitioned on wall-clock `order.created_at` (replay run in the present) vs historical `split_ts`, so every real-replay trade landed in OOS and IS was always empty. Now partitions on the first fill's simulated `occurred_at` (`first_fill_at` map); boundary inclusive (`<= split_ts` → IS). Regression-pinned by `test_is_oos_contamination.py`.
+- RESEARCH-INTEGRITY-2 (look-ahead fill): `bar_open = raw.get("open") or raw.get("close")` filled deferred orders at a bar's close when `open` was missing — a price not yet known at the open. Now requires a real `open` and fails safe (order stays pending; later bar or final flush fills it). Regression-pinned by `test_lookahead_bias.py`.
+
+**Changed:**
+- `backend/pytest.ini`: `testpaths` now includes `tests/`
+
+**Remaining risks (documented):** final-bar close flush (end-of-sample liquidation convention), `price_source` wall-clock/sim-time `ValueError` (logged+swallowed), hardcoded 1M exposure cap, `order.created_at` stays wall-clock audit-only
+
+
 ### Batch M4 — Portfolio & Capital Management (2026-08-03)
 
 **Added:**

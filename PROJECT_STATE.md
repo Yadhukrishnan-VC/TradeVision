@@ -9,7 +9,7 @@
 
 ## Development Status
 
-> Last updated: 2026-08-03
+> Last updated: 2026-08-19
 
 | Phase | Status | Tests | Notes |
 |---|---|---|---|
@@ -27,7 +27,7 @@
 | 8 — Frontend Dashboard | NOT STARTED | — | — |
 | 9 — Portfolio + Options Chain | **PARTIAL** | 122 passing | Backend `apps.portfolio` complete (ADR-028): authoritative capital ledger, position lifecycle, real risk gateways (`portfolio_v1`), `/api/v1/portfolio/` API. Frontend portfolio page, options analysis, and options-aware AI context remain NOT STARTED |
 | 10 — Pattern Engine | **COMPLETE** | 48 passing (DB-backed) | Deterministic historical session similarity (ADR-007 §5.2 weights), subscribes to intelligence.PacketBuilt, publishes pattern_engine.PatternAnalysisCompleted, Trader Memory accuracy enrichment flag-gated; frozen apps untouched |
-| 11 — Backtesting + Calibration | NOT STARTED | — | — |
+| 11 — Backtesting + Calibration | **PARTIAL** | 170 passing | `apps.backtesting` single-run replay engine (`BacktestRunnerService`, `BacktestStatsService`, walk-forward service/API) + research integrity suite (`backend/tests/research_integrity`, 17 adversarial tests via the real event chain). RESEARCH-INTEGRITY-1: IS/OOS split now uses first-fill simulated `occurred_at` (was wall-clock `order.created_at` → every replay trade landed in OOS). RESEARCH-INTEGRITY-2: bar-open fill requires a real `open` (was falling back to the bar's close = look-ahead). See `docs/RESEARCH_INTEGRITY.md` |
 | 12 — Hardening | NOT STARTED | — | — |
 
 ### Phase 0 Deliverables (Completed)
@@ -1030,6 +1030,8 @@ WebSocket upgrade authenticated via short-lived token (separate from access JWT,
 **Rule engine test matrix** — every rule has a test matrix: data that must fire, data that must not fire, and exact boundary values. These are the most business-critical tests.
 
 **API tests** — DRF test client against real endpoints. Auth, permissions, pagination, error responses.
+
+**Research integrity suite** (`backend/tests/research_integrity/`, 17 tests) — adversarial datasets replayed through the REAL event chain (TA ingestion → event bus → intelligence → rule_engine → risk_management → execution → paper broker) to prove the backtesting pipeline leaks no future information: same-candle execution, look-ahead fill fallback, out-of-range future data, IS/OOS split keyed on simulated fill time (not wall-clock `order.created_at`), walk-forward per-window account isolation, simulated fill timestamps, and no survivorship-biased universe filter. Both proven defects (IS/OOS wall-clock contamination, `open`→`close` look-ahead fallback) are regression-pinned — the tests fail if the fixes are reverted. See `docs/RESEARCH_INTEGRITY.md`.
 
 ### 17.2 Test Infrastructure
 
