@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import logging
 import uuid
+from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
@@ -92,9 +93,15 @@ class BacktestRunnerService(BaseService):
             for index, snapshot in enumerate(pending):
                 correlation_id = _correlation_id_for(run.id, snapshot.id)
 
-                # Execute any pending orders from prior bars at THIS bar's open price
+                # Execute any pending orders from prior bars at THIS bar's open price.
+                # RESEARCH-INTEGRITY-2 (same-candle/look-ahead fill): the fill
+                # price must be the *real* next-bar open. Falling back to this
+                # bar's close would fill at a price not yet known at the open —
+                # a look-ahead. If the open is missing/invalid we fail safe and
+                # leave the orders pending (the final-bar flush or a later bar
+                # can still fill them).
                 raw = snapshot.raw_payload or {}
-                bar_open = self._extract_decimal(raw.get("open") or raw.get("close"))
+                bar_open = self._extract_decimal(raw.get("open"))
                 if index > 0 and bar_open is not None:
                     self._fill_pending_orders(
                         run=run,
@@ -263,6 +270,18 @@ class BacktestStatsService(BaseService):
             total_costs += fee + slip_impact
             total_slippage += slip_impact
 
+        # RESEARCH-INTEGRITY-1 (timestamp leakage / IS-OOS contamination):
+        # ``order.created_at`` is the WALL-CLOCK creation time (audit row), not
+        # the bar's simulated time, so it must never drive the IS/OOS split.
+        # The simulated trade time is the first fill's ``occurred_at`` (bound to
+        # ``snapshot_timestamp`` by the runner). Orders without a fill fall back
+        # to their created_at so synthetic/partial fixtures stay deterministic.
+        first_fill_at: dict[str, datetime] = {}
+        for fill in fills:
+            key = str(fill.order_id)
+            if key not in first_fill_at or fill.occurred_at < first_fill_at[key]:
+                first_fill_at[key] = fill.occurred_at
+
         trades: list[dict[str, Any]] = []
         initial_eq = capital.equity if capital else Decimal("100000.00")
         equity_curve: list[Decimal] = [initial_eq]
@@ -405,7 +424,10 @@ class BacktestStatsService(BaseService):
 
             # IS/OOS partition: same equity-curve/returns accumulation the
             # regime and rule buckets above do, for each half of the split.
-            if order.created_at and order.created_at.timestamp() <= split_ts:
+            # The trade's time is its first fill's simulated ``occurred_at``
+            # (never the wall-clock ``order.created_at`` — see RESEARCH-INTEGRITY-1).
+            trade_ts = first_fill_at.get(str(order.id)) or order.created_at
+            if trade_ts and trade_ts.timestamp() <= split_ts:
                 split_bucket = is_bucket
             else:
                 split_bucket = oos_bucket
