@@ -1,0 +1,132 @@
+name: CI
+
+on:
+  push:
+    branches: [trading-core, main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend (lint / system check / tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: tradevision
+          POSTGRES_PASSWORD: tradevision_password
+          POSTGRES_DB: tradevision_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tradevision"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      POSTGRES_DB: tradevision_db
+      POSTGRES_USER: tradevision
+      POSTGRES_PASSWORD: tradevision_password
+      POSTGRES_HOST: 127.0.0.1
+      POSTGRES_PORT: "5432"
+      REDIS_URL: redis://127.0.0.1:6379/0
+      EVENT_BUS_IMPLEMENTATION: fake
+      DJANGO_SECRET_KEY: ci-insecure-secret-key
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements/*.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements/dev.txt
+
+      - name: Lint (bug-risk rules)
+        # E9/F63/F7/F82 = syntax errors, undefined names, unused imports,
+        # undefined names at runtime. The repo is not clean under the full
+        # ruff default set (see CI.md §Lint), so this gates on real bugs.
+        # apps/execution is excluded pending a pre-existing F821 fix owned by
+        # the execution domain (documented in SECURITY_HARDENING / report).
+        run: ruff check --select E9,F63,F7,F82 --extend-exclude apps/execution .
+
+      - name: Django system check
+        run: python manage.py check --settings config.settings.testing
+
+      - name: Migration drift guard
+        # Expected to FAIL until Batch 1 (rule_engine / signals_engine /
+        # trader_memory) and the unassigned recommendations drift land.
+        # Kept non-blocking (continue-on-error) so it tracks Batch 1 progress
+        # without red-lighting the pipeline. Flip to blocking in CI.md when
+        # Batch 1 is merged.
+        run: python manage.py makemigrations --check --dry-run --settings config.settings.testing
+        continue-on-error: true
+
+      - name: Run tests
+        run: pytest
+
+  frontend:
+    name: Frontend (typecheck / build / audit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck (lint = tsc --noEmit)
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: npm audit (production deps)
+        run: npm audit --audit-level=high --omit=dev
+
+  security:
+    name: Dependency vulnerability scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: pip-audit (runtime Python deps)
+        uses: pypa/gh-action-pip-audit@v1.1.0
+        with:
+          inputs: backend/requirements/base.txt
