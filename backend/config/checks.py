@@ -41,7 +41,7 @@ def _name_has_marker(db_name: str, marker: str) -> bool:
     "tradevision_test", "tradevision_dev_db", and "test_tradevision_db" do.
     """
     return bool(
-        re.search(rf"(^|[_\-.]|\\d){marker}([_\-.]|\\d|$)", db_name, re.IGNORECASE)
+        re.search(rf"(^|[_\-.]|\d){marker}([_\-.]|\d|$)", db_name, re.IGNORECASE)
     )
 
 

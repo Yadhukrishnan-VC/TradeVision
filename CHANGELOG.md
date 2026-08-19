@@ -4,6 +4,28 @@ All notable changes to TradeVision AI will be documented in this file.
 
 ---
 
+## [Unreleased]
+
+### Risk Sophistication & Execution Realism (2026-08-19)
+
+**Added:**
+- `docs/RISK_SOPHISTICATION_BATCH.md` — before/after per item, the item-2 audit answer (no automatic drawdown trigger existed), and honest remaining gaps
+- Portfolio correlation/concentration risk check `PortfolioConcentrationCheck` (`portfolio_concentration_v1`) — `apps/risk_management/domain/rules/portfolio_concentration.py`, fail-closed on missing sector/capital/trigger; sector-concentration (% capital) + correlated-trigger-exposure (multiple × single-position risk) limits; wired after `ExposureLimitCheck`; disabled by default (thresholds `None`), enabling fail-closes unknown-sector orders; `PortfolioPosition` value object + `MISSING_SECTOR_DATA`/`SECTOR_CONCENTRATION_EXCEEDED`/`CORRELATED_EXPOSURE_EXCEEDED`; new `PortfolioStateGateway.get_portfolio_positions()`/`get_instrument_sector()` (stub + real impl)
+- Auto drawdown kill switch: `KillSwitchService.evaluate_drawdown_limits(daily_loss, weekly_loss, capital, max_daily_loss_pct, max_weekly_loss_pct, correlation_id)` auto-activates ACCOUNT scope (idempotent, reason records trip values, `KillSwitchActivated` audit-logged); Celery task `tradevision.risk_management.evaluate_drawdown_kill_switch` (beat 60 s); `get_weekly_loss()` port (real gateway returns 0 — weekly P&L source is future work, documented)
+- NSE cost model `apps/backtesting/domain/nse_costs.py` — `NseCostModel` (STT sell-side, flat ₹20 or pct brokerage, exchange 0.00297 %, SEBI 0.0001 %, stamp duty buy-side, GST 18 %, size-scaled impact from ₹1 M ADV baseline), pure Decimal `compute_trade_cost`, `impact_bps_for`; `run_stats` NSE path opt-in via `BACKTEST_COST_MODEL="nse"` (default `flat` — existing cost tests untouched)
+- Per-rule calibration drift: `apps/trader_memory/domain/calibration.py` (two-sided normal-approx z-test via `math.erf`, `min_trades=30`, `alpha=0.05`, `INSUFFICIENT_SAMPLE`/`INVALID_EXPECTATION`), `CalibrationDriftRecord` model + migration, `CalibrationOutcomeRepository` (live outcomes = finalized `JournalEntry` via `correlation_id`↔`RuleExecution.analysis_event_id`; expectation = latest COMPLETED `BacktestRun` per-rule `by_rule` win rate), `CalibrationDriftService.run()` (persists only drifted flags), task `tradevision.trader_memory.evaluate_calibration_drift` (beat daily 10:30)
+- `ALGO_REGISTRATION_ID` setting + gates: startup check `execution.E003` (live + empty → Error) and `ZerodhaBroker` live guard (`LIVE_UNREACHABLE_NO_ALGO_REGISTRATION` fires before the Phase-1 refusal `LIVE_UNREACHABLE_PHASE_1`); `core/config.algo_registration_id`; existing test updated to expect the registration gate first + new set-registration case still hits Phase-1
+- `pipeline_health` index rename `idx_stage_heartbeat_stage_event` → `idx_stage_heartbeat_evt` (AlterIndex migration); fresh-DB migrate + `check` + `pg_indexes` proof
+- Fix (latent): `config.E002` marker regex `\\d` → `\d` in raw f-string (digit after `test`/`dev` token was not recognized as a marker boundary, e.g. `tradevision_fresh_test2`); regression-pinned `test_digit_boundary_counts_as_marker`
+
+**Changed:**
+- `RiskCheckContext` + `RiskConfig` + settings `RISK_MANAGEMENT`: `portfolio_positions`/`instrument_sector`/`max_sector_exposure_pct`/`correlated_trigger_max_multiple`, `max_daily_loss_pct`/`max_weekly_loss_pct`/`weekly_loss`; `BACKTEST_COST_MODEL` + `BACKTEST_NSE_COST_MODEL`; `CALIBRATION_DRIFT_WINDOW_DAYS`/`MIN_TRADES`/`ALPHA`; `CELERY_BEAT_SCHEDULE` gains drawdown + calibration entries
+- `apps/risk_management/tests/unit/helpers.py` fake gateways extended; full-suite result 1811 passed / 41 failed / 15 errors — **zero new failures** vs pre-existing baseline (34F/15E, confirmed by stash comparison)
+
+**Remaining gaps (documented):** live trading stays structurally unreachable (E001/E003 + broker refusal) until ADR-030 Phase-2 unlock; weekly drawdown breaker can't trip without a 7-day P&L source; concentration check disabled by default and fail-closes without a sector master; NSE cost model opt-in; `validated_regimes` untouched
+
+---
+
 ## [0.1.0] — 2026-07-12
 
 ### Phase 0 — Foundation (Complete)

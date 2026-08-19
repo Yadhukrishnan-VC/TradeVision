@@ -57,6 +57,9 @@ class FakePortfolioGateway:
     daily_loss: Decimal = Decimal(0)
     instrument_max_qty: int | None = None
     tradable_symbols: frozenset[str] = frozenset()
+    portfolio_positions: tuple = ()
+    sector_by_symbol: dict[str, str] = None  # type: ignore[assignment]
+    weekly_loss: Decimal = Decimal(0)
 
     def get_current_exposure(self) -> Decimal:
         return self.current_exposure
@@ -64,11 +67,22 @@ class FakePortfolioGateway:
     def get_daily_loss(self) -> Decimal:
         return self.daily_loss
 
+    def get_weekly_loss(self) -> Decimal:
+        return self.weekly_loss
+
     def get_instrument_max_qty(self, symbol: str) -> int | None:
         return self.instrument_max_qty
 
     def get_tradable_symbols(self) -> frozenset[str]:
         return self.tradable_symbols
+
+    def get_portfolio_positions(self) -> tuple:
+        return self.portfolio_positions
+
+    def get_instrument_sector(self, symbol: str) -> str | None:
+        if not self.sector_by_symbol:
+            return None
+        return self.sector_by_symbol.get(symbol)
 
 
 @dataclass

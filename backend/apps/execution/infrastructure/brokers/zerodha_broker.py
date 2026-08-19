@@ -220,6 +220,20 @@ class ZerodhaBroker(BrokerAdapter):
                 code="INVALID_BROKER_ENVIRONMENT",
             )
         if self._environment == "live":
+            # Algo-registration gate (Risk Sophistication batch): live
+            # execution is refused until an explicit ALGO_REGISTRATION_ID is
+            # recorded — checked here FIRST so the reason is the registration
+            # requirement rather than the (also real) Phase-1 blocker below.
+            from core.config import config
+
+            if not getattr(config, "algo_registration_id", "").strip():
+                raise ExecutionDomainError(
+                    "ZerodhaBroker refuses BROKER_ENVIRONMENT=live without "
+                    "ALGO_REGISTRATION_ID: live algorithmic execution must be "
+                    "tied to an explicit, recorded SEBI algotrading "
+                    "registration decision.",
+                    code="LIVE_UNREACHABLE_NO_ALGO_REGISTRATION",
+                )
             # Defense-in-depth: the Django startup check already blocks `live`
             # (execution.E001); the adapter refuses it too because the Phase 2
             # explicit unlock (ADR-030) does not exist in this batch.

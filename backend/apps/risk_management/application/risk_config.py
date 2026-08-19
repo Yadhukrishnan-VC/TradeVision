@@ -1,7 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from decimal import Decimal
+
+from apps.risk_management.domain.value_objects import PortfolioPosition
 
 
 @dataclass(frozen=True)
@@ -26,6 +28,13 @@ class RiskConfig:
     current_exposure: Decimal = Decimal(0)
     daily_loss: Decimal = Decimal(0)
     instrument_max_qty: int | None = None
+    max_sector_exposure_pct: Decimal | None = None
+    correlated_trigger_max_multiple: Decimal | None = None
+    sector_by_symbol: dict[str, str] = field(default_factory=dict)
+    portfolio_positions: tuple[PortfolioPosition, ...] = ()
+    max_daily_loss_pct: Decimal | None = None
+    max_weekly_loss_pct: Decimal | None = None
+    weekly_loss: Decimal = Decimal(0)
 
 
 def risk_config_from_settings() -> RiskConfig:
@@ -58,4 +67,19 @@ def risk_config_from_settings() -> RiskConfig:
         instrument_max_qty=(
             int(raw["instrument_max_qty"]) if raw.get("instrument_max_qty") is not None else None
         ),
+        max_sector_exposure_pct=dec("max_sector_exposure_pct"),
+        correlated_trigger_max_multiple=dec("correlated_trigger_max_multiple"),
+        sector_by_symbol=dict(raw.get("sector_by_symbol", {}) or {}),
+        portfolio_positions=tuple(
+            PortfolioPosition(
+                symbol=str(item["symbol"]),
+                sector=item.get("sector"),
+                notional=D(str(item.get("notional", "0"))),
+                trigger_rule=item.get("trigger_rule"),
+            )
+            for item in (raw.get("portfolio_positions", []) or [])
+        ),
+        max_daily_loss_pct=dec("max_daily_loss_pct"),
+        max_weekly_loss_pct=dec("max_weekly_loss_pct"),
+        weekly_loss=dec("weekly_loss") or D(0),
     )

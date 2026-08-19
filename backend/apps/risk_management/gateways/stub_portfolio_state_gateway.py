@@ -49,12 +49,24 @@ class StubPortfolioStateGateway:
         self._log_warning("get_daily_loss")
         return self._config.daily_loss
 
+    def get_weekly_loss(self) -> Decimal:
+        self._log_warning("get_weekly_loss")
+        return self._config.weekly_loss
+
     def get_instrument_max_qty(self, symbol: str) -> int | None:
         self._log_warning("get_instrument_max_qty")
         return self._config.instrument_max_qty
 
     def get_tradable_symbols(self) -> frozenset[str]:
         return self._config.tradable_symbols
+
+    def get_portfolio_positions(self) -> tuple:
+        self._log_warning("get_portfolio_positions")
+        return self._config.portfolio_positions
+
+    def get_instrument_sector(self, symbol: str) -> str | None:
+        self._log_warning("get_instrument_sector")
+        return self._config.sector_by_symbol.get(symbol)
 
     # ------------------------------------------------------------------
     # Helpers

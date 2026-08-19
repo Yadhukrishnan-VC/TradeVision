@@ -18,7 +18,7 @@ from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
 
-from apps.risk_management.domain.value_objects import RejectionReason
+from apps.risk_management.domain.value_objects import PortfolioPosition, RejectionReason
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +58,17 @@ class RiskCheckContext:
     proposed_quantity: int | None = None
     """Approved quantity computed by the sizing check; consumed by the
     exposure and R:R checks that run after sizing."""
+    portfolio_positions: tuple[PortfolioPosition, ...] = ()
+    """Open portfolio positions (sector/notional/trigger-rule) consumed by the
+    concentration check. Empty when no positions are open."""
+    instrument_sector: str | None = None
+    """Sector of the proposed instrument; ``None`` when no sector master data
+    exists (the concentration check then fails closed)."""
+    max_sector_exposure_pct: Decimal | None = None
+    """Configurable cap on same-sector exposure as a share of capital."""
+    correlated_trigger_max_multiple: Decimal | None = None
+    """Configurable cap on correlated-trigger aggregate exposure as a multiple
+    of single-position risk (``capital x risk_pct``)."""
 
 
 @dataclass(frozen=True)

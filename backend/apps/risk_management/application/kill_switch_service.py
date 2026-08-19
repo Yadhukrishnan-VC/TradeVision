@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import uuid
+from decimal import Decimal
 
 from django.utils import timezone as dj_timezone
 
@@ -154,6 +155,83 @@ class KillSwitchService(BaseService):
                 correlation_id=correlation_id,
             )
         return updated > 0
+
+    # ------------------------------------------------------------------
+    # Automatic drawdown breaker (Risk Sophistication batch)
+    # ------------------------------------------------------------------
+
+    def evaluate_drawdown_limits(
+        self,
+        *,
+        daily_loss: Decimal,
+        weekly_loss: Decimal,
+        capital: Decimal,
+        max_daily_loss_pct: Decimal | None = None,
+        max_weekly_loss_pct: Decimal | None = None,
+        correlation_id: uuid.UUID | None = None,
+    ) -> KillSwitchState | None:
+        """Auto-activate the ACCOUNT kill switch on a realized drawdown breach.
+
+        Compares ``daily_loss``/``weekly_loss`` (non-negative magnitudes) as a
+        share of ``capital`` against the configured percentage thresholds and,
+        when breached, activates the ACCOUNT scope with an audit reason that
+        captures the values at trip time. Idempotent: when the ACCOUNT scope is
+        already active the existing row is returned and no new event is
+        published, so a repeating beat never spams the audit log.
+
+        Returns ``None`` when no threshold is breached (or when ``capital`` is
+        unusable — the breaker cannot trip on a non-positive capital base).
+        """
+        if capital is None or capital <= 0:
+            logger.warning(
+                "drawdown_breaker_skipped_no_capital",
+                extra={"capital": str(capital)},
+            )
+            return None
+
+        existing = self._active_account_state()
+        if existing is not None:
+            return existing
+
+        daily_pct = daily_loss / capital
+        weekly_pct = weekly_loss / capital
+
+        trigger: tuple[str, Decimal, Decimal, Decimal] | None = None
+        if (
+            max_daily_loss_pct is not None
+            and daily_loss > 0
+            and daily_pct >= max_daily_loss_pct
+        ):
+            trigger = ("daily", daily_loss, daily_pct, max_daily_loss_pct)
+        elif (
+            max_weekly_loss_pct is not None
+            and weekly_loss > 0
+            and weekly_pct >= max_weekly_loss_pct
+        ):
+            trigger = ("weekly", weekly_loss, weekly_pct, max_weekly_loss_pct)
+
+        if trigger is None:
+            return None
+
+        kind, loss, pct, limit = trigger
+        reason = (
+            f"auto drawdown trip ({kind}): loss={loss} capital={capital} "
+            f"({(pct * 100).quantize(Decimal('0.01'))}%) >= "
+            f"max_{kind}_loss_pct={limit}"
+        )
+        return self.activate(
+            scope=KillSwitchScope.ACCOUNT.value,
+            reason=reason,
+            actor="system",
+            correlation_id=correlation_id,
+        )
+
+    def _active_account_state(self) -> KillSwitchState | None:
+        try:
+            return self._repository.get_active(KillSwitchScope.ACCOUNT.value)
+        except Exception:
+            logger.exception("kill_switch_active_account_read_error")
+            return None
 
     # ------------------------------------------------------------------
     # Helpers

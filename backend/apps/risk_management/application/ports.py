@@ -4,6 +4,8 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Protocol
 
+from apps.risk_management.domain.value_objects import PortfolioPosition
+
 
 class CapitalGateway(Protocol):
     """Port for account capital/equity state.
@@ -39,11 +41,28 @@ class PortfolioStateGateway(Protocol):
     def get_daily_loss(self) -> Decimal:
         """Return the realized (+ unrealized, when available) daily loss."""
 
+    def get_weekly_loss(self) -> Decimal:
+        """Return the realized (+ unrealized) weekly loss magnitude.
+
+        ``Decimal(0)`` when no weekly P&L source exists — the weekly drawdown
+        breaker then cannot trip against real data until such a source lands.
+        """
+
     def get_instrument_max_qty(self, symbol: str) -> int | None:
         """Return an instrument-level quantity cap, or ``None`` for none."""
 
     def get_tradable_symbols(self) -> frozenset[str]:
         """Return the set of symbols currently tradable."""
+
+    def get_portfolio_positions(self) -> tuple[PortfolioPosition, ...]:
+        """Return the open portfolio positions (sector/notional/trigger-rule).
+
+        ``sector``/``trigger_rule`` are ``None`` when no sector/correlation
+        data source exists — the concentration check then fails closed.
+        """
+
+    def get_instrument_sector(self, symbol: str) -> str | None:
+        """Return the sector of one instrument, or ``None`` when unknown."""
 
 
 class MarketStatusGateway(Protocol):

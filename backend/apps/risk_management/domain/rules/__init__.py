@@ -9,6 +9,9 @@ from apps.risk_management.domain.rules.exposure_limits import ExposureLimitCheck
 from apps.risk_management.domain.rules.instrument_check import InstrumentCheck
 from apps.risk_management.domain.rules.kill_switch_check import KillSwitchCheck
 from apps.risk_management.domain.rules.market_session_check import MarketSessionCheck
+from apps.risk_management.domain.rules.portfolio_concentration import (
+    PortfolioConcentrationCheck,
+)
 from apps.risk_management.domain.rules.position_sizing import PositionSizingCheck
 from apps.risk_management.domain.rules.risk_reward_check import RiskRewardCheck
 from apps.risk_management.domain.rules.stop_direction_check import StopDirectionCheck
@@ -20,6 +23,7 @@ __all__ = [
     "InstrumentCheck",
     "KillSwitchCheck",
     "MarketSessionCheck",
+    "PortfolioConcentrationCheck",
     "PositionSizingCheck",
     "RiskCheck",
     "RiskCheckContext",

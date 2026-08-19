@@ -317,6 +317,17 @@ class TestSessionAndSandbox:
         assert excinfo.value.code == "NO_ZERODHA_ACCESS_TOKEN"
 
     def test_live_environment_is_refused(self) -> None:
+        # Default test settings: ALGO_REGISTRATION_ID is empty -> the
+        # registration gate fires first.
+        with pytest.raises(ExecutionDomainError) as excinfo:
+            _broker(FakeKiteClient(), environment="live")
+
+        assert excinfo.value.code == "LIVE_UNREACHABLE_NO_ALGO_REGISTRATION"
+
+    def test_live_environment_with_registration_still_refused(self, settings) -> None:
+        # Even with ALGO_REGISTRATION_ID recorded, live is unreachable until
+        # the Phase 2 explicit unlock (ADR-030) exists.
+        settings.ALGO_REGISTRATION_ID = "SEBI-ALGO-12345"
         with pytest.raises(ExecutionDomainError) as excinfo:
             _broker(FakeKiteClient(), environment="live")
 

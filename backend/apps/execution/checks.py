@@ -42,4 +42,17 @@ def broker_environment_check(app_configs=None, **kwargs) -> list[checks.Error]:
             )
         )
 
+    if env == "live" and not getattr(settings, "ALGO_REGISTRATION_ID", "").strip():
+        errors.append(
+            checks.Error(
+                "BROKER_ENVIRONMENT=live requires ALGO_REGISTRATION_ID to be "
+                "set: algorithmic live trading must be tied to an explicit, "
+                "recorded SEBI algotrading registration decision.",
+                hint="Set ALGO_REGISTRATION_ID to the operator's registered "
+                "algo-trading identifier before any live execution is "
+                "attempted.",
+                id="execution.E003",
+            )
+        )
+
     return errors

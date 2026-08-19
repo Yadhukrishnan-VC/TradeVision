@@ -51,6 +51,12 @@ class TestDevelopmentEnvironment:
         errors = _run(monkeypatch, "config.settings.dev", "tradevision_dev_db")
         assert errors == []
 
+    def test_digit_boundary_counts_as_marker(self, monkeypatch):
+        # Regression: the marker regex must match a digit boundary ("test2"),
+        # not just "_" / "." / end-of-string delimiters.
+        errors = _run(monkeypatch, "config.settings.development", "tradevision_fresh_test2")
+        assert errors == []
+
     def test_devdb_is_not_matched_inside_tradevision(self, monkeypatch):
         # "dev" is a substring of "tradevision" — must not count as a marker.
         errors = _run(monkeypatch, "config.settings.development", "tradevision_db")

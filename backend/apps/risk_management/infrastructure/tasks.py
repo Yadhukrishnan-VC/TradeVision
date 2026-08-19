@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import uuid
+from decimal import Decimal
 
 from celery import shared_task
 from django.db import transaction
@@ -143,3 +144,55 @@ def _build_decision_event(
         correlation_id=correlation_id,
         causation_id=causation_id,
     )
+
+
+@shared_task(
+    name="tradevision.risk_management.evaluate_drawdown_kill_switch",
+    queue="maintenance",
+    bind=True,
+    base=BaseTask,
+    max_retries=DEFAULT_MAX_RETRIES,
+    default_retry_delay=DEFAULT_RETRY_DELAY,
+)
+def evaluate_drawdown_kill_switch(self, account_id: str = "") -> dict:
+    """Auto-activate the ACCOUNT kill switch on a realized drawdown breach.
+
+    Scheduled on the Celery beat. Reads the portfolio/capital gateways, computes
+    daily/weekly loss as a share of capital, and calls
+    :meth:`KillSwitchService.evaluate_drawdown_limits` when thresholds are
+    configured. A trip persists a ``KillSwitchState`` row and publishes
+    ``KillSwitchActivated``, which the audit-log ``*`` subscriber records for
+    free. Idempotent: an already-active ACCOUNT scope is returned as-is.
+    """
+    from apps.risk_management.application.risk_config import risk_config_from_settings
+
+    account_uuid = _optional_account_id(account_id)
+    config = risk_config_from_settings()
+    capital = get_capital_gateway(account_uuid).get_available_capital()
+    portfolio = get_portfolio_state_gateway(account_uuid)
+
+    state = KillSwitchService().evaluate_drawdown_limits(
+        daily_loss=portfolio.get_daily_loss(),
+        weekly_loss=portfolio.get_weekly_loss(),
+        capital=capital if capital is not None else Decimal(0),
+        max_daily_loss_pct=config.max_daily_loss_pct,
+        max_weekly_loss_pct=config.max_weekly_loss_pct,
+    )
+
+    if state is not None:
+        logger.info(
+            "drawdown_kill_switch_active",
+            extra={
+                "state_id": str(state.id),
+                "reason": state.reason,
+                "capital": str(capital),
+            },
+        )
+
+    return {
+        "tripped": state is not None,
+        "account_id": account_uuid or "default",
+        "daily_loss": str(portfolio.get_daily_loss()),
+        "weekly_loss": str(portfolio.get_weekly_loss()),
+        "capital": str(capital),
+    }

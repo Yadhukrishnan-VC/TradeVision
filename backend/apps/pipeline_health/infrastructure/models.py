@@ -45,7 +45,7 @@ class StageHeartbeat(BaseModel):
         indexes = [
             models.Index(
                 fields=["stage", "last_event_at"],
-                name="idx_stage_heartbeat_stage_event",
+                name="idx_stage_heartbeat_evt",
             ),
         ]
 

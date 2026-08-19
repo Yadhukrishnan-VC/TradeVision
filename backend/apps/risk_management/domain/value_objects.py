@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+from decimal import Decimal
 from enum import Enum
 
 
@@ -74,5 +76,33 @@ class RejectionReason(str, Enum):
     INVALID_INSTRUMENT = "INVALID_INSTRUMENT"
     """Symbol is not in the configured tradable instrument set."""
 
+    MISSING_SECTOR_DATA = "MISSING_SECTOR_DATA"
+    """Sector/correlation data is unavailable for the proposed instrument or
+    an open position, so portfolio-level concentration cannot be verified.
+    Fail-closed: the position is rejected rather than assumed uncorrelated."""
+
+    SECTOR_CONCENTRATION_EXCEEDED = "SECTOR_CONCENTRATION_EXCEEDED"
+    """Aggregate same-sector exposure would breach the configured share of
+    capital."""
+
+    CORRELATED_EXPOSURE_EXCEEDED = "CORRELATED_EXPOSURE_EXCEEDED"
+    """Aggregate exposure across positions sharing the firing rule's trigger
+    would breach the configured multiple of single-position risk."""
+
     UNKNOWN = "UNKNOWN"
     """Unexpected failure during evaluation (fail-closed)."""
+
+
+@dataclass(frozen=True)
+class PortfolioPosition:
+    """One open portfolio position, as consumed by portfolio-level risk checks.
+
+    Purely a value object — assembled upstream by the portfolio gateway so the
+    checks stay I/O-free. ``sector`` and ``trigger_rule`` are the correlation
+    signals: when either is missing the concentration check fails closed.
+    """
+
+    symbol: str
+    sector: str | None = None
+    notional: Decimal = Decimal(0)
+    trigger_rule: str | None = None

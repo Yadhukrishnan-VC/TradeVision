@@ -518,6 +518,15 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": 30.0,
         "options": {"queue": "maintenance"},
     },
+    # RISK-SOPHISTICATION-2 — auto-activates the ACCOUNT kill switch when a
+    # realized daily/weekly loss breaches its configured share of capital.
+    # No-ops when no threshold is configured or the ACCOUNT scope is already
+    # active (idempotent — never spams the audit log).
+    "evaluate-drawdown-kill-switch": {
+        "task": "apps.risk_management.infrastructure.tasks.evaluate_drawdown_kill_switch",
+        "schedule": 60.0,
+        "options": {"queue": "maintenance"},
+    },
     # PORTFOLIO-RECONCILE-1 — fan-out that runs a position + order
     # reconciliation pass for every account every 5 minutes, detecting and
     # repairing drift in the dashboard read model. Supersedes the old
@@ -543,6 +552,14 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.news_feed.infrastructure.tasks.ingest_news",
         "schedule": NEWS_POLL_INTERVAL_SECONDS,
         "options": {"queue": "maintenance"},
+    },
+    # RISK-SOPHISTICATION-4 — daily calibration-drift pass: compares each rule's
+    # live paper-trading win rate against its backtested expectation over a
+    # rolling window and flags significant divergence. No-ops on no data.
+    "evaluate-calibration-drift": {
+        "task": "apps.trader_memory.infrastructure.tasks.evaluate_calibration_drift",
+        "schedule": crontab(hour=10, minute=30),
+        "options": {"queue": "analytics"},
     },
 }
 
@@ -651,6 +668,18 @@ BROKER_ENVIRONMENT: str = config("BROKER_ENVIRONMENT", default="sandbox")
 ZERODHA_API_SECRET: str = config("ZERODHA_API_SECRET", default="")
 ZERODHA_REQUEST_TOKEN: str = config("ZERODHA_REQUEST_TOKEN", default="")
 ZERODHA_PRODUCT: str = config("ZERODHA_PRODUCT", default="MIS")
+
+# ---------------------------------------------------------------------------
+# Algo-registration gate (Risk Sophistication batch)
+#
+# ALGO_REGISTRATION_ID records the SEBI algotrading registration under which
+# the operator is authorised to run algorithmic trading. It is EMPTY by
+# default. Live (non-sandbox, non-paper) execution is refused whenever it is
+# unset — this batch does not implement SEBI registration itself; it only
+# makes live trading structurally impossible without an explicit, recorded
+# decision (execution.E003 + the broker-adapter guard).
+# ---------------------------------------------------------------------------
+ALGO_REGISTRATION_ID: str = config("ALGO_REGISTRATION_ID", default="")
 
 # ---------------------------------------------------------------------------
 # Batch B kill switches — all default False until verified
@@ -819,10 +848,60 @@ RISK_MANAGEMENT: dict = {
     "current_exposure": Decimal("0"),
     "daily_loss": Decimal("0"),
     "instrument_max_qty": None,
+    # Risk Sophistication batch: portfolio-level concentration governance.
+    # Defaults are None (disabled) — a sector/correlation data source does not
+    # exist yet, and the concentration check fails CLOSED on missing data, so
+    # enabling these without sector data rejects every order by design.
+    "max_sector_exposure_pct": None,
+    "correlated_trigger_max_multiple": None,
+    "sector_by_symbol": {},
+    "portfolio_positions": [],
+    # Risk Sophistication batch: automatic drawdown circuit breaker. Thresholds
+    # are None (disabled) by default; when set, a realized daily/weekly loss
+    # breaching the share of capital auto-activates the ACCOUNT kill switch.
+    "max_daily_loss_pct": None,
+    "max_weekly_loss_pct": None,
+    "weekly_loss": Decimal("0"),
 }
 # Short-TTL for the kill-switch read-through cache (fail-closed on error).
 RISK_KILL_SWITCH_CACHE_TTL_SECONDS: int = config(
     "RISK_KILL_SWITCH_CACHE_TTL_SECONDS", default=10, cast=int
+)
+
+# ---------------------------------------------------------------------------
+# Execution-cost realism (Risk Sophistication batch)
+#
+# "flat" keeps the historical commission_rate + flat slippage_bps model
+# untouched (the default, so no backtest numbers change). "nse" switches
+# BacktestStatsService to the realistic NSE cost model — STT, brokerage,
+# exchange transaction charges, GST, SEBI turnover fee, stamp duty and a
+# size-dependent impact cost — parameterised by BACKTEST_NSE_COST_MODEL.
+# ---------------------------------------------------------------------------
+BACKTEST_COST_MODEL: str = config("BACKTEST_COST_MODEL", default="flat")
+BACKTEST_NSE_COST_MODEL: dict = {
+    "product": "delivery",
+    "brokerage_per_order": Decimal("20"),
+    "impact_base_bps": Decimal("5"),
+    "impact_reference_adv": Decimal("1000000"),
+    "impact_max_multiple": Decimal("5"),
+}
+
+# ---------------------------------------------------------------------------
+# Calibration-drift monitoring (Risk Sophistication batch)
+#
+# The Celery beat evaluates each rule's live paper-trading win rate over a
+# rolling window against its backtested expected win rate and flags a
+# statistically significant divergence. Below CALIBRATION_DRIFT_MIN_TRADES no
+# verdict is produced; CALIBRATION_DRIFT_ALPHA is the two-sided test level.
+# ---------------------------------------------------------------------------
+CALIBRATION_DRIFT_WINDOW_DAYS: int = config(
+    "CALIBRATION_DRIFT_WINDOW_DAYS", default=30, cast=int
+)
+CALIBRATION_DRIFT_MIN_TRADES: int = config(
+    "CALIBRATION_DRIFT_MIN_TRADES", default=30, cast=int
+)
+CALIBRATION_DRIFT_ALPHA: float = config(
+    "CALIBRATION_DRIFT_ALPHA", default=0.05, cast=float
 )
 
 # M4 — gateway implementation feeding Risk Management's capital/exposure reads.

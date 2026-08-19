@@ -68,3 +68,27 @@ def rebuild_projection(self, strategy_id: str) -> dict:
         "sample_size": projection.sample_size,
         "win_rate": str(projection.win_rate),
     }
+
+
+@shared_task(
+    name="tradevision.trader_memory.evaluate_calibration_drift",
+    queue="analytics",
+    bind=True,
+    base=BaseTask,
+    max_retries=DEFAULT_MAX_RETRIES,
+    default_retry_delay=DEFAULT_RETRY_DELAY,
+)
+def evaluate_calibration_drift(self) -> dict:
+    """Per-rule calibration-drift pass (Risk Sophistication batch).
+
+    Compares each rule's live paper-trading win rate over the rolling window
+    against its backtested expected win rate and persists a
+    ``CalibrationDriftRecord`` flag when the divergence is statistically
+    significant. Scheduled on the Celery beat; no-ops when there is nothing
+    to evaluate.
+    """
+    from apps.trader_memory.application.calibration_service import (
+        CalibrationDriftService,
+    )
+
+    return CalibrationDriftService().run()

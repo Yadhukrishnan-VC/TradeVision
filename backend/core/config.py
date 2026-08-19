@@ -262,6 +262,16 @@ class TradeVisionConfig:
         return getattr(settings, "BROKER_ENVIRONMENT", "sandbox").lower()
 
     @property
+    def algo_registration_id(self) -> str:
+        """SEBI algotrading registration identifier (Risk Sophistication batch).
+
+        Empty by default; live broker execution is refused while unset.
+        """
+        from django.conf import settings
+
+        return getattr(settings, "ALGO_REGISTRATION_ID", "")
+
+    @property
     def zerodha_api_secret(self) -> str:
         """Zerodha Kite Connect API secret (sandbox default is applied by the
         adapter when empty)."""

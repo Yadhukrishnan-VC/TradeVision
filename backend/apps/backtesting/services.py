@@ -264,11 +264,27 @@ class BacktestStatsService(BaseService):
         comm_rate = Decimal(str(run.commission_rate or "0"))
         slip_bps = Decimal(str(run.slippage_bps or "0"))
 
-        for fill in fills:
-            fee = fill.quantity * fill.price * comm_rate
-            slip_impact = fill.quantity * fill.price * (slip_bps / Decimal("10000"))
-            total_costs += fee + slip_impact
-            total_slippage += slip_impact
+        # Execution realism (Risk Sophistication batch): when configured, use
+        # the realistic NSE cost model (STT, brokerage, exchange charges, GST,
+        # SEBI fee, stamp duty + size-dependent impact) instead of the flat
+        # commission/slippage pair. The flat path is the untouched default.
+        from apps.backtesting.domain.nse_costs import (
+            compute_trade_cost,
+            nse_cost_model_from_settings,
+        )
+
+        nse_model = (
+            nse_cost_model_from_settings()
+            if getattr(settings, "BACKTEST_COST_MODEL", "flat") == "nse"
+            else None
+        )
+
+        if nse_model is None:
+            for fill in fills:
+                fee = fill.quantity * fill.price * comm_rate
+                slip_impact = fill.quantity * fill.price * (slip_bps / Decimal("10000"))
+                total_costs += fee + slip_impact
+                total_slippage += slip_impact
 
         # RESEARCH-INTEGRITY-1 (timestamp leakage / IS-OOS contamination):
         # ``order.created_at`` is the WALL-CLOCK creation time (audit row), not
@@ -326,10 +342,17 @@ class BacktestStatsService(BaseService):
             avg_fill = order.avg_fill_price or Decimal("0")
             raw_pnl = (avg_fill - order.entry_price) * order.filled_quantity * direction
 
-            order_cost = (
-                (order.filled_quantity * avg_fill * comm_rate)
-                + (order.filled_quantity * avg_fill * (slip_bps / Decimal("10000")))
-            )
+            if nse_model is not None:
+                order_cost = self._nse_cost_for_order(order, nse_model, compute_trade_cost)
+                total_costs += order_cost
+                total_slippage += self._nse_impact_for_order(
+                    order, nse_model, compute_trade_cost
+                )
+            else:
+                order_cost = (
+                    (order.filled_quantity * avg_fill * comm_rate)
+                    + (order.filled_quantity * avg_fill * (slip_bps / Decimal("10000")))
+                )
             net_trade_pnl = raw_pnl - order_cost
 
             if net_trade_pnl > Decimal("0"):
@@ -701,6 +724,26 @@ class BacktestStatsService(BaseService):
             "unattributed_trade_count": unattributed_trade_count,
             "trades": trades,
         }
+
+    def _nse_cost_for_order(self, order: Any, model: Any, compute_trade_cost: Any) -> Decimal:
+        """Full NSE cost (incl. impact) for one order's leg."""
+        price = order.avg_fill_price or order.entry_price or Decimal("0")
+        return compute_trade_cost(
+            quantity=order.filled_quantity,
+            price=price,
+            side=order.side,
+            model=model,
+        )["total"]
+
+    def _nse_impact_for_order(self, order: Any, model: Any, compute_trade_cost: Any) -> Decimal:
+        """Size-dependent impact leg only (the NSE analogue of slippage)."""
+        price = order.avg_fill_price or order.entry_price or Decimal("0")
+        return compute_trade_cost(
+            quantity=order.filled_quantity,
+            price=price,
+            side=order.side,
+            model=model,
+        )["impact_cost"]
 
     def _resolve_regimes(self, orders: list[Any]) -> dict[uuid.UUID, str]:
         """Map each order's correlation_id to its market regime.

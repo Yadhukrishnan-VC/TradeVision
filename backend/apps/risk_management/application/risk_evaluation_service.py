@@ -23,6 +23,7 @@ from apps.risk_management.domain.rules import (
     InstrumentCheck,
     KillSwitchCheck,
     MarketSessionCheck,
+    PortfolioConcentrationCheck,
     PositionSizingCheck,
     RiskCheck,
     RiskCheckContext,
@@ -40,6 +41,7 @@ _DEFAULT_CHECKS: tuple[RiskCheck, ...] = (
     StopDirectionCheck(),
     PositionSizingCheck(),
     ExposureLimitCheck(),
+    PortfolioConcentrationCheck(),
     DailyLossLimitCheck(),
     RiskRewardCheck(),
 )
@@ -135,6 +137,10 @@ class RiskEvaluationService(BaseService):
             min_risk_reward=self._config.min_risk_reward,
             instrument_max_qty=self._portfolio_gateway.get_instrument_max_qty(symbol),
             portfolio_gateway_impl=self._portfolio_gateway.implementation_name,
+            portfolio_positions=self._portfolio_gateway.get_portfolio_positions(),
+            instrument_sector=self._portfolio_gateway.get_instrument_sector(symbol),
+            max_sector_exposure_pct=self._config.max_sector_exposure_pct,
+            correlated_trigger_max_multiple=self._config.correlated_trigger_max_multiple,
         )
 
         decision = self._run_checks(ctx)
