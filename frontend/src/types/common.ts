@@ -44,6 +44,7 @@ export const HttpStatus = {
   NotFound: 404,
   Conflict: 409,
   Unprocessable: 422,
+  TooManyRequests: 429,
   ServerError: 500,
   Network: 0,
 } as const;
