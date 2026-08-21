@@ -1,7 +1,7 @@
 {
   "api_root": "https://sandbox.kite.trade",
   "demo_app": "sandboxdemo",
-  "description": "Recorded Kite sandbox order lifecycle shapes (source: kite.trade/docs/connect/v3/sandbox/). Encodes the response shapes Kite returns for orders() / place_order() / order_history() / cancel_order() in the shared sandbox demo app, so the adapter can be integration-tested without live calls in CI.",
+  "description": "Kite Connect response-shape fixtures for adapter integration tests without live calls. Order/history shapes follow kite.trade/docs/connect/v3/ (orders, order history); the error envelopes under 'observed_live' were captured verbatim from https://sandbox.kite.trade on 2026-08-21 while probing the real endpoint WITHOUT a user session (curl, X-Kite-Version: 3): the /oms-prefixed order routes answer with Kite's standard error envelope, proving route patching and auth behaviour end-to-end. The authenticated order lifecycle itself is PENDING a real smoke run by the owner (docs/PHASE1_SANDBOX_SMOKE_TEST.md).",
   "orders": [
     {
       "order_id": "240817000000001",
@@ -13,7 +13,10 @@
       "product": "MIS",
       "order_type": "LIMIT",
       "price": 4100.0,
-      "quantity": 1
+      "quantity": 1,
+      "filled_quantity": 0,
+      "status_message": null,
+      "order_timestamp": "2026-08-17 09:15:01"
     }
   ],
   "history": {
@@ -37,5 +40,24 @@
   "place_new": {
     "order_id": "240817000000002",
     "status": "OPEN"
+  },
+  "observed_live": {
+    "captured_at": "2026-08-21T21:05:00Z",
+    "unauthenticated_orders_request": {
+      "method": "GET",
+      "url": "https://sandbox.kite.trade/oms/orders",
+      "request_headers": {"X-Kite-Version": "3", "Authorization": "token sandboxdemo:dummytoken123"},
+      "http_status": 403,
+      "response_body": {
+        "status": "error",
+        "message": "Incorrect `api_key` or `access_token`.",
+        "data": null,
+        "error_type": "TokenException"
+      }
+    },
+    "public_instruments_dump": {
+      "url": "https://instrumentsdump/not/used/here",
+      "note": "GET https://sandbox.kite.trade/instruments/NSE returned HTTP 200, 590949 bytes, 10093 instrument rows (CSV) - the /oms-exempt public route."
+    }
   }
 }

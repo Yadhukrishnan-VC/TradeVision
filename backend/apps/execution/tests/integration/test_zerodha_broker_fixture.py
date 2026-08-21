@@ -6,7 +6,6 @@ import uuid
 from decimal import Decimal
 
 import pytest
-
 from apps.execution.application.execution_engine import ExecutionEngine
 from apps.execution.application.execution_request_service import ExecutionRequestService
 from apps.execution.domain.value_objects import OrderPlacementRequest
@@ -16,7 +15,9 @@ from apps.portfolio.domain.value_objects import Side
 
 pytestmark = pytest.mark.django_db
 
-FIXTURE_PATH = pathlib.Path(__file__).parent / "fixtures" / "zerodha_sandbox_order_flow.json"
+FIXTURE_PATH = (
+    pathlib.Path(__file__).parent / "fixtures" / "zerodha_sandbox_order_flow.json"
+)
 
 
 def _approved_payload(**overrides: object) -> dict:
@@ -29,7 +30,7 @@ def _approved_payload(**overrides: object) -> dict:
         entry_price=Decimal("103.00"),
         stop_loss=Decimal("101.00"),
         position_size=5000,
-        risk_amount=Decimal("10000"),
+        risk_amount=Decimal(10000),
         risk_pct_of_capital=Decimal("0.01"),
         risk_reward_ratio=Decimal("3.5"),
         portfolio_gateway_impl="portfolio_v1",
@@ -135,7 +136,7 @@ class TestZerodhaSandboxFixture:
             symbol="RELIANCE",
             side=Side.LONG,
             order_type="market",
-            quantity=Decimal("1"),
+            quantity=Decimal(1),
             price=Decimal("103.00"),
             correlation_id=uuid.uuid4(),
         )
@@ -149,7 +150,7 @@ class TestZerodhaSandboxFixture:
 
         opened = broker.get_order_status(ack.broker_order_ref)
         assert opened.status == "OPEN"
-        assert opened.filled_quantity == Decimal("0")
+        assert opened.filled_quantity == Decimal(0)
 
         cancelled = broker.cancel_order(ack.broker_order_ref)
         assert cancelled.cancelled is True
@@ -168,7 +169,7 @@ class TestZerodhaSandboxFixture:
             symbol="TCS",
             side=Side.LONG,
             order_type="market",
-            quantity=Decimal("1"),
+            quantity=Decimal(1),
             price=Decimal("4100.00"),
             correlation_id=uuid.uuid4(),
         )
@@ -213,9 +214,79 @@ class TestZerodhaSandboxFixture:
         order.refresh_from_db()
         assert result["status"] == "REJECTED"
         assert order.status == "REJECTED"
-        assert order.filled_quantity == Decimal("0")
+        assert order.filled_quantity == Decimal(0)
         assert not Fill.objects.filter(order=order).exists()
 
 
 class OrderException(Exception):
     """Fake with the same class name kiteconnect uses for order rejections."""
+
+
+class TokenException(Exception):
+    """Fake with the same class name kiteconnect uses for auth failures."""
+
+
+class TestZerodhaSandboxFixtureLiveShapes:
+    """Adapter behaviour pinned to the response shapes captured live.
+
+    The ``observed_live`` block of the fixture records what the real
+    sandbox.kite.trade endpoint answered on 2026-08-21 without a user
+    session: Kite's standard error envelope (``error_type=TokenException``,
+    HTTP 403) on /oms-prefixed order routes, HTTP 200 on the public
+    instruments dump. These tests prove the adapter handles exactly those
+    shapes without any live call.
+    """
+
+    def _request(
+        self, symbol: str = "RELIANCE", price: str = "103.00"
+    ) -> OrderPlacementRequest:
+        return OrderPlacementRequest(
+            order_id=uuid.uuid4(),
+            account_id=uuid.uuid4(),
+            symbol=symbol,
+            side=Side.LONG,
+            order_type="market",
+            quantity=Decimal(1),
+            price=Decimal(price),
+            correlation_id=uuid.uuid4(),
+        )
+
+    def test_fixture_encodes_observed_live_error_envelope(self) -> None:
+        fixture = _load_fixture()
+        envelope = fixture["observed_live"]["unauthenticated_orders_request"]
+        assert envelope["http_status"] == 403
+        assert envelope["response_body"]["error_type"] == "TokenException"
+        assert envelope["url"].startswith(fixture["api_root"] + "/oms/")
+        # The public instruments dump is the documented /oms-exempt route.
+        assert (
+            "instruments" in fixture["observed_live"]["public_instruments_dump"]["note"]
+        )
+
+    def test_token_exception_propagates_as_retryable_not_rejection(self) -> None:
+        class _UnauthenticatedClient(SandboxReplayClient):
+            def orders(self) -> list[dict]:
+                raise TokenException("Incorrect `api_key` or `access_token`.")
+
+        fixture = _load_fixture()
+        broker = _sandbox_broker(_UnauthenticatedClient(fixture))
+
+        with pytest.raises(TokenException):
+            broker.place_order(self._request())
+
+        # Nothing was placed: the failed duplicate check blocks placement.
+        assert broker._client.placed == []
+
+    def test_idempotent_replay_same_correlation_places_once(self) -> None:
+        fixture = _load_fixture()
+        client = SandboxReplayClient(fixture)
+        broker = _sandbox_broker(client)
+        request = self._request()
+
+        first = broker.place_order(request)
+        second = broker.place_order(request)
+
+        assert len(client.placed) == 1
+        assert second.broker_order_ref == first.broker_order_ref
+        assert second.message == "reused existing order (idempotent retry)"
+        tags = [o.get("tag") for o in client.orders()]
+        assert tags.count(str(request.correlation_id)) == 1

@@ -842,9 +842,15 @@ MARKET_DATA_PROVIDER: str = config("MARKET_DATA_PROVIDER", default="mock")
 # portfolio_gateway_impl="stub". Never used to back a real order.
 RISK_MANAGEMENT: dict = {
     "risk_pct": Decimal("0.01"),
-    "max_position_size": 1_000_000,
-    "max_exposure_cap": Decimal("1000000"),
-    "daily_loss_limit": Decimal("100000"),
+    # ADR-030 §5.2 Phase 2 gate: hard-capped maximum order size and maximum
+    # daily loss. Values are env-configurable (RISK_MAX_POSITION_SIZE,
+    # RISK_MAX_EXPOSURE_CAP, RISK_DAILY_LOSS_LIMIT) and enforced pre-trade by
+    # the risk check chain: PositionSizingCheck clamps every approved order
+    # to <= max_position_size; DailyLossLimitCheck rejects any evaluation on
+    # a day whose realized+unrealized loss has reached daily_loss_limit.
+    "max_position_size": config("RISK_MAX_POSITION_SIZE", default=1_000_000, cast=int),
+    "max_exposure_cap": Decimal(config("RISK_MAX_EXPOSURE_CAP", default="1000000")),
+    "daily_loss_limit": Decimal(config("RISK_DAILY_LOSS_LIMIT", default="100000")),
     "min_risk_reward": Decimal("1.0"),
     "kill_switch_active": False,
     "tradable_symbols": [],

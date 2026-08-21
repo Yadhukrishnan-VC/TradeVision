@@ -32,6 +32,21 @@ def _problem_detail(
     }
 
 
+def _actor_for(request: Request) -> str:
+    """Audit actor for a kill-switch toggle.
+
+    ``KillSwitchState.actor`` is non-blank (full_clean), while the email-only
+    auth model can yield an empty email — fall back through username to
+    "system" so the toggle never fails on identity bookkeeping.
+    """
+    user = request.user
+    return (
+        getattr(user, "email", "")
+        or getattr(user, "username", "")
+        or "system"
+    )
+
+
 class RiskDecisionListView(ListAPIView):
     """List persisted risk decisions (read-only)."""
 
@@ -96,7 +111,7 @@ class KillSwitchActivateView(GenericAPIView):
                 scope=data["scope"],
                 symbol=data.get("symbol") or None,
                 reason=data.get("reason", ""),
-                actor=getattr(request.user, "email", "system"),
+                actor=_actor_for(request),
             )
         except ValueError as exc:
             return Response(
@@ -131,7 +146,7 @@ class KillSwitchDeactivateView(GenericAPIView):
                 scope=data["scope"],
                 symbol=data.get("symbol") or None,
                 reason=data.get("reason", ""),
-                actor=getattr(request.user, "email", "system"),
+                actor=_actor_for(request),
             )
         except ValueError as exc:
             return Response(
