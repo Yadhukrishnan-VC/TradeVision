@@ -23,7 +23,12 @@ REST_FRAMEWORK["DEFAULT_RENDERER_CLASSES"] = (
 
 LOGGING["root"]["level"] = "DEBUG"
 
-EVENT_BUS_IMPLEMENTATION = "redis"
+# Backtest replay requires synchronous in-process event dispatch (the runner
+# binds simulation contextvars that do not cross Celery worker processes), so
+# the research pipeline runs against the in-memory FakeEventBus. Production /
+# live ingestion stays on Redis; the env override is used by management
+# commands that replay history (e.g. run_edge_validation).
+EVENT_BUS_IMPLEMENTATION = os.environ.get("EVENT_BUS_IMPLEMENTATION", "redis")
 
 CELERY_TASK_ALWAYS_EAGER = False
 
