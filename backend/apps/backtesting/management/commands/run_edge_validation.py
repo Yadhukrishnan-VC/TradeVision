@@ -253,7 +253,7 @@ class Command(BaseCommand):
         for symbol in symbols:
             self.stdout.write(f"\nAnalyzing {symbol}...")
             try:
-                symbol_results = self._analyze_symbol(
+                symbol_results, wf_distribution = self._analyze_symbol(
                     symbol=symbol,
                     timeframe=timeframe,
                     start_date=start_date,
@@ -278,6 +278,7 @@ class Command(BaseCommand):
                     dump = {
                         "symbol": symbol,
                         "results": symbol_results,
+                        "walk_forward_distribution": wf_distribution,
                     }
                     target = per_symbol_json / f"{symbol}.json"
                     with target.open("w", encoding="utf-8") as f:
@@ -336,8 +337,8 @@ class Command(BaseCommand):
         min_trades: int,
         n_shuffles: int,
         alpha: float,
-    ) -> dict[str, dict[str, list[dict[str, Any]]]]:
-        """Analyze one symbol; returns rule_id -> regime -> [entry]."""
+    ) -> tuple[dict[str, dict[str, list[dict[str, Any]]]], dict[str, Any]]:
+        """Analyze one symbol; returns (rule_id -> regime -> [entry], walk_forward_distribution)."""
         self.stdout.write(f"  Running edge validation for {symbol}...")
 
         result = edge_service.compare_costs(
@@ -352,6 +353,12 @@ class Command(BaseCommand):
             realistic_commission_rate=REALISTIC_COMMISSION_RATE,
             realistic_slippage_bps=REALISTIC_SLIPPAGE_BPS,
             initial_capital=initial_capital,
+        )
+
+        walk_forward_distribution = (
+            result.get("realistic_cost", {})
+            .get("walk_forward", {})
+            .get("distribution", {})
         )
 
         # --- Per-trade regime attribution from the realistic-cost single run ---
@@ -387,6 +394,8 @@ class Command(BaseCommand):
 
         walk_forward = realistic.get("walk_forward") or {}
         wf_dist = walk_forward.get("distribution") or {}
+        wf_total_windows = walk_forward.get("total_windows", 0)
+        wf_included = walk_forward.get("included_window_count", 0)
 
         results_by_rule_regime: dict[str, dict[str, list[dict[str, Any]]]] = {}
 
@@ -417,6 +426,15 @@ class Command(BaseCommand):
 
                 regime_bucket = by_regime.get(regime) or {}
 
+                included = wf_included
+                oos_expectancy = wf_dist.get("out_of_sample_expectancy") or {}
+                oos_mean_raw = oos_expectancy.get("mean")
+                oos_mean = float(oos_mean_raw) if oos_mean_raw is not None else None
+                if included == 0:
+                    wf_status = "0 OOS windows had trades"
+                else:
+                    wf_status = "computed"
+
                 entry = {
                     "symbol": symbol,
                     "rule_id": rule_id,
@@ -437,15 +455,16 @@ class Command(BaseCommand):
                     "regime_trade_count": regime_bucket.get("trade_count", 0),
                     "regime_expectancy": regime_bucket.get("expectancy"),
                     "regime_win_rate": regime_bucket.get("win_rate"),
-                    "walk_forward_windows": walk_forward.get("total_windows", 0),
-                    "walk_forward_included": walk_forward.get("included_window_count", 0),
-                    "walk_forward_oos_expectancy_mean": (wf_dist.get("out_of_sample_expectancy") or {}).get("mean"),
+                    "walk_forward_windows": wf_total_windows,
+                    "walk_forward_included": included,
+                    "walk_forward_oos_expectancy_mean": oos_mean,
+                    "walk_forward_oos_status": wf_status,
                     "trade_count_significance": len(pnls),
                     "trades": pnls,
                 }
                 results_by_rule_regime.setdefault(rule_id, {}).setdefault(regime, []).append(entry)
 
-        return results_by_rule_regime
+        return results_by_rule_regime, walk_forward_distribution
 
     # ------------------------------------------------------------------
     # Report
@@ -454,6 +473,8 @@ class Command(BaseCommand):
     def _load_per_symbol_json(self, directory: Path) -> tuple[dict[str, dict[str, list[dict[str, Any]]]], list[str]]:
         all_results: dict[str, dict[str, list[dict[str, Any]]]] = {}
         symbols: list[str] = []
+        # Also store walk_forward distribution per symbol for later use
+        symbol_wf_dist: dict[str, dict[str, Any]] = {}
         for path in sorted(directory.glob("*.json")):
             with path.open(encoding="utf-8") as f:
                 payload = json.load(f)
@@ -462,9 +483,30 @@ class Command(BaseCommand):
                 continue
             symbol = payload["symbol"]
             symbols.append(symbol)
+            # Store walk_forward distribution per symbol
+            symbol_wf_dist[symbol] = payload.get("walk_forward_distribution", {})
             for rule_id, regime_data in payload.get("results", {}).items():
                 for regime, entries in regime_data.items():
                     all_results.setdefault(rule_id, {}).setdefault(regime, []).extend(entries)
+        # Attach walk_forward distribution to each entry for its symbol
+        for rule_id, regime_data in all_results.items():
+            for regime, entries in regime_data.items():
+                for entry in entries:
+                    symbol = entry.get("symbol")
+                    if symbol and symbol in symbol_wf_dist:
+                        wf_dist = symbol_wf_dist[symbol]
+                        oos_expectancy = wf_dist.get("out_of_sample_expectancy") or {}
+                        oos_mean_raw = oos_expectancy.get("mean")
+                        oos_mean = float(oos_mean_raw) if oos_mean_raw is not None else None
+                        included = wf_dist.get("count", 0)  # This is the count from distribution
+                        # Wait, distribution has 'count' which is the number of included windows
+                        # Actually let me check the structure
+                        if included == 0:
+                            wf_status = "0 OOS windows had trades"
+                        else:
+                            wf_status = "computed"
+                        entry["walk_forward_oos_expectancy_mean"] = oos_mean
+                        entry["walk_forward_oos_status"] = wf_status
         return all_results, sorted(symbols)
 
     def _aggregate_verdicts(
@@ -612,7 +654,13 @@ class Command(BaseCommand):
                             return "INSUFF"
 
                         wf_mean = entry.get("walk_forward_oos_expectancy_mean")
-                        wf_str = f"{wf_mean:.4f}" if isinstance(wf_mean, (int, float)) else "—"
+                        wf_status = entry.get("walk_forward_oos_status")
+                        if isinstance(wf_mean, (int, float)):
+                            wf_str = f"{wf_mean:.4f}"
+                        elif wf_status:
+                            wf_str = wf_status
+                        else:
+                            wf_str = "—"
 
                         f.write(
                             f"| {entry['symbol']} | "

@@ -63,9 +63,9 @@ def _median(values: Sequence[Decimal]) -> Decimal:
 
 
 def calculate_distribution(values: Sequence[Decimal]) -> dict[str, Any]:
-    """min / max / median / count_positive over a sequence of Decimals.
+    """min / max / mean / median / count_positive over a sequence of Decimals.
 
-    ``min``/``max``/``median`` are emitted as strings (Decimal is not JSON
+    All numeric values are emitted as strings (Decimal is not JSON
     serialisable); ``count_positive`` is the number of values strictly above
     zero. An empty input yields all-None extrema so downstream callers always
     get the same response shape.
@@ -75,6 +75,7 @@ def calculate_distribution(values: Sequence[Decimal]) -> dict[str, Any]:
             "count": 0,
             "min": None,
             "max": None,
+            "mean": None,
             "median": None,
             "count_positive": 0,
         }
@@ -83,6 +84,7 @@ def calculate_distribution(values: Sequence[Decimal]) -> dict[str, Any]:
         "count": len(ordered),
         "min": str(ordered[0]),
         "max": str(ordered[-1]),
+        "mean": str(sum(ordered) / len(ordered)),
         "median": str(_median(ordered)),
         "count_positive": sum(1 for v in ordered if v > Decimal("0")),
     }
