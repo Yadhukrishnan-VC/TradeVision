@@ -1,0 +1,105 @@
+{
+ "symbol": "HINDUNILVR",
+ "results": {
+  "breakout_v1": {
+   "RANGING": [
+    {
+     "symbol": "HINDUNILVR",
+     "rule_id": "breakout_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": null,
+     "realistic_has_edge": null,
+     "flipped": false,
+     "trade_count_baseline": 2,
+     "trade_count_realistic": 2,
+     "expectancy_baseline": "-637.0000000000000000",
+     "expectancy_realistic": "-892.25444657338500000000",
+     "profit_factor_baseline": "0E+16",
+     "profit_factor_realistic": "0E+20",
+     "sharpe_baseline": "-11.225",
+     "sharpe_realistic": "-11.225",
+     "max_drawdown_baseline": "0.06531873034837364803281452406",
+     "max_drawdown_realistic": "0.08078645506123072050643102184",
+     "regime_trade_count": 7,
+     "regime_expectancy": "-160.2910617056435714285714286",
+     "regime_win_rate": "0.5714",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 4,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 2,
+     "trades": [
+      -787.84403186559,
+      -0.0
+     ]
+    }
+   ]
+  },
+  "price_movement_v1": {
+   "RANGING": [
+    {
+     "symbol": "HINDUNILVR",
+     "rule_id": "price_movement_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": null,
+     "realistic_has_edge": null,
+     "flipped": false,
+     "trade_count_baseline": 2,
+     "trade_count_realistic": 2,
+     "expectancy_baseline": "383.62500000000000000",
+     "expectancy_realistic": "-241.489939764430000000000",
+     "profit_factor_baseline": "999.99",
+     "profit_factor_realistic": "0.4936261731618838758070777651",
+     "sharpe_baseline": "11.225",
+     "sharpe_realistic": "3.9059",
+     "max_drawdown_baseline": "0",
+     "max_drawdown_realistic": "0.02335308210943959780625586944",
+     "regime_trade_count": 7,
+     "regime_expectancy": "-160.2910617056435714285714286",
+     "regime_win_rate": "0.5714",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 4,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 2,
+     "trades": [
+      470.82115427391,
+      -227.85340591334
+     ]
+    }
+   ]
+  },
+  "volatility_breakout_v1": {
+   "RANGING": [
+    {
+     "symbol": "HINDUNILVR",
+     "rule_id": "volatility_breakout_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": null,
+     "realistic_has_edge": null,
+     "flipped": false,
+     "trade_count_baseline": 3,
+     "trade_count_realistic": 3,
+     "expectancy_baseline": "924.7333333333333333333333333",
+     "expectancy_realistic": "288.4853425866666666666666667",
+     "profit_factor_baseline": "999.99",
+     "profit_factor_realistic": "1.780904607407859584524193828",
+     "sharpe_baseline": "26.6765",
+     "sharpe_realistic": "18.7649",
+     "max_drawdown_baseline": "0",
+     "max_drawdown_realistic": "0",
+     "regime_trade_count": 7,
+     "regime_expectancy": "-160.2910617056435714285714286",
+     "regime_win_rate": "0.5714",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 4,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 3,
+     "trades": [
+      244.70513548,
+      1290.4863,
+      438.5382784
+     ]
+    }
+   ]
+  }
+ }
+}

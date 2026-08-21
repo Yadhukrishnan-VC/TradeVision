@@ -1,0 +1,76 @@
+{
+ "symbol": "HINDALCO",
+ "results": {
+  "breakout_v1": {
+   "RANGING": [
+    {
+     "symbol": "HINDALCO",
+     "rule_id": "breakout_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": null,
+     "realistic_has_edge": null,
+     "flipped": false,
+     "trade_count_baseline": 2,
+     "trade_count_realistic": 2,
+     "expectancy_baseline": "243.07500000000000000",
+     "expectancy_realistic": "-147.313593205000000000000",
+     "profit_factor_baseline": "7.881104033970276008492569002",
+     "profit_factor_realistic": "0.5588934208631775170729297978",
+     "sharpe_baseline": "8.6986",
+     "sharpe_realistic": "3.0321",
+     "max_drawdown_baseline": "0.008217956251861354790938350145",
+     "max_drawdown_realistic": "0.02496854698233779077876745629",
+     "regime_trade_count": 9,
+     "regime_expectancy": "235.4395065033333333333333339",
+     "regime_win_rate": "0.5556",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 3,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 2,
+     "trades": [
+      373.3002496,
+      -214.609480305
+     ]
+    }
+   ]
+  },
+  "price_movement_v1": {
+   "RANGING": [
+    {
+     "symbol": "HINDALCO",
+     "rule_id": "price_movement_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": null,
+     "realistic_has_edge": null,
+     "flipped": false,
+     "trade_count_baseline": 7,
+     "trade_count_realistic": 7,
+     "expectancy_baseline": "710.1499999999999999999999998",
+     "expectancy_realistic": "344.7975349914285714285714288",
+     "profit_factor_baseline": "2.077640963385289080621734701",
+     "profit_factor_realistic": "1.369274582078105454786133537",
+     "sharpe_baseline": "4.6888",
+     "sharpe_realistic": "3.7051",
+     "max_drawdown_baseline": "0.5344272511210574184528881379",
+     "max_drawdown_realistic": "0.5853555459889635738134128270",
+     "regime_trade_count": 9,
+     "regime_expectancy": "235.4395065033333333333333339",
+     "regime_win_rate": "0.5556",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 3,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 7,
+     "trades": [
+      3749.34134134,
+      -2829.61321162,
+      -946.736205,
+      -1274.65632,
+      3142.8487164,
+      1172.450678,
+      884.95304835
+     ]
+    }
+   ]
+  }
+ }
+}

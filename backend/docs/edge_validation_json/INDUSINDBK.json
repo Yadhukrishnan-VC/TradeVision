@@ -1,0 +1,111 @@
+{
+ "symbol": "INDUSINDBK",
+ "results": {
+  "breakout_v1": {
+   "RANGING": [
+    {
+     "symbol": "INDUSINDBK",
+     "rule_id": "breakout_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": null,
+     "realistic_has_edge": null,
+     "flipped": false,
+     "trade_count_baseline": 1,
+     "trade_count_realistic": 1,
+     "expectancy_baseline": "201.6500000000000000",
+     "expectancy_realistic": "11.82604360000000000000",
+     "profit_factor_baseline": "999.99",
+     "profit_factor_realistic": "1.107303193761173960916894770",
+     "sharpe_baseline": null,
+     "sharpe_realistic": null,
+     "max_drawdown_baseline": "0",
+     "max_drawdown_realistic": "0",
+     "regime_trade_count": 13,
+     "regime_expectancy": "-212.5836517584615384615384615",
+     "regime_win_rate": "0.3077",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 2,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 1,
+     "trades": [
+      122.0375218
+     ]
+    }
+   ]
+  },
+  "price_movement_v1": {
+   "RANGING": [
+    {
+     "symbol": "INDUSINDBK",
+     "rule_id": "price_movement_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": false,
+     "realistic_has_edge": false,
+     "flipped": false,
+     "trade_count_baseline": 11,
+     "trade_count_realistic": 11,
+     "expectancy_baseline": "-5.1909090909090909090909092",
+     "expectancy_realistic": "-255.2487612081818181818181818",
+     "profit_factor_baseline": "0.9651510527921879768080561489",
+     "profit_factor_realistic": "0.2859860689690665847436966468",
+     "sharpe_baseline": "-0.1793",
+     "sharpe_realistic": "-4.4064",
+     "max_drawdown_baseline": "0.1818072482722965222367409266",
+     "max_drawdown_realistic": "0.2592449044101870577553912167",
+     "regime_trade_count": 13,
+     "regime_expectancy": "-212.5836517584615384615384615",
+     "regime_win_rate": "0.3077",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 2,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 11,
+     "trades": [
+      740.88904076,
+      383.7017455,
+      -220.31317545,
+      -140.404099815,
+      -121.824819375,
+      -114.2348171,
+      -259.6653492,
+      -213.902726715,
+      -323.81033846,
+      -825.423825765,
+      -115.627358525
+     ]
+    }
+   ]
+  },
+  "volatility_breakout_v1": {
+   "RANGING": [
+    {
+     "symbol": "INDUSINDBK",
+     "rule_id": "volatility_breakout_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": null,
+     "realistic_has_edge": null,
+     "flipped": false,
+     "trade_count_baseline": 1,
+     "trade_count_realistic": 1,
+     "expectancy_baseline": "426.3000000000000000",
+     "expectancy_realistic": "32.32285683000000000000",
+     "profit_factor_baseline": "999.99",
+     "profit_factor_realistic": "1.141306749200069569577613254",
+     "sharpe_baseline": null,
+     "sharpe_realistic": null,
+     "max_drawdown_baseline": "0",
+     "max_drawdown_realistic": "0",
+     "regime_trade_count": 13,
+     "regime_expectancy": "-212.5836517584615384615384615",
+     "regime_win_rate": "0.3077",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 2,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 1,
+     "trades": [
+      261.065340915
+     ]
+    }
+   ]
+  }
+ }
+}

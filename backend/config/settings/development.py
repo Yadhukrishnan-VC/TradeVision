@@ -88,19 +88,21 @@ MARKET_DATA_PROVIDER = "mock"
 # ---------------------------------------------------------------------------
 # Logging — verbose in development
 # ---------------------------------------------------------------------------
-LOG_LEVEL = "DEBUG"
+import os
+
+LOG_LEVEL = os.environ.get("LOG_LEVEL", "DEBUG")
 
 LOGGING = {  # type: ignore[name-defined]  # noqa: F405
     **LOGGING,  # type: ignore[name-defined]
     "root": {
         "handlers": ["console"],
-        "level": "DEBUG",
+        "level": LOG_LEVEL,
     },
     "loggers": {
         **LOGGING.get("loggers", {}),  # type: ignore[name-defined]
         "django.db.backends": {
             "handlers": ["console"],
-            "level": "DEBUG",
+            "level": LOG_LEVEL,
             "propagate": False,
         },
     },

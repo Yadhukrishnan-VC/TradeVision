@@ -1,0 +1,98 @@
+{
+ "symbol": "COALINDIA",
+ "results": {
+  "breakout_v1": {
+   "RANGING": [
+    {
+     "symbol": "COALINDIA",
+     "rule_id": "breakout_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": true,
+     "realistic_has_edge": true,
+     "flipped": false,
+     "trade_count_baseline": 19,
+     "trade_count_realistic": 19,
+     "expectancy_baseline": "259.2657894736842105263157895",
+     "expectancy_realistic": "121.2590328921052631578947369",
+     "profit_factor_baseline": "162.9820261437908496732026144",
+     "profit_factor_realistic": "2.413230781893098529701669864",
+     "sharpe_baseline": "13.3679",
+     "sharpe_realistic": "11.2779",
+     "max_drawdown_baseline": "0.002869827668468643220777110350",
+     "max_drawdown_realistic": "0.004645077687625948911592544120",
+     "regime_trade_count": 31,
+     "regime_expectancy": "65.36766919677419354838709676",
+     "regime_win_rate": "0.7097",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 2,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 19,
+     "trades": [
+      713.31118047,
+      124.43814457,
+      55.59498494,
+      361.2084784,
+      148.22498842,
+      1120.3231818,
+      155.4268221,
+      4.5113586,
+      144.5490495,
+      206.51070336,
+      -49.44252576,
+      250.39293278,
+      324.84071354,
+      186.78870916,
+      64.72380577,
+      -40.639240435,
+      19.772682405,
+      18.2773944,
+      35.278010955
+     ]
+    }
+   ]
+  },
+  "price_movement_v1": {
+   "RANGING": [
+    {
+     "symbol": "COALINDIA",
+     "rule_id": "price_movement_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": true,
+     "realistic_has_edge": false,
+     "flipped": true,
+     "trade_count_baseline": 12,
+     "trade_count_realistic": 12,
+     "expectancy_baseline": "103.5166666666666666666666667",
+     "expectancy_realistic": "-23.1269899874999999999999999",
+     "profit_factor_baseline": "2.171997358241343522973865459",
+     "profit_factor_realistic": "0.8709888808882738503818548239",
+     "sharpe_baseline": "2.9291",
+     "sharpe_realistic": "1.6521",
+     "max_drawdown_baseline": "0.08230373599375001418740369202",
+     "max_drawdown_realistic": "0.09560014450246878760650386868",
+     "regime_trade_count": 31,
+     "regime_expectancy": "65.36766919677419354838709676",
+     "regime_win_rate": "0.7097",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 2,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 12,
+     "trades": [
+      1507.082512375,
+      -89.7956244,
+      111.847582,
+      -201.20500344,
+      -341.9901824,
+      -225.14833584,
+      -247.79223054,
+      204.17211106,
+      -121.58918898,
+      27.2498256,
+      23.2865762,
+      -41.23911906
+     ]
+    }
+   ]
+  }
+ }
+}

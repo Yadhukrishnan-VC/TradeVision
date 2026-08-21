@@ -1,0 +1,39 @@
+{
+ "symbol": "TATASTEEL",
+ "results": {
+  "breakout_v1": {
+   "RANGING": [
+    {
+     "symbol": "TATASTEEL",
+     "rule_id": "breakout_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": null,
+     "realistic_has_edge": null,
+     "flipped": false,
+     "trade_count_baseline": 3,
+     "trade_count_realistic": 3,
+     "expectancy_baseline": "1329.750000000000000000000000",
+     "expectancy_realistic": "804.192898233333333333333334",
+     "profit_factor_baseline": "999.99",
+     "profit_factor_realistic": "3.149374434185196219229366311",
+     "sharpe_baseline": "10.6733",
+     "sharpe_realistic": "9.1444",
+     "max_drawdown_baseline": "0",
+     "max_drawdown_realistic": "0.02063583860781829750735625755",
+     "regime_trade_count": 3,
+     "regime_expectancy": "804.192898233333333333333334",
+     "regime_win_rate": "0.6667",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 3,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 3,
+     "trades": [
+      3319.722231,
+      -207.0434386,
+      215.31267995
+     ]
+    }
+   ]
+  }
+ }
+}

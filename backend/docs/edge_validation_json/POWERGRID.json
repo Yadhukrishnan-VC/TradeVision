@@ -1,0 +1,42 @@
+{
+ "symbol": "POWERGRID",
+ "results": {
+  "breakout_v1": {
+   "RANGING": [
+    {
+     "symbol": "POWERGRID",
+     "rule_id": "breakout_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": null,
+     "realistic_has_edge": null,
+     "flipped": false,
+     "trade_count_baseline": 6,
+     "trade_count_realistic": 6,
+     "expectancy_baseline": "829.1333333333333333333333332",
+     "expectancy_realistic": "413.7179443733333333333333334",
+     "profit_factor_baseline": "11.74935177182368193604148660",
+     "profit_factor_realistic": "2.160806127634724210669776263",
+     "sharpe_baseline": "11.4065",
+     "sharpe_realistic": "9.4635",
+     "max_drawdown_baseline": "0.04656648633724399249060067346",
+     "max_drawdown_realistic": "0.06960926806510086000945523086",
+     "regime_trade_count": 6,
+     "regime_expectancy": "413.7179443733333333333333334",
+     "regime_win_rate": "0.6667",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 2,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 6,
+     "trades": [
+      1090.5570387,
+      2421.6635826,
+      1099.86331292,
+      -106.0020108,
+      -585.2953458,
+      8.6580555
+     ]
+    }
+   ]
+  }
+ }
+}

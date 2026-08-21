@@ -1,0 +1,73 @@
+{
+ "symbol": "AXISBANK",
+ "results": {
+  "breakout_v1": {
+   "RANGING": [
+    {
+     "symbol": "AXISBANK",
+     "rule_id": "breakout_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": null,
+     "realistic_has_edge": null,
+     "flipped": false,
+     "trade_count_baseline": 2,
+     "trade_count_realistic": 2,
+     "expectancy_baseline": "1335.0000000000000000",
+     "expectancy_realistic": "834.24168584000000000000",
+     "profit_factor_baseline": "999.99",
+     "profit_factor_realistic": "3.869378976691318790846797574",
+     "sharpe_baseline": "15.8195",
+     "sharpe_realistic": "13.3278",
+     "max_drawdown_baseline": "0",
+     "max_drawdown_realistic": "0",
+     "regime_trade_count": 6,
+     "regime_expectancy": "180.0843997966666666666666665",
+     "regime_win_rate": "0.5000",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 2,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 2,
+     "trades": [
+      177.46510264,
+      2072.4971832
+     ]
+    }
+   ]
+  },
+  "price_movement_v1": {
+   "RANGING": [
+    {
+     "symbol": "AXISBANK",
+     "rule_id": "price_movement_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": null,
+     "realistic_has_edge": null,
+     "flipped": false,
+     "trade_count_baseline": 4,
+     "trade_count_realistic": 4,
+     "expectancy_baseline": "145.31250000000000000",
+     "expectancy_realistic": "-146.9942432250000000000000",
+     "profit_factor_baseline": "2.772887440994614719765973007",
+     "profit_factor_realistic": "0.9536666964285192484587113097",
+     "sharpe_baseline": "4.7092",
+     "sharpe_realistic": "2.5908",
+     "max_drawdown_baseline": "0.07634524931267472398065749994",
+     "max_drawdown_realistic": "0.09863291524123556306453888380",
+     "regime_trade_count": 6,
+     "regime_expectancy": "180.0843997966666666666666665",
+     "regime_win_rate": "0.5000",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 2,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 4,
+     "trades": [
+      -971.5979,
+      1745.0736498,
+      -34.789409,
+      0.0
+     ]
+    }
+   ]
+  }
+ }
+}

@@ -1,0 +1,118 @@
+{
+ "symbol": "ULTRACEMCO",
+ "results": {
+  "breakout_v1": {
+   "RANGING": [
+    {
+     "symbol": "ULTRACEMCO",
+     "rule_id": "breakout_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": null,
+     "realistic_has_edge": null,
+     "flipped": false,
+     "trade_count_baseline": 8,
+     "trade_count_realistic": 8,
+     "expectancy_baseline": "285.7441500000000000000000000",
+     "expectancy_realistic": "6.2788499162950000000000000",
+     "profit_factor_baseline": "182.7734986635456371486864789",
+     "profit_factor_realistic": "1.029903585885925057958048508",
+     "sharpe_baseline": "9.0221",
+     "sharpe_realistic": "5.525",
+     "max_drawdown_baseline": "0.001289512703006422375728355329",
+     "max_drawdown_realistic": "0.02747455701107650764709361495",
+     "regime_trade_count": 20,
+     "regime_expectancy": "-18.4873245920580000000000000",
+     "regime_win_rate": "0.6500",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 3,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 8,
+     "trades": [
+      -269.4248474,
+      101.5314816,
+      1324.5940026027,
+      -88.756889,
+      151.42306027856,
+      141.42812870892,
+      11.012517725,
+      -16.1779924
+     ]
+    }
+   ]
+  },
+  "price_movement_v1": {
+   "RANGING": [
+    {
+     "symbol": "ULTRACEMCO",
+     "rule_id": "price_movement_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": null,
+     "realistic_has_edge": null,
+     "flipped": false,
+     "trade_count_baseline": 7,
+     "trade_count_realistic": 7,
+     "expectancy_baseline": "120.0296000000000000000000000",
+     "expectancy_realistic": "-42.29486391021714285714285715",
+     "profit_factor_baseline": "4.980145864795575169256597360",
+     "profit_factor_realistic": "0.6819877628435747262580524658",
+     "sharpe_baseline": "7.5389",
+     "sharpe_realistic": "5.0515",
+     "max_drawdown_baseline": "0.01808176960301831989723859974",
+     "max_drawdown_realistic": "0.02111950006460324859934637083",
+     "regime_trade_count": 20,
+     "regime_expectancy": "-18.4873245920580000000000000",
+     "regime_win_rate": "0.6500",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 3,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 7,
+     "trades": [
+      309.91061597496,
+      169.0054288,
+      36.393309,
+      -64.04040086072,
+      119.60979,
+      -184.5368259,
+      -22.6887391
+     ]
+    }
+   ]
+  },
+  "volatility_breakout_v1": {
+   "RANGING": [
+    {
+     "symbol": "ULTRACEMCO",
+     "rule_id": "volatility_breakout_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": null,
+     "realistic_has_edge": null,
+     "flipped": false,
+     "trade_count_baseline": 5,
+     "trade_count_realistic": 5,
+     "expectancy_baseline": "134.14800000000000000",
+     "expectancy_realistic": "-24.782648760000000000000",
+     "profit_factor_baseline": "135.148",
+     "profit_factor_realistic": "0.7430715554043153128806821221",
+     "sharpe_baseline": "12.555",
+     "sharpe_realistic": "14.6578",
+     "max_drawdown_baseline": "0.0005095812797122830715040171210",
+     "max_drawdown_realistic": "0.002131955536520034827060872572",
+     "regime_trade_count": 20,
+     "regime_expectancy": "-18.4873245920580000000000000",
+     "regime_win_rate": "0.6500",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 3,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 5,
+     "trades": [
+      165.021987,
+      113.0299658,
+      -20.9126088,
+      55.5449159,
+      24.7768682
+     ]
+    }
+   ]
+  }
+ }
+}

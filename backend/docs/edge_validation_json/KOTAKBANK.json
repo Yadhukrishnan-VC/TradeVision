@@ -1,0 +1,111 @@
+{
+ "symbol": "KOTAKBANK",
+ "results": {
+  "breakout_v1": {
+   "RANGING": [
+    {
+     "symbol": "KOTAKBANK",
+     "rule_id": "breakout_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": null,
+     "realistic_has_edge": null,
+     "flipped": false,
+     "trade_count_baseline": 2,
+     "trade_count_realistic": 2,
+     "expectancy_baseline": "1305.0150000000000000",
+     "expectancy_realistic": "545.08204917100000000000",
+     "profit_factor_baseline": "999.99",
+     "profit_factor_realistic": "2.235409104183109357165995746",
+     "sharpe_baseline": "94.4746",
+     "sharpe_realistic": "87.9543",
+     "max_drawdown_baseline": "0",
+     "max_drawdown_realistic": "0",
+     "regime_trade_count": 13,
+     "regime_expectancy": "-495.3216069639999999999999999",
+     "regime_win_rate": "0.3846",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 3,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 2,
+     "trades": [
+      859.94970368,
+      1112.646047991
+     ]
+    }
+   ]
+  },
+  "price_movement_v1": {
+   "RANGING": [
+    {
+     "symbol": "KOTAKBANK",
+     "rule_id": "price_movement_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": null,
+     "realistic_has_edge": null,
+     "flipped": false,
+     "trade_count_baseline": 9,
+     "trade_count_realistic": 9,
+     "expectancy_baseline": "-255.8002222222222222222222223",
+     "expectancy_realistic": "-674.2252679326666666666666667",
+     "profit_factor_baseline": "0.5290505528581337467868946101",
+     "profit_factor_realistic": "0.1458360124610332935733605936",
+     "sharpe_baseline": "-3.3773",
+     "sharpe_realistic": "-7.5219",
+     "max_drawdown_baseline": "0.3469037842200554381740301255",
+     "max_drawdown_realistic": "0.4964144201970342316197135581",
+     "regime_trade_count": 13,
+     "regime_expectancy": "-495.3216069639999999999999999",
+     "regime_win_rate": "0.3846",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 3,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 9,
+     "trades": [
+      258.018538407,
+      629.2107608,
+      -203.2859514,
+      -179.658112139,
+      -2092.617822731,
+      148.797662936,
+      -1171.33879308,
+      -484.035636472,
+      -387.953259518
+     ]
+    }
+   ]
+  },
+  "volatility_breakout_v1": {
+   "RANGING": [
+    {
+     "symbol": "KOTAKBANK",
+     "rule_id": "volatility_breakout_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": null,
+     "realistic_has_edge": null,
+     "flipped": false,
+     "trade_count_baseline": 2,
+     "trade_count_realistic": 2,
+     "expectancy_baseline": "-190.7550000000000000",
+     "expectancy_realistic": "-730.65878874000000000000",
+     "profit_factor_baseline": "0E+16",
+     "profit_factor_realistic": "0E+20",
+     "sharpe_baseline": "-16.9993",
+     "sharpe_realistic": "-45.0698",
+     "max_drawdown_baseline": "0.04338081048082668960002427814",
+     "max_drawdown_realistic": "0.09487099763318992445471219959",
+     "regime_trade_count": 13,
+     "regime_expectancy": "-495.3216069639999999999999999",
+     "regime_win_rate": "0.3846",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 3,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 2,
+     "trades": [
+      -313.3395468,
+      -520.99789194
+     ]
+    }
+   ]
+  }
+ }
+}

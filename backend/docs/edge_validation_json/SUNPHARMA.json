@@ -1,0 +1,124 @@
+{
+ "symbol": "SUNPHARMA",
+ "results": {
+  "breakout_v1": {
+   "RANGING": [
+    {
+     "symbol": "SUNPHARMA",
+     "rule_id": "breakout_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": null,
+     "realistic_has_edge": null,
+     "flipped": false,
+     "trade_count_baseline": 7,
+     "trade_count_realistic": 7,
+     "expectancy_baseline": "66.77857142857142857142857142",
+     "expectancy_realistic": "-82.70124722285714285714285714",
+     "profit_factor_baseline": "999.99",
+     "profit_factor_realistic": "0.3209914677125341127399708768",
+     "sharpe_baseline": "11.354",
+     "sharpe_realistic": "0.5961",
+     "max_drawdown_baseline": "0",
+     "max_drawdown_realistic": "0.01807171973493618254227299712",
+     "regime_trade_count": 26,
+     "regime_expectancy": "-107.7221744923076923076923077",
+     "regime_win_rate": "0.4615",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 2,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 7,
+     "trades": [
+      -148.38793904,
+      -33.27046353,
+      207.5020867,
+      52.015143495,
+      -20.933268325,
+      -42.4736279,
+      14.15350332
+     ]
+    }
+   ]
+  },
+  "price_movement_v1": {
+   "RANGING": [
+    {
+     "symbol": "SUNPHARMA",
+     "rule_id": "price_movement_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": true,
+     "realistic_has_edge": false,
+     "flipped": true,
+     "trade_count_baseline": 12,
+     "trade_count_realistic": 12,
+     "expectancy_baseline": "57.12395833333333333333333333",
+     "expectancy_realistic": "-70.927098650000000000000",
+     "profit_factor_baseline": "2.295827294225341368525440537",
+     "profit_factor_realistic": "0.5580568677418820912712429587",
+     "sharpe_baseline": "4.4904",
+     "sharpe_realistic": "0.7106",
+     "max_drawdown_baseline": "0.03993859742406361529747178977",
+     "max_drawdown_realistic": "0.04594220843444331880724331921",
+     "regime_trade_count": 26,
+     "regime_expectancy": "-107.7221744923076923076923077",
+     "regime_win_rate": "0.4615",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 2,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 12,
+     "trades": [
+      -133.252432305,
+      155.421228,
+      -461.825015805,
+      116.1976914,
+      -11.07807525,
+      29.45268385,
+      610.01729663,
+      -22.1727318,
+      61.56484548,
+      102.0914412,
+      -216.2758105,
+      -93.9420128
+     ]
+    }
+   ]
+  },
+  "volatility_breakout_v1": {
+   "RANGING": [
+    {
+     "symbol": "SUNPHARMA",
+     "rule_id": "volatility_breakout_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": null,
+     "realistic_has_edge": null,
+     "flipped": false,
+     "trade_count_baseline": 7,
+     "trade_count_realistic": 7,
+     "expectancy_baseline": "186.0500000000000000000000002",
+     "expectancy_realistic": "-195.8203746342857142857142857",
+     "profit_factor_baseline": "1.640904505302527004748898895",
+     "profit_factor_realistic": "0.6648949652047693981305772662",
+     "sharpe_baseline": "2.6304",
+     "sharpe_realistic": "0.3769",
+     "max_drawdown_baseline": "0.1414632359390963215113347669",
+     "max_drawdown_realistic": "0.1766558151752129418946862769",
+     "regime_trade_count": 26,
+     "regime_expectancy": "-107.7221744923076923076923077",
+     "regime_win_rate": "0.4615",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 2,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 7,
+     "trades": [
+      -1775.75868042,
+      1029.65024692,
+      1664.7394688,
+      -48.88281632,
+      25.3541664,
+      -661.408629,
+      -52.4306176
+     ]
+    }
+   ]
+  }
+ }
+}

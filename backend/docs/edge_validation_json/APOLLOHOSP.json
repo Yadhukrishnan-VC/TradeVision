@@ -1,0 +1,157 @@
+{
+ "symbol": "APOLLOHOSP",
+ "results": {
+  "breakout_v1": {
+   "RANGING": [
+    {
+     "symbol": "APOLLOHOSP",
+     "rule_id": "breakout_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": null,
+     "realistic_has_edge": null,
+     "flipped": false,
+     "trade_count_baseline": 0,
+     "trade_count_realistic": 9,
+     "expectancy_baseline": null,
+     "expectancy_realistic": "-31.30565522658666666666666665",
+     "profit_factor_baseline": null,
+     "profit_factor_realistic": "0.7735460889864637383620168523",
+     "sharpe_baseline": null,
+     "sharpe_realistic": "2.0151",
+     "max_drawdown_baseline": null,
+     "max_drawdown_realistic": "0.03400622768941649050312182038",
+     "regime_trade_count": 29,
+     "regime_expectancy": "-145.3011268901586206896551724",
+     "regime_win_rate": "0.3103",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 2,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 9,
+     "trades": [
+      -98.88714,
+      -51.62842959108,
+      829.0720056,
+      -355.31212627856,
+      110.7356829,
+      22.627906,
+      -17.1206282,
+      -61.4670414,
+      -10.80852765
+     ]
+    }
+   ]
+  },
+  "price_movement_v1": {
+   "RANGING": [
+    {
+     "symbol": "APOLLOHOSP",
+     "rule_id": "price_movement_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": true,
+     "realistic_has_edge": false,
+     "flipped": true,
+     "trade_count_baseline": 20,
+     "trade_count_realistic": 14,
+     "expectancy_baseline": "13.39371250000000000",
+     "expectancy_realistic": "-248.0308517410942857142857143",
+     "profit_factor_baseline": "1.466184424412351991436369250",
+     "profit_factor_realistic": "0.1089035165982921749562217835",
+     "sharpe_baseline": "1.7584",
+     "sharpe_realistic": "-9.9751",
+     "max_drawdown_baseline": "0.06359639876649551829943169102",
+     "max_drawdown_realistic": "0.2022256746969833629466535728",
+     "regime_trade_count": 29,
+     "regime_expectancy": "-145.3011268901586206896551724",
+     "regime_win_rate": "0.3103",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 2,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 14,
+     "trades": [
+      -417.182316,
+      -452.12140043568,
+      -269.7291848036,
+      -155.016785,
+      133.97728204063,
+      -33.3080328,
+      -369.13287,
+      -276.1115,
+      -30.69850943946,
+      -39.754044,
+      -202.49382744955,
+      290.398815,
+      -10.262232,
+      -37.7729324
+     ]
+    }
+   ]
+  },
+  "volatility_breakout_v1": {
+   "RANGING": [
+    {
+     "symbol": "APOLLOHOSP",
+     "rule_id": "volatility_breakout_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": null,
+     "realistic_has_edge": null,
+     "flipped": false,
+     "trade_count_baseline": 7,
+     "trade_count_realistic": 6,
+     "expectancy_baseline": "17.13517142857142857142857142",
+     "expectancy_realistic": "-76.59164306666666666666666666",
+     "profit_factor_baseline": "1.836171331454413779341301925",
+     "profit_factor_realistic": "0.5091373110973988485626504433",
+     "sharpe_baseline": "3.5468",
+     "sharpe_realistic": "-0.248",
+     "max_drawdown_baseline": "0.03416194453128047245563583711",
+     "max_drawdown_realistic": "0.04750911823469401040296209707",
+     "regime_trade_count": 29,
+     "regime_expectancy": "-145.3011268901586206896551724",
+     "regime_win_rate": "0.3103",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 2,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 6,
+     "trades": [
+      179.787465,
+      -289.8806328,
+      -206.2787128,
+      228.94707,
+      50.546422,
+      17.3777594
+     ]
+    }
+   ]
+  },
+  "volume_spike_v1": {
+   "UNKNOWN": [
+    {
+     "symbol": "APOLLOHOSP",
+     "rule_id": "volume_spike_v1",
+     "regime": "UNKNOWN",
+     "baseline_has_edge": null,
+     "realistic_has_edge": null,
+     "flipped": false,
+     "trade_count_baseline": 2,
+     "trade_count_realistic": 0,
+     "expectancy_baseline": "-226.4298000000000000",
+     "expectancy_realistic": null,
+     "profit_factor_baseline": "0E+16",
+     "profit_factor_realistic": null,
+     "sharpe_baseline": "-39.0121",
+     "sharpe_realistic": null,
+     "max_drawdown_baseline": "0.04337047156085662868299327827",
+     "max_drawdown_realistic": null,
+     "regime_trade_count": 0,
+     "regime_expectancy": null,
+     "regime_win_rate": null,
+     "walk_forward_windows": 4,
+     "walk_forward_included": 2,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 0,
+     "trades": []
+    }
+   ]
+  }
+ }
+}

@@ -1,0 +1,172 @@
+{
+ "symbol": "ADANIENT",
+ "results": {
+  "high_beta_breakout_v1": {
+   "RANGING": [
+    {
+     "symbol": "ADANIENT",
+     "rule_id": "high_beta_breakout_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": null,
+     "realistic_has_edge": null,
+     "flipped": false,
+     "trade_count_baseline": 0,
+     "trade_count_realistic": 1,
+     "expectancy_baseline": null,
+     "expectancy_realistic": "84.69729900000000000000",
+     "profit_factor_baseline": null,
+     "profit_factor_realistic": "1.687128931698954379921588625",
+     "sharpe_baseline": null,
+     "sharpe_realistic": null,
+     "max_drawdown_baseline": null,
+     "max_drawdown_realistic": "0",
+     "regime_trade_count": 43,
+     "regime_expectancy": "17.3702086519623255813953491",
+     "regime_win_rate": "0.4186",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 3,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 1,
+     "trades": [
+      207.9598995
+     ]
+    }
+   ]
+  },
+  "price_movement_v1": {
+   "RANGING": [
+    {
+     "symbol": "ADANIENT",
+     "rule_id": "price_movement_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": true,
+     "realistic_has_edge": true,
+     "flipped": false,
+     "trade_count_baseline": 39,
+     "trade_count_realistic": 39,
+     "expectancy_baseline": "94.3460403846153846153846153",
+     "expectancy_realistic": "71.9862913752405128205128206",
+     "profit_factor_baseline": "1.394021985551059230428577860",
+     "profit_factor_realistic": "1.152953044907036136185277514",
+     "sharpe_baseline": "1.5214",
+     "sharpe_realistic": "1.9673",
+     "max_drawdown_baseline": "0.5961333806417285118788181231",
+     "max_drawdown_realistic": "0.6589778713475884996179331508",
+     "regime_trade_count": 43,
+     "regime_expectancy": "17.3702086519623255813953491",
+     "regime_win_rate": "0.4186",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 3,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 39,
+     "trades": [
+      -1962.912086,
+      4716.1808915,
+      2332.86256,
+      1816.97290152504,
+      333.2347317,
+      -551.16710649,
+      492.8864,
+      -705.014059665,
+      -1277.2407818,
+      198.98635115,
+      8337.7092825,
+      -1112.235276,
+      -2291.0955224,
+      244.07142,
+      -126.26498351784,
+      -156.337215,
+      -724.4971125,
+      -789.74333865,
+      477.02643274396,
+      -133.19122158,
+      199.5878332,
+      109.6363475,
+      -413.643184,
+      -4.4058749,
+      -456.5599192,
+      212.57151365802,
+      -24.7442165,
+      -126.052161,
+      -142.86899711568,
+      -205.26261083676,
+      -114.0019762,
+      -567.3597828,
+      661.8591804,
+      -283.698345,
+      774.98720255892,
+      114.6693106,
+      -550.81161488,
+      139.30292694153,
+      -74.295529
+     ]
+    }
+   ]
+  },
+  "volatility_breakout_v1": {
+   "RANGING": [
+    {
+     "symbol": "ADANIENT",
+     "rule_id": "volatility_breakout_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": null,
+     "realistic_has_edge": null,
+     "flipped": false,
+     "trade_count_baseline": 1,
+     "trade_count_realistic": 1,
+     "expectancy_baseline": "680.4054000000000000",
+     "expectancy_realistic": "253.28754000000000000000",
+     "profit_factor_baseline": "999.99",
+     "profit_factor_realistic": "2.021386910030823368272290870",
+     "sharpe_baseline": null,
+     "sharpe_realistic": null,
+     "max_drawdown_baseline": "0",
+     "max_drawdown_realistic": "0",
+     "regime_trade_count": 43,
+     "regime_expectancy": "17.3702086519623255813953491",
+     "regime_win_rate": "0.4186",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 3,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 1,
+     "trades": [
+      501.27147
+     ]
+    }
+   ]
+  },
+  "volume_spike_v1": {
+   "RANGING": [
+    {
+     "symbol": "ADANIENT",
+     "rule_id": "volume_spike_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": null,
+     "realistic_has_edge": null,
+     "flipped": false,
+     "trade_count_baseline": 3,
+     "trade_count_realistic": 2,
+     "expectancy_baseline": "2285.649900000000000000000000",
+     "expectancy_realistic": "-1199.26561530000000000000",
+     "profit_factor_baseline": "5.254752985484714050207074024",
+     "profit_factor_realistic": "0E+20",
+     "sharpe_baseline": "6.7854",
+     "sharpe_realistic": "-29.1604",
+     "max_drawdown_baseline": "0.1737952050281666043690685224",
+     "max_drawdown_realistic": "0.2113108065362540088488730852",
+     "regime_trade_count": 43,
+     "regime_expectancy": "17.3702086519623255813953491",
+     "regime_win_rate": "0.4186",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 3,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 2,
+     "trades": [
+      -1345.0927173,
+      -596.490948
+     ]
+    }
+   ]
+  }
+ }
+}

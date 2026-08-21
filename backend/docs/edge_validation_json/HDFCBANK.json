@@ -1,0 +1,120 @@
+{
+ "symbol": "HDFCBANK",
+ "results": {
+  "breakout_v1": {
+   "RANGING": [
+    {
+     "symbol": "HDFCBANK",
+     "rule_id": "breakout_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": null,
+     "realistic_has_edge": null,
+     "flipped": false,
+     "trade_count_baseline": 7,
+     "trade_count_realistic": 7,
+     "expectancy_baseline": "338.4607142857142857142857143",
+     "expectancy_realistic": "-146.4542036785714285714285715",
+     "profit_factor_baseline": "1.753330683624801271860095390",
+     "profit_factor_realistic": "0.8187657434557490200434746265",
+     "sharpe_baseline": "3.1002",
+     "sharpe_realistic": "1.2489",
+     "max_drawdown_baseline": "0.2377001004032120711375678084",
+     "max_drawdown_realistic": "0.3043294864662352539866716007",
+     "regime_trade_count": 22,
+     "regime_expectancy": "7.1530250156818181818181820",
+     "regime_win_rate": "0.5455",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 3,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 7,
+     "trades": [
+      3183.812336625,
+      -2557.98694305,
+      657.4423821,
+      139.33911375,
+      -662.2852786,
+      -465.5958164,
+      650.8804302
+     ]
+    }
+   ]
+  },
+  "price_movement_v1": {
+   "RANGING": [
+    {
+     "symbol": "HDFCBANK",
+     "rule_id": "price_movement_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": null,
+     "realistic_has_edge": null,
+     "flipped": false,
+     "trade_count_baseline": 8,
+     "trade_count_realistic": 8,
+     "expectancy_baseline": "633.375000000000000000",
+     "expectancy_realistic": "289.79005921437500000000000",
+     "profit_factor_baseline": "4.169152828595553053757388123",
+     "profit_factor_realistic": "1.655583700602294602684550120",
+     "sharpe_baseline": "8.0224",
+     "sharpe_realistic": "6.2615",
+     "max_drawdown_baseline": "0.1149075467224320836393229826",
+     "max_drawdown_realistic": "0.1663013827625283631458829215",
+     "regime_trade_count": 22,
+     "regime_expectancy": "7.1530250156818181818181820",
+     "regime_win_rate": "0.5455",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 3,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 8,
+     "trades": [
+      1703.9249286,
+      2696.28557408,
+      -776.8756814775,
+      359.414350875,
+      -1102.450041,
+      -60.85793415,
+      559.03577268,
+      535.929086
+     ]
+    }
+   ]
+  },
+  "volatility_breakout_v1": {
+   "RANGING": [
+    {
+     "symbol": "HDFCBANK",
+     "rule_id": "volatility_breakout_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": null,
+     "realistic_has_edge": null,
+     "flipped": false,
+     "trade_count_baseline": 7,
+     "trade_count_realistic": 7,
+     "expectancy_baseline": "194.3892857142857142857142857",
+     "expectancy_realistic": "-162.2534996600000000000000000",
+     "profit_factor_baseline": "2.348649744293376574778595485",
+     "profit_factor_realistic": "0.7251914236132232865668770885",
+     "sharpe_baseline": "4.3977",
+     "sharpe_realistic": "1.6423",
+     "max_drawdown_baseline": "0.1283798293254698557696183599",
+     "max_drawdown_realistic": "0.1450187210736530483056169024",
+     "regime_trade_count": 22,
+     "regime_expectancy": "7.1530250156818181818181820",
+     "regime_win_rate": "0.5455",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 3,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 7,
+     "trades": [
+      370.9732775,
+      -655.98420976,
+      -186.77033865,
+      2109.98044125,
+      516.23776509,
+      -1332.9380256,
+      -42.27323364
+     ]
+    }
+   ]
+  }
+ }
+}

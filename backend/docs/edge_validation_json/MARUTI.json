@@ -1,0 +1,118 @@
+{
+ "symbol": "MARUTI",
+ "results": {
+  "breakout_v1": {
+   "RANGING": [
+    {
+     "symbol": "MARUTI",
+     "rule_id": "breakout_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": null,
+     "realistic_has_edge": null,
+     "flipped": false,
+     "trade_count_baseline": 8,
+     "trade_count_realistic": 8,
+     "expectancy_baseline": "91.95908333333333333333333335",
+     "expectancy_realistic": "-107.197873003795000000000",
+     "profit_factor_baseline": "3.162241110561421216317337357",
+     "profit_factor_realistic": "0.5287283502936374744567126480",
+     "sharpe_baseline": "4.6547",
+     "sharpe_realistic": "0.8028",
+     "max_drawdown_baseline": "0.02390292506900873249829735535",
+     "max_drawdown_realistic": "0.04087773849110675535404662296",
+     "regime_trade_count": 20,
+     "regime_expectancy": "-59.00835696714799999999999998",
+     "regime_win_rate": "0.5500",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 3,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 8,
+     "trades": [
+      -409.5724793,
+      787.0707474,
+      -322.4228292,
+      4.090504,
+      84.4802018,
+      -68.13267173482,
+      86.49670356964,
+      -16.703556
+     ]
+    }
+   ]
+  },
+  "price_movement_v1": {
+   "RANGING": [
+    {
+     "symbol": "MARUTI",
+     "rule_id": "price_movement_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": null,
+     "realistic_has_edge": null,
+     "flipped": false,
+     "trade_count_baseline": 9,
+     "trade_count_realistic": 9,
+     "expectancy_baseline": "36.22708888888888888888888889",
+     "expectancy_realistic": "-88.82430914584444444444444446",
+     "profit_factor_baseline": "11.78140065488634953365600328",
+     "profit_factor_realistic": "0.2567564612012863865148560507",
+     "sharpe_baseline": "10.4331",
+     "sharpe_realistic": "-1.3954",
+     "max_drawdown_baseline": "0.004180837348461158068498237942",
+     "max_drawdown_realistic": "0.02602945775649909768089902172",
+     "regime_trade_count": 20,
+     "regime_expectancy": "-59.00835696714799999999999998",
+     "regime_win_rate": "0.5500",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 3,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 9,
+     "trades": [
+      -191.87248017504,
+      88.356699,
+      -9.248544,
+      -59.21905152144,
+      -72.08128,
+      -16.73620806964,
+      55.57059964464,
+      105.50288021518,
+      26.7322455
+     ]
+    }
+   ]
+  },
+  "volatility_breakout_v1": {
+   "RANGING": [
+    {
+     "symbol": "MARUTI",
+     "rule_id": "volatility_breakout_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": null,
+     "realistic_has_edge": null,
+     "flipped": false,
+     "trade_count_baseline": 3,
+     "trade_count_realistic": 3,
+     "expectancy_baseline": "196.4502000000000000",
+     "expectancy_realistic": "158.9448756666666666666666667",
+     "profit_factor_baseline": "999.99",
+     "profit_factor_realistic": "8.298500006195162243339957603",
+     "sharpe_baseline": "23.3283",
+     "sharpe_realistic": "21.5793",
+     "max_drawdown_baseline": "0",
+     "max_drawdown_realistic": "0",
+     "regime_trade_count": 20,
+     "regime_expectancy": "-59.00835696714799999999999998",
+     "regime_win_rate": "0.5500",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 3,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 3,
+     "trades": [
+      259.7772463,
+      27.236732,
+      255.1538852
+     ]
+    }
+   ]
+  }
+ }
+}

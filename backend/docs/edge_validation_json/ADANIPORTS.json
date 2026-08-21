@@ -1,0 +1,123 @@
+{
+ "symbol": "ADANIPORTS",
+ "results": {
+  "price_movement_v1": {
+   "RANGING": [
+    {
+     "symbol": "ADANIPORTS",
+     "rule_id": "price_movement_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": false,
+     "realistic_has_edge": false,
+     "flipped": false,
+     "trade_count_baseline": 23,
+     "trade_count_realistic": 23,
+     "expectancy_baseline": "-67.0758695652173913043478261",
+     "expectancy_realistic": "-436.9068045369565217391304348",
+     "profit_factor_baseline": "0.9254704761042825062645300330",
+     "profit_factor_realistic": "0.3045285833844812660640039085",
+     "sharpe_baseline": "-0.433",
+     "sharpe_realistic": "-4.5636",
+     "max_drawdown_baseline": "0.4896959872361982267591963786",
+     "max_drawdown_realistic": "0.7428678521413983028406094414",
+     "regime_trade_count": 25,
+     "regime_expectancy": "-764.0081826412000000000000001",
+     "regime_win_rate": "0.4800",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 2,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 23,
+     "trades": [
+      819.10607355,
+      -1904.099093325,
+      1176.4721228,
+      -159.730969,
+      -364.71757329,
+      -1566.7009232,
+      -809.1395304,
+      -2113.98384576,
+      -117.52757208,
+      584.2869978,
+      -493.68554175,
+      -97.647615,
+      129.45067584,
+      -63.89578494,
+      43.46383,
+      4.997589,
+      97.9751872,
+      505.50611393,
+      36.590848,
+      174.6405652,
+      -1658.0033478,
+      827.63912175,
+      -881.4526182
+     ]
+    }
+   ]
+  },
+  "volatility_breakout_v1": {
+   "RANGING": [
+    {
+     "symbol": "ADANIPORTS",
+     "rule_id": "volatility_breakout_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": null,
+     "realistic_has_edge": null,
+     "flipped": false,
+     "trade_count_baseline": 2,
+     "trade_count_realistic": 1,
+     "expectancy_baseline": "-5143.30000000000000000",
+     "expectancy_realistic": "-11172.08586768000000000000",
+     "profit_factor_baseline": "0.02239075478512098230408089563",
+     "profit_factor_realistic": "0E+20",
+     "sharpe_baseline": "-10.7332",
+     "sharpe_realistic": null,
+     "max_drawdown_baseline": "1.176273509585447776896545678",
+     "max_drawdown_realistic": "1.207054371652829579732144223",
+     "regime_trade_count": 25,
+     "regime_expectancy": "-764.0081826412000000000000001",
+     "regime_win_rate": "0.4800",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 2,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 1,
+     "trades": [
+      -10794.70233384
+     ]
+    }
+   ]
+  },
+  "volume_spike_v1": {
+   "RANGING": [
+    {
+     "symbol": "ADANIPORTS",
+     "rule_id": "volume_spike_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": null,
+     "realistic_has_edge": null,
+     "flipped": false,
+     "trade_count_baseline": 0,
+     "trade_count_realistic": 1,
+     "expectancy_baseline": null,
+     "expectancy_realistic": "2120.73780600000000000000",
+     "profit_factor_baseline": null,
+     "profit_factor_realistic": "16.22822799126752413267050685",
+     "sharpe_baseline": null,
+     "sharpe_realistic": null,
+     "max_drawdown_baseline": null,
+     "max_drawdown_realistic": "0",
+     "regime_trade_count": 25,
+     "regime_expectancy": "-764.0081826412000000000000001",
+     "regime_win_rate": "0.4800",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 2,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 1,
+     "trades": [
+      2260.001403
+     ]
+    }
+   ]
+  }
+ }
+}

@@ -1,0 +1,126 @@
+{
+ "symbol": "JSWSTEEL",
+ "results": {
+  "breakout_v1": {
+   "RANGING": [
+    {
+     "symbol": "JSWSTEEL",
+     "rule_id": "breakout_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": null,
+     "realistic_has_edge": null,
+     "flipped": false,
+     "trade_count_baseline": 7,
+     "trade_count_realistic": 7,
+     "expectancy_baseline": "-74.4000000000000000000000000",
+     "expectancy_realistic": "-129.3187413400000000000000000",
+     "profit_factor_baseline": "1.282792811402602768023135716",
+     "profit_factor_realistic": "0.4635147006165283591329932273",
+     "sharpe_baseline": "1.0896",
+     "sharpe_realistic": "-1.3564",
+     "max_drawdown_baseline": "0.06813507760010820243929796785",
+     "max_drawdown_realistic": "0.08092505722474246329543091237",
+     "regime_trade_count": 28,
+     "regime_expectancy": "131.4559352525000000000000001",
+     "regime_win_rate": "0.4643",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 1,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 7,
+     "trades": [
+      -777.6564302,
+      709.5928757,
+      -77.118208,
+      -144.38049,
+      72.51236412,
+      -32.99849931,
+      -10.381182
+     ]
+    }
+   ]
+  },
+  "price_movement_v1": {
+   "RANGING": [
+    {
+     "symbol": "JSWSTEEL",
+     "rule_id": "price_movement_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": true,
+     "realistic_has_edge": true,
+     "flipped": false,
+     "trade_count_baseline": 18,
+     "trade_count_realistic": 18,
+     "expectancy_baseline": "485.6069444444444444444444448",
+     "expectancy_realistic": "268.5043309783333333333333334",
+     "profit_factor_baseline": "4.478523844410747448588417699",
+     "profit_factor_realistic": "1.722215551868560036325175010",
+     "sharpe_baseline": "4.9118",
+     "sharpe_realistic": "3.8351",
+     "max_drawdown_baseline": "0.1548177811115151367034410369",
+     "max_drawdown_realistic": "0.1651472260535508234516073455",
+     "regime_trade_count": 28,
+     "regime_expectancy": "131.4559352525000000000000001",
+     "regime_win_rate": "0.4643",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 1,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 18,
+     "trades": [
+      988.6215339,
+      331.5682815,
+      292.1611779,
+      186.34634799,
+      -153.87279362,
+      -1268.5396386,
+      1755.33139915,
+      424.97349786,
+      -82.4927,
+      -354.600995,
+      7195.8301242,
+      -1602.380746215,
+      239.52902016,
+      -96.9091992,
+      5.81787712,
+      77.0842875,
+      27.8303121,
+      -12.30859544
+     ]
+    }
+   ]
+  },
+  "volatility_breakout_v1": {
+   "RANGING": [
+    {
+     "symbol": "JSWSTEEL",
+     "rule_id": "volatility_breakout_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": null,
+     "realistic_has_edge": null,
+     "flipped": false,
+     "trade_count_baseline": 3,
+     "trade_count_realistic": 3,
+     "expectancy_baseline": "-10.56666666666666666666666667",
+     "expectancy_realistic": "-82.36019372000000000000",
+     "profit_factor_baseline": "0.3826530612244897959183673469",
+     "profit_factor_realistic": "0E+20",
+     "sharpe_baseline": "-4.5756",
+     "sharpe_realistic": "-23.9402",
+     "max_drawdown_baseline": "0.002039613743060819306001575339",
+     "max_drawdown_realistic": "0.01151467104004053721594822801",
+     "regime_trade_count": 28,
+     "regime_expectancy": "131.4559352525000000000000001",
+     "regime_win_rate": "0.4643",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 1,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 3,
+     "trades": [
+      -63.68061608,
+      -15.760092,
+      -31.2105325
+     ]
+    }
+   ]
+  }
+ }
+}

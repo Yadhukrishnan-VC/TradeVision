@@ -1,0 +1,111 @@
+{
+ "symbol": "NESTLEIND",
+ "results": {
+  "breakout_v1": {
+   "RANGING": [
+    {
+     "symbol": "NESTLEIND",
+     "rule_id": "breakout_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": null,
+     "realistic_has_edge": null,
+     "flipped": false,
+     "trade_count_baseline": 7,
+     "trade_count_realistic": 7,
+     "expectancy_baseline": "116.0639285714285714285714286",
+     "expectancy_realistic": "-127.0392933551085714285714286",
+     "profit_factor_baseline": "5.968869929513936669571732184",
+     "profit_factor_realistic": "0.4289033308797572769375956873",
+     "sharpe_baseline": "8.8448",
+     "sharpe_realistic": "0.9368",
+     "max_drawdown_baseline": "0.01823034373202017554678972195",
+     "max_drawdown_realistic": "0.06345412222646345476592167057",
+     "regime_trade_count": 13,
+     "regime_expectancy": "-72.48481289352000000000000001",
+     "regime_win_rate": "0.5385",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 1,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 7,
+     "trades": [
+      -246.65267475,
+      -261.38167298288,
+      -61.084098,
+      418.64295473,
+      183.6505,
+      57.2437836,
+      8.32348146
+     ]
+    }
+   ]
+  },
+  "price_movement_v1": {
+   "RANGING": [
+    {
+     "symbol": "NESTLEIND",
+     "rule_id": "price_movement_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": null,
+     "realistic_has_edge": null,
+     "flipped": false,
+     "trade_count_baseline": 4,
+     "trade_count_realistic": 4,
+     "expectancy_baseline": "123.2428000000000000",
+     "expectancy_realistic": "-157.151680843750000000000",
+     "profit_factor_baseline": "999.99",
+     "profit_factor_realistic": "0.2084060537567488329501822578",
+     "sharpe_baseline": "23.0348",
+     "sharpe_realistic": "0.8562",
+     "max_drawdown_baseline": "0",
+     "max_drawdown_realistic": "0.01476618356734372556766419519",
+     "regime_trade_count": 13,
+     "regime_expectancy": "-72.48481289352000000000000001",
+     "regime_win_rate": "0.5385",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 1,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 4,
+     "trades": [
+      -132.43753355,
+      111.8780943125,
+      -10.4786505,
+      53.6176718
+     ]
+    }
+   ]
+  },
+  "volatility_breakout_v1": {
+   "RANGING": [
+    {
+     "symbol": "NESTLEIND",
+     "rule_id": "volatility_breakout_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": null,
+     "realistic_has_edge": null,
+     "flipped": false,
+     "trade_count_baseline": 2,
+     "trade_count_realistic": 2,
+     "expectancy_baseline": "680.70000000000000000",
+     "expectancy_realistic": "287.789604622500000000000",
+     "profit_factor_baseline": "14.26900584795321637426900585",
+     "profit_factor_realistic": "1.931398123587681602452672311",
+     "sharpe_baseline": "9.7548",
+     "sharpe_realistic": "8.5464",
+     "max_drawdown_baseline": "0.01143943407431016932618152361",
+     "max_drawdown_realistic": "0.01803183452007268935740054470",
+     "regime_trade_count": 13,
+     "regime_expectancy": "-72.48481289352000000000000001",
+     "regime_win_rate": "0.5385",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 1,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 2,
+     "trades": [
+      -161.72707581,
+      1193.5525491825
+     ]
+    }
+   ]
+  }
+ }
+}

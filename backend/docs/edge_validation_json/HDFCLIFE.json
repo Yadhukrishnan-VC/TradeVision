@@ -1,0 +1,123 @@
+{
+ "symbol": "HDFCLIFE",
+ "results": {
+  "breakout_v1": {
+   "RANGING": [
+    {
+     "symbol": "HDFCLIFE",
+     "rule_id": "breakout_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": true,
+     "realistic_has_edge": false,
+     "flipped": true,
+     "trade_count_baseline": 13,
+     "trade_count_realistic": 13,
+     "expectancy_baseline": "81.4346153846153846153846154",
+     "expectancy_realistic": "-137.8930597646153846153846154",
+     "profit_factor_baseline": "2.966803652968036529680365297",
+     "profit_factor_realistic": "0.5776569707655060877614537064",
+     "sharpe_baseline": "5.0497",
+     "sharpe_realistic": "1.2525",
+     "max_drawdown_baseline": "0.1176179823667778859161451550",
+     "max_drawdown_realistic": "0.1767595837462448770138075191",
+     "regime_trade_count": 25,
+     "regime_expectancy": "-219.0412451768000000000000000",
+     "regime_win_rate": "0.2400",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 1,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 13,
+     "trades": [
+      -236.59832552,
+      689.3926635,
+      -304.2827662,
+      1032.55994218,
+      600.291239185,
+      -820.3047358,
+      -74.38581228,
+      -352.747008,
+      -70.431701675,
+      -29.4719935,
+      -45.47152851,
+      129.58668585,
+      -19.5544727
+     ]
+    }
+   ]
+  },
+  "price_movement_v1": {
+   "RANGING": [
+    {
+     "symbol": "HDFCLIFE",
+     "rule_id": "price_movement_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": false,
+     "realistic_has_edge": false,
+     "flipped": false,
+     "trade_count_baseline": 10,
+     "trade_count_realistic": 10,
+     "expectancy_baseline": "-174.12200000000000000",
+     "expectancy_realistic": "-266.4798972640000000000000000",
+     "profit_factor_baseline": "0.1114482350329312513875527270",
+     "profit_factor_realistic": "0.02779245018819204318332040135",
+     "sharpe_baseline": "-6.981",
+     "sharpe_realistic": "-10.0091",
+     "max_drawdown_baseline": "0.1584771742586251836006521521",
+     "max_drawdown_realistic": "0.2308188327371830123368077141",
+     "regime_trade_count": 25,
+     "regime_expectancy": "-219.0412451768000000000000000",
+     "regime_win_rate": "0.2400",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 1,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 10,
+     "trades": [
+      -247.81723055,
+      -151.42946159,
+      76.1784793,
+      -902.445216655,
+      -401.6405007,
+      -27.662142465,
+      -18.9662044,
+      -58.32998736,
+      -68.1067524,
+      -14.4527945
+     ]
+    }
+   ]
+  },
+  "volatility_breakout_v1": {
+   "RANGING": [
+    {
+     "symbol": "HDFCLIFE",
+     "rule_id": "volatility_breakout_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": null,
+     "realistic_has_edge": null,
+     "flipped": false,
+     "trade_count_baseline": 2,
+     "trade_count_realistic": 2,
+     "expectancy_baseline": "108.55000000000000000",
+     "expectancy_realistic": "-509.311189920000000000000",
+     "profit_factor_baseline": "1.288485814896020197993488805",
+     "profit_factor_realistic": "0.3688653022520757548093286393",
+     "sharpe_baseline": "1.4218",
+     "sharpe_realistic": "-2.262",
+     "max_drawdown_baseline": "0.09560336930633006822792305251",
+     "max_drawdown_realistic": "0.1139442942032456589950906854",
+     "regime_trade_count": 25,
+     "regime_expectancy": "-219.0412451768000000000000000",
+     "regime_win_rate": "0.2400",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 1,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 2,
+     "trades": [
+      595.3316358,
+      -896.49562572
+     ]
+    }
+   ]
+  }
+ }
+}

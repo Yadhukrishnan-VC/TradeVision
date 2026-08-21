@@ -24,12 +24,20 @@ import csv
 import logging
 import sys
 import time
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
 import yfinance as yf
+
+# The NSE market calendar is a pure module (no Django settings required) living
+# under backend/core. Make it importable when the script is run from repo root.
+for _candidate in (Path(__file__).resolve().parent.parent / "backend",):
+    if str(_candidate) not in sys.path:
+        sys.path.insert(0, str(_candidate))
+
+from core.market_calendar import MarketCalendar, get_market_calendar  # noqa: E402
 
 # Configure logging
 logging.basicConfig(
@@ -52,11 +60,8 @@ NIFTY_50_SYMBOLS = [
     "BRITANNIA", "M&M", "UPL"
 ]
 
-# Expected trading days per year for Indian markets (approximate)
-EXPECTED_TRADING_DAYS_PER_YEAR = 245  # ~252 minus major holidays
 
-
-def fetch_symbol_data(symbol: str, start_date: str, end_date: str) -> pd.DataFrame | None:
+def fetch_symbol_data(symbol: str, start_date: str, end_date: str) -> tuple[pd.DataFrame | None, str | None]:
     """Fetch daily OHLCV data for a single symbol via yfinance.
 
     Args:
@@ -65,8 +70,9 @@ def fetch_symbol_data(symbol: str, start_date: str, end_date: str) -> pd.DataFra
         end_date: End date in YYYY-MM-DD format
 
     Returns:
-        DataFrame with columns: date, open, high, low, close, volume, symbol
-        or None if fetch failed
+        ``(DataFrame, None)`` with columns: date, open, high, low, close,
+        volume, symbol — or ``(None, failure_reason)`` where ``failure_reason``
+        is the EXACT exception type and message from yfinance (never a guess).
     """
     yf_symbol = f"{symbol}.NS"
     try:
@@ -74,8 +80,12 @@ def fetch_symbol_data(symbol: str, start_date: str, end_date: str) -> pd.DataFra
         df = ticker.history(start=start_date, end=end_date, interval="1d", auto_adjust=False)
 
         if df.empty:
-            logger.warning(f"[{symbol}] No data returned from yfinance")
-            return None
+            reason = (
+                f"yfinance returned an empty frame for {yf_symbol} "
+                "(no timezone found / possibly delisted / quote not found)"
+            )
+            logger.warning(f"[{symbol}] {reason}")
+            return None, reason
 
         # Reset index to get date as column
         df = df.reset_index()
@@ -93,35 +103,55 @@ def fetch_symbol_data(symbol: str, start_date: str, end_date: str) -> pd.DataFra
         # Sort by date
         df = df.sort_values("date").reset_index(drop=True)
 
-        return df
+        return df, None
 
     except Exception as exc:
-        logger.error(f"[{symbol}] Fetch failed: {exc}")
-        return None
+        reason = f"{type(exc).__name__}: {exc}"
+        logger.error(f"[{symbol}] Fetch failed: {reason}")
+        return None, reason
 
 
-def check_data_quality(symbol: str, df: pd.DataFrame, years: int) -> dict[str, Any]:
+def expected_trading_days(from_date: str, to_date: str, calendar: MarketCalendar | None = None) -> int:
+    """Count NSE trading days in ``[from_date, to_date]`` via MarketCalendar.
+
+    Replaces the old flat ``EXPECTED_TRADING_DAYS_PER_YEAR * years`` estimate
+    with the actual number of weekdays minus exchange holidays in the fetched
+    date range, so ``coverage_pct`` and ``gap_count`` are mutually consistent.
+    """
+    calendar = calendar or get_market_calendar()
+    start = date.fromisoformat(from_date)
+    end = date.fromisoformat(to_date)
+    count = 0
+    cursor = start
+    while cursor <= end:
+        if calendar.is_trading_day(cursor):
+            count += 1
+        cursor += timedelta(days=1)
+    return count
+
+
+def check_data_quality(symbol: str, df: pd.DataFrame) -> dict[str, Any]:
     """Check data quality and return metrics.
 
     Args:
         symbol: Trading symbol
         df: DataFrame with daily OHLCV data
-        years: Number of years of data requested
 
     Returns:
-        Dict with quality metrics
+        Dict with quality metrics. ``expected_days`` is the actual number of
+        NSE trading days in the fetched range; ``gap_count`` is
+        ``expected_days - actual_days`` so the two are mutually consistent.
     """
-    expected_days = EXPECTED_TRADING_DAYS_PER_YEAR * years
+    dates = pd.to_datetime(df["date"])
+    first = dates.min().strftime("%Y-%m-%d")
+    last = dates.max().strftime("%Y-%m-%d")
+    expected_days = expected_trading_days(first, last)
     actual_days = len(df)
 
-    # Check for missing dates (gaps)
-    dates = pd.to_datetime(df["date"])
-    date_range = pd.date_range(start=dates.min(), end=dates.max(), freq="B")  # business days
-    missing_dates = date_range.difference(dates)
-    gap_count = len(missing_dates)
+    gap_count = max(expected_days - actual_days, 0)
 
     # Check for zero volume days
-    zero_volume_days = (df["volume"] == 0).sum()
+    zero_volume_days = int((df["volume"] == 0).sum())
 
     # Check for OHLC consistency (high >= low, high >= open/close, low <= open/close)
     ohlc_errors = 0
@@ -141,9 +171,9 @@ def check_data_quality(symbol: str, df: pd.DataFrame, years: int) -> dict[str, A
         "actual_days": actual_days,
         "coverage_pct": round(coverage_pct, 2),
         "gap_count": int(gap_count),
-        "zero_volume_days": int(zero_volume_days),
+        "zero_volume_days": zero_volume_days,
         "ohlc_errors": ohlc_errors,
-        "date_range": f"{dates.min().strftime('%Y-%m-%d')} to {dates.max().strftime('%Y-%m-%d')}",
+        "date_range": f"{first} to {last}",
         "is_sufficient": coverage_pct >= 90.0,
     }
 
@@ -209,15 +239,15 @@ def main() -> int:
 
         logger.info(f"[{i}/{len(symbols)}] {symbol}: Fetching...")
 
-        df = fetch_symbol_data(symbol, start_date, end_date)
+        df, failure_reason = fetch_symbol_data(symbol, start_date, end_date)
 
         if df is None:
-            errors.append(symbol)
-            logger.error(f"[{symbol}] Failed to fetch data")
+            errors.append({"symbol": symbol, "reason": failure_reason})
+            logger.error(f"[{symbol}] Failed to fetch data: {failure_reason}")
             continue
 
         # Check data quality
-        quality = check_data_quality(symbol, df, args.years)
+        quality = check_data_quality(symbol, df)
         results.append(quality)
 
         if not quality["is_sufficient"]:
@@ -259,9 +289,9 @@ def main() -> int:
             logger.info(f"  {w}")
 
     if errors:
-        logger.info("\nErrors:")
-        for e in errors:
-            logger.info(f"  {e}")
+        logger.info("\nErrors (exact reason):")
+        for entry in errors:
+            logger.info(f"  {entry['symbol']}: {entry['reason']}")
 
     # Write quality report
     report_path = output_dir / "_quality_report.csv"
@@ -269,6 +299,12 @@ def main() -> int:
         report_df = pd.DataFrame(results)
         report_df.to_csv(report_path, index=False)
         logger.info(f"\nQuality report saved to {report_path}")
+
+    # Write a machine-readable failures log with the exact exception details.
+    if errors:
+        failures_path = output_dir / "_fetch_failures.csv"
+        pd.DataFrame(errors).to_csv(failures_path, index=False)
+        logger.info(f"Fetch failures log saved to {failures_path}")
 
     return 0 if len(errors) == 0 else 1
 

@@ -114,3 +114,40 @@ class TASnapshotRepository:
             snapshot_timestamp=obj.snapshot_timestamp,
             received_at=obj.received_at,
         )
+
+
+class DistinctTASnapshotRepository(TASnapshotRepository):
+    """``TASnapshotRepository`` whose range reads return one row per timestamp.
+
+    ``TASnapshot`` has no DB uniqueness on ``(symbol, snapshot_timestamp)``, so
+    repeated historical ingestion (e.g. the backtest runner re-ingesting the
+    same payload every run) can pile up duplicate rows that ``find_in_range``
+    would otherwise replay over and over, compounding runtime. This subclass
+    keeps the same contract (chronological, inclusive range) but collapses
+    duplicates via ``DISTINCT ON (snapshot_timestamp)`` so replays stay O(N)
+    regardless of how many duplicate rows accumulate.
+
+    Read-only override: ``save`` and everything else behave identically to the
+    base repository, so this is safe to inject anywhere the base is accepted.
+    """
+
+    def find_in_range(
+        self,
+        symbol: str,
+        start: datetime,
+        end: datetime,
+        *,
+        timeframe: str | None = None,
+    ) -> list[TASnapshot]:
+        qs = TASnapshotModel.objects.filter(
+            symbol=symbol.upper(),
+            snapshot_timestamp__gte=start,
+            snapshot_timestamp__lte=end,
+        )
+        if timeframe:
+            qs = qs.filter(timeframe=timeframe)
+        qs = (
+            qs.order_by("snapshot_timestamp")
+            .distinct("snapshot_timestamp")
+        )
+        return [self._to_domain(obj) for obj in qs]

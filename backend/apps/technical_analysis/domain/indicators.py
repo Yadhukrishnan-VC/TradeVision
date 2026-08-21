@@ -27,6 +27,7 @@ EMA20         20                  ``None`` (SMA seed needs ``period`` closes)
 ATR14         15                  ``None`` (14 true ranges + prior close)
 Bollinger U.  20                  ``None`` (full sampling window required)
 RSI14         15                  ``None`` (14 price changes + seed close)
+Supertrend    21                  ``None`` (10 true ranges + band transition)
 ============= ==================  ===========================================
 
 These are the pure-function minima from the approved warm-up table. The
@@ -194,3 +195,86 @@ def compute_rsi(candles: Sequence[Bar], period: int = 14) -> Decimal | None:
     return Decimal("100") - Decimal("100") / (
         Decimal("1") + avg_gain / avg_loss
     )
+
+
+def compute_supertrend(
+    candles: Sequence[Bar],
+    period: int = 10,
+    multiplier: Decimal = Decimal("2"),
+) -> tuple[Decimal, str] | None:
+    """Supertrend over *candles* (TradingView-style 10/2 band follower).
+
+    ``hl2 = (high + low) / 2``, Wilder ATR (see :func:`compute_atr`), then
+
+    ``up = hl2 - multiplier * atr``
+    ``dn = hl2 + multiplier * atr``
+    ``Up = close_prev < Up_prev ? max(up, Up_prev) : up``
+    ``Dn = close_prev > Dn_prev ? min(dn, Dn_prev) : dn``
+    ``trend = close > Dn_prev ? 1 : close < Up_prev ? -1 : trend_prev``
+
+    The band is the trend-following band that wraps the close: when the close
+    crosses above the trailing ``Dn`` band the trend flips to ``up`` and the
+    band is ``Up``; below ``Up`` it flips to ``down`` and the band is ``Dn``.
+
+    Returns ``(value, direction)`` at the *last* candle with ``direction`` in
+    ``{"up", "down"}``, or ``None`` when fewer than ``period + 2`` candles
+    exist (needs ``period`` true ranges for the ATR seed plus a prior close
+    for the first band transition).
+    """
+    if len(candles) < period + 2:
+        return None
+
+    closes = [Decimal(c.close) for c in candles]
+
+    # Wilder ATR per candle, seeded from the SMA of the first `period` true
+    # ranges; atr[i] is defined for i >= period.
+    true_ranges: list[Decimal] = []
+    for idx in range(1, len(candles)):
+        high = Decimal(candles[idx].high)
+        low = Decimal(candles[idx].low)
+        prev_close = closes[idx - 1]
+        true_ranges.append(
+            max(high - low, abs(high - prev_close), abs(low - prev_close))
+        )
+    atr: list[Decimal | None] = [None] * len(candles)
+    atr[period] = sum(true_ranges[:period]) / Decimal(period)
+    for idx in range(period + 1, len(candles)):
+        atr[idx] = (
+            atr[idx - 1] * Decimal(period - 1) + true_ranges[idx - 1]
+        ) / Decimal(period)
+
+    final_up: list[Decimal | None] = [None] * len(candles)
+    final_dn: list[Decimal | None] = [None] * len(candles)
+    trend: list[int | None] = [None] * len(candles)
+
+    for idx in range(period, len(candles)):
+        hl2 = (Decimal(candles[idx].high) + Decimal(candles[idx].low)) / Decimal("2")
+        up = hl2 - multiplier * atr[idx]
+        dn = hl2 + multiplier * atr[idx]
+
+        if idx == period:
+            final_up[idx] = up
+            final_dn[idx] = dn
+            trend[idx] = 1  # Pine nz(trend[1], 1) — default up
+            continue
+
+        prev_close = closes[idx - 1]
+        if prev_close < final_up[idx - 1]:
+            final_up[idx] = max(up, final_up[idx - 1])
+        else:
+            final_up[idx] = up
+        if prev_close > final_dn[idx - 1]:
+            final_dn[idx] = min(dn, final_dn[idx - 1])
+        else:
+            final_dn[idx] = dn
+
+        if closes[idx] > final_dn[idx - 1]:
+            trend[idx] = 1
+        elif closes[idx] < final_up[idx - 1]:
+            trend[idx] = -1
+        else:
+            trend[idx] = trend[idx - 1]
+
+    final_value = final_up[-1] if trend[-1] == 1 else final_dn[-1]
+    direction = "up" if trend[-1] == 1 else "down"
+    return final_value, direction

@@ -1,0 +1,123 @@
+{
+ "symbol": "ICICIBANK",
+ "results": {
+  "breakout_v1": {
+   "RANGING": [
+    {
+     "symbol": "ICICIBANK",
+     "rule_id": "breakout_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": true,
+     "realistic_has_edge": false,
+     "flipped": true,
+     "trade_count_baseline": 13,
+     "trade_count_realistic": 13,
+     "expectancy_baseline": "66.1092307692307692307692307",
+     "expectancy_realistic": "-70.9381592400000000000000000",
+     "profit_factor_baseline": "1.894396638791257625338342827",
+     "profit_factor_realistic": "0.6912592355655959287667473125",
+     "sharpe_baseline": "2.2646",
+     "sharpe_realistic": "0.5438",
+     "max_drawdown_baseline": "0.1242086864818617720240867385",
+     "max_drawdown_realistic": "0.1815010117754142343552177691",
+     "regime_trade_count": 25,
+     "regime_expectancy": "-78.5703785184000000000000000",
+     "regime_win_rate": "0.4400",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 2,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 13,
+     "trades": [
+      1679.302422,
+      -979.0405686,
+      -119.62852685,
+      -284.89865669,
+      -93.85681284,
+      -321.3524265,
+      133.03253574,
+      164.5914456,
+      51.05874648,
+      17.620511,
+      -10.0633344,
+      11.269803,
+      7.887677
+     ]
+    }
+   ]
+  },
+  "price_movement_v1": {
+   "RANGING": [
+    {
+     "symbol": "ICICIBANK",
+     "rule_id": "price_movement_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": null,
+     "realistic_has_edge": null,
+     "flipped": false,
+     "trade_count_baseline": 6,
+     "trade_count_realistic": 6,
+     "expectancy_baseline": "27.81250000000000000",
+     "expectancy_realistic": "-142.6881912816666666666666667",
+     "profit_factor_baseline": "1.870956985661887295765255085",
+     "profit_factor_realistic": "0.3224145219015389773992528808",
+     "sharpe_baseline": "2.8305",
+     "sharpe_realistic": "-1.241",
+     "max_drawdown_baseline": "0.04516341507367558265287104122",
+     "max_drawdown_realistic": "0.05230970873422796950766518478",
+     "regime_trade_count": 25,
+     "regime_expectancy": "-78.5703785184000000000000000",
+     "regime_win_rate": "0.4400",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 2,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 6,
+     "trades": [
+      386.2378908,
+      -493.6642755,
+      21.13280819,
+      -39.4797132,
+      -1.226673335,
+      -4.5043483
+     ]
+    }
+   ]
+  },
+  "volatility_breakout_v1": {
+   "RANGING": [
+    {
+     "symbol": "ICICIBANK",
+     "rule_id": "volatility_breakout_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": null,
+     "realistic_has_edge": null,
+     "flipped": false,
+     "trade_count_baseline": 6,
+     "trade_count_realistic": 6,
+     "expectancy_baseline": "177.8999999999999999999999999",
+     "expectancy_realistic": "-30.9890408583333333333333333",
+     "profit_factor_baseline": "3.807469752761704366123093109",
+     "profit_factor_realistic": "0.8633945146885958814319053057",
+     "sharpe_baseline": "6.0224",
+     "sharpe_realistic": "3.3347",
+     "max_drawdown_baseline": "0.02261717746119626111398233683",
+     "max_drawdown_realistic": "0.04307899975201733444330442521",
+     "regime_trade_count": 25,
+     "regime_expectancy": "-78.5703785184000000000000000",
+     "regime_win_rate": "0.4400",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 2,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 6,
+     "trades": [
+      784.06846232,
+      -426.5514309,
+      391.10109247,
+      -150.728611485,
+      -15.07763768,
+      -41.0623098
+     ]
+    }
+   ]
+  }
+ }
+}

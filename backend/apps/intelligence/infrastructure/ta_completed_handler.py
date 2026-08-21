@@ -44,7 +44,20 @@ def handle_ta_completed(event: DomainEvent) -> None:
 
     _save_pine_outputs(payload)
 
-    packet = _build_packet(payload, event.occurred_at)
+    # The payload's snapshot_timestamp is the bar's point-in-time time
+    # (correct during historical backtest replay, where ``event.occurred_at``
+    # is the real wall-clock of the replay process, not the simulated bar).
+    # Packet assembly and session-fact enrichment must use the bar time.
+    snapshot_ts = payload.get("snapshot_timestamp")
+    if snapshot_ts:
+        try:
+            occurred_at = datetime.fromisoformat(snapshot_ts)
+        except (ValueError, TypeError):
+            occurred_at = event.occurred_at
+    else:
+        occurred_at = event.occurred_at
+
+    packet = _build_packet(payload, occurred_at)
 
     try:
         bus = get_event_bus()

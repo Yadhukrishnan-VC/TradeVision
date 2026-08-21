@@ -1,0 +1,131 @@
+{
+ "symbol": "BAJAJFINSV",
+ "results": {
+  "breakout_v1": {
+   "RANGING": [
+    {
+     "symbol": "BAJAJFINSV",
+     "rule_id": "breakout_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": null,
+     "realistic_has_edge": null,
+     "flipped": false,
+     "trade_count_baseline": 1,
+     "trade_count_realistic": 1,
+     "expectancy_baseline": "819.0000000000000000",
+     "expectancy_realistic": "331.24815360000000000000",
+     "profit_factor_baseline": "999.99",
+     "profit_factor_realistic": "2.169711440576008292150221186",
+     "sharpe_baseline": null,
+     "sharpe_realistic": null,
+     "max_drawdown_baseline": "0",
+     "max_drawdown_realistic": "0",
+     "regime_trade_count": 33,
+     "regime_expectancy": "-127.1525984227272727272727274",
+     "regime_win_rate": "0.4848",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 2,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 1,
+     "trades": [
+      614.4360768
+     ]
+    }
+   ]
+  },
+  "price_movement_v1": {
+   "RANGING": [
+    {
+     "symbol": "BAJAJFINSV",
+     "rule_id": "price_movement_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": false,
+     "realistic_has_edge": false,
+     "flipped": false,
+     "trade_count_baseline": 27,
+     "trade_count_realistic": 27,
+     "expectancy_baseline": "-80.1731957671957671957671958",
+     "expectancy_realistic": "-289.9353691522222222222222223",
+     "profit_factor_baseline": "0.7141122525961385711205095046",
+     "profit_factor_realistic": "0.2948309089976282772930900306",
+     "sharpe_baseline": "-1.6889",
+     "sharpe_realistic": "-4.3257",
+     "max_drawdown_baseline": "0.5778037390593083770651653902",
+     "max_drawdown_realistic": "0.7094047454543467697360995681",
+     "regime_trade_count": 33,
+     "regime_expectancy": "-127.1525984227272727272727274",
+     "regime_win_rate": "0.4848",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 2,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 27,
+     "trades": [
+      -1725.13003828,
+      -1661.65432972,
+      -266.89705161,
+      -390.4839098,
+      -409.8202369,
+      -560.021233,
+      -1141.581402,
+      -275.97504,
+      1007.78765178,
+      436.68677,
+      -194.58404,
+      512.035206,
+      364.05540768,
+      -99.82534204,
+      -440.869491125,
+      -23.80177492,
+      243.5100739,
+      -67.0078272,
+      -117.8621338,
+      -99.6482478,
+      81.433715,
+      -90.8421658,
+      210.13648922,
+      36.47182926,
+      -90.7171872,
+      268.478035,
+      112.3950273
+     ]
+    }
+   ]
+  },
+  "volatility_breakout_v1": {
+   "RANGING": [
+    {
+     "symbol": "BAJAJFINSV",
+     "rule_id": "volatility_breakout_v1",
+     "regime": "RANGING",
+     "baseline_has_edge": null,
+     "realistic_has_edge": null,
+     "flipped": false,
+     "trade_count_baseline": 5,
+     "trade_count_realistic": 5,
+     "expectancy_baseline": "1049.7898600000000000",
+     "expectancy_realistic": "660.19421311200000000000",
+     "profit_factor_baseline": "999.99",
+     "profit_factor_realistic": "3.692007988674076102480049028",
+     "sharpe_baseline": "15.7",
+     "sharpe_realistic": "14.8512",
+     "max_drawdown_baseline": "0",
+     "max_drawdown_realistic": "0",
+     "regime_trade_count": 33,
+     "regime_expectancy": "-127.1525984227272727272727274",
+     "regime_win_rate": "0.4848",
+     "walk_forward_windows": 4,
+     "walk_forward_included": 2,
+     "walk_forward_oos_expectancy_mean": null,
+     "trade_count_significance": 5,
+     "trades": [
+      522.8724816,
+      2474.11106262,
+      1161.612904,
+      299.64387717,
+      68.94220739
+     ]
+    }
+   ]
+  }
+ }
+}

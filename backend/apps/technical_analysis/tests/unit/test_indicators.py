@@ -18,6 +18,7 @@ from apps.technical_analysis.domain.indicators import (
     compute_bollinger_upper,
     compute_ema,
     compute_rsi,
+    compute_supertrend,
     compute_vwap,
 )
 
@@ -265,6 +266,54 @@ class TestComputeRsi:
     def test_flat_series_is_none_not_fabricated(self) -> None:
         # avg_gain == avg_loss == 0 (0/0) is None per the TA-2 convention.
         assert compute_rsi(self._bars(["100"] * 20)) is None
+
+
+# ---------------------------------------------------------------------------
+# Supertrend (10, 2)
+# ---------------------------------------------------------------------------
+
+
+class TestComputeSupertrend:
+    def test_warmup_is_none_not_fabricated(self) -> None:
+        # 11 candles (period + 1) lack the second band-transition close.
+        bars = _bars(*[("101", "99", "100", 1000)] * 11)
+        assert compute_supertrend(bars, period=10) is None
+
+    def test_up_trend_returns_band_and_direction(self) -> None:
+        # Steady uptrend: closes climb, bands widen via ATR, trend stays up.
+        bars = _bars(
+            *[
+                (str(100 + i), str(98 + i), str(99 + i), 1000)
+                for i in range(30)
+            ]
+        )
+        result = compute_supertrend(bars, period=10)
+        assert result is not None
+        value, direction = result
+        assert direction in ("up", "down")
+        assert value > Decimal("0")
+        assert direction == "up"
+
+    def test_down_trend_direction(self) -> None:
+        # A flat phase (tight bands) followed by a single sharp crash through
+        # the trailing up band flips supertrend to "down".
+        bars = _bars(*[("101", "99", "100", 1000)] * 25)
+        bars.append(Bar(high="78", low="74", close="75", volume=1000))
+        result = compute_supertrend(bars, period=10)
+        assert result is not None
+        assert result[1] == "down"
+
+    def test_deterministic_repeat(self) -> None:
+        bars = _bars(
+            *[
+                (str(100 + ((i * 7) % 11)), str(98 + ((i * 7) % 11)), str(99 + ((i * 7) % 11)), 1000)
+                for i in range(40)
+            ]
+        )
+        assert compute_supertrend(bars) == compute_supertrend(bars)
+
+    def test_empty_series_is_none(self) -> None:
+        assert compute_supertrend([]) is None
 
 
 # ---------------------------------------------------------------------------

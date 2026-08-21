@@ -118,10 +118,12 @@ class Command(BaseCommand):
             sync_run.finished_at = dj_timezone.now()
             sync_run.save()
 
+            total = result.get("total", result.get("created", 0) + result.get("updated", 0))
             self.stdout.write(
                 self.style.SUCCESS(
                     f"done: created={result['created']} updated={result['updated']} "
-                    f"deactivated={result['deactivated']} total={result['total']}"
+                    f"deactivated={result['deactivated']} merged={result.get('merged', 0)} "
+                    f"total={total}"
                 )
             )
 

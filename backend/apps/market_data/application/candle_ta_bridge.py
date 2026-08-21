@@ -26,6 +26,7 @@ from apps.common.domain.value_objects import IdempotencyKey
 from apps.eventbus.infrastructure.event_bus_factory import get_event_bus
 from apps.market_data.application.session_facts_service import SessionFactsService
 from apps.market_data.domain.entities import Candle
+from apps.market_data.domain.value_objects import Timeframe
 from apps.market_data.infrastructure.repositories import (
     CandleRepository,
     InstrumentRepository,
@@ -36,6 +37,7 @@ from apps.technical_analysis.domain.indicators import (
     compute_bollinger_upper,
     compute_ema,
     compute_rsi,
+    compute_supertrend,
     compute_vwap,
 )
 from apps.technical_analysis.infrastructure.repositories import TASnapshotRepository
@@ -59,6 +61,17 @@ _MIN_CANDLES_BB = 20
 # TA-2: RSI14 needs 14 price changes + a seed close (period + 1), the same
 # warm-up contract as ATR14.
 _MIN_CANDLES_RSI14 = 15
+
+# Supertrend (10,2) needs 10 true ranges for the Wilder ATR seed plus one
+# prior close for the first band transition; a modest cushion keeps the
+# band stable before it is decision-grade.
+_MIN_CANDLES_SUPERTREND = 21
+
+# Daily candles are stamped at 00:00 UTC (05:30 IST — before the NSE session).
+# The analysis snapshot time is normalised into the session (07:00 UTC = 12:30
+# IST, mid-session) so downstream consumers that gate on market hours (e.g. the
+# risk engine's MarketSessionCheck) treat a completed daily bar as in-session.
+_DAILY_BAR_SNAPSHOT_OFFSET = timedelta(hours=7)
 
 
 class CandleToTechnicalAnalysisBridge:
@@ -182,6 +195,10 @@ class CandleToTechnicalAnalysisBridge:
         prev_close, change_pct = self._prev_close_and_change(candle, up_to=up_to)
         indicators = self._compute_indicators(candle, up_to=up_to)
 
+        snapshot_ts = to_utc(candle.timestamp)
+        if candle.timeframe == Timeframe.DAY_1:
+            snapshot_ts = snapshot_ts + _DAILY_BAR_SNAPSHOT_OFFSET
+
         payload: dict[str, Any] = {
             "ticker": instrument.tradingsymbol,
             "exchange": instrument.exchange,
@@ -191,7 +208,7 @@ class CandleToTechnicalAnalysisBridge:
             "low": str(candle.low),
             "close": str(candle.close),
             "volume": int(candle.volume),
-            "time": int(to_utc(candle.timestamp).timestamp() * 1000),
+            "time": int(snapshot_ts.timestamp() * 1000),
         }
         if prev_close is not None:
             payload["prev_close"] = str(prev_close)
@@ -413,6 +430,12 @@ class CandleToTechnicalAnalysisBridge:
             bb_upper = compute_bollinger_upper(history, period=20)
             if bb_upper is not None:
                 indicators["bb_upper"] = str(bb_upper)
+        if len(history) >= _MIN_CANDLES_SUPERTREND:
+            supertrend = compute_supertrend(history, period=10, multiplier=Decimal("2"))
+            if supertrend is not None:
+                value, direction = supertrend
+                indicators["supertrend_value"] = str(value)
+                indicators["supertrend_direction"] = direction
         if vwap is not None:
             indicators["vwap"] = str(vwap)
         return indicators
