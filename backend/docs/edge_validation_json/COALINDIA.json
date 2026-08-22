@@ -10,23 +10,24 @@
      "baseline_has_edge": true,
      "realistic_has_edge": true,
      "flipped": false,
-     "trade_count_baseline": 19,
-     "trade_count_realistic": 19,
-     "expectancy_baseline": "259.2657894736842105263157895",
-     "expectancy_realistic": "121.2590328921052631578947369",
-     "profit_factor_baseline": "162.9820261437908496732026144",
-     "profit_factor_realistic": "2.413230781893098529701669864",
-     "sharpe_baseline": "13.3679",
-     "sharpe_realistic": "11.2779",
-     "max_drawdown_baseline": "0.002869827668468643220777110350",
-     "max_drawdown_realistic": "0.004645077687625948911592544120",
-     "regime_trade_count": 31,
-     "regime_expectancy": "65.36766919677419354838709676",
-     "regime_win_rate": "0.7097",
-     "walk_forward_windows": 4,
-     "walk_forward_included": 2,
-     "walk_forward_oos_expectancy_mean": null,
-     "trade_count_significance": 19,
+     "trade_count_baseline": 15,
+     "trade_count_realistic": 15,
+     "expectancy_baseline": "326.2233333333333333333333333",
+     "expectancy_realistic": "154.2406203533333333333333334",
+     "profit_factor_baseline": "999.99",
+     "profit_factor_realistic": "2.495317897176400445545158094",
+     "sharpe_baseline": "16.2604",
+     "sharpe_realistic": "13.4166",
+     "max_drawdown_baseline": "0",
+     "max_drawdown_realistic": "0.004650761721461252980032889540",
+     "regime_trade_count": 24,
+     "regime_expectancy": "86.1715899987500000000000001",
+     "regime_win_rate": "0.7083",
+     "walk_forward_windows": 14,
+     "walk_forward_included": 6,
+     "walk_forward_oos_expectancy_mean": 85.24912974416667,
+     "walk_forward_oos_status": "computed",
+     "trade_count_significance": 15,
      "trades": [
       713.31118047,
       124.43814457,
@@ -42,11 +43,7 @@
       250.39293278,
       324.84071354,
       186.78870916,
-      64.72380577,
-      -40.639240435,
-      19.772682405,
-      18.2773944,
-      35.278010955
+      64.72380577
      ]
     }
    ]
@@ -57,26 +54,27 @@
      "symbol": "COALINDIA",
      "rule_id": "price_movement_v1",
      "regime": "RANGING",
-     "baseline_has_edge": true,
-     "realistic_has_edge": false,
-     "flipped": true,
-     "trade_count_baseline": 12,
-     "trade_count_realistic": 12,
-     "expectancy_baseline": "103.5166666666666666666666667",
-     "expectancy_realistic": "-23.1269899874999999999999999",
-     "profit_factor_baseline": "2.171997358241343522973865459",
-     "profit_factor_realistic": "0.8709888808882738503818548239",
-     "sharpe_baseline": "2.9291",
-     "sharpe_realistic": "1.6521",
-     "max_drawdown_baseline": "0.08230373599375001418740369202",
-     "max_drawdown_realistic": "0.09560014450246878760650386868",
-     "regime_trade_count": 31,
-     "regime_expectancy": "65.36766919677419354838709676",
-     "regime_win_rate": "0.7097",
-     "walk_forward_windows": 4,
-     "walk_forward_included": 2,
-     "walk_forward_oos_expectancy_mean": null,
-     "trade_count_significance": 12,
+     "baseline_has_edge": null,
+     "realistic_has_edge": null,
+     "flipped": false,
+     "trade_count_baseline": 9,
+     "trade_count_realistic": 9,
+     "expectancy_baseline": "133.6722222222222222222222222",
+     "expectancy_realistic": "-27.2767939255555555555555555",
+     "profit_factor_baseline": "2.173592820212662179299580529",
+     "profit_factor_realistic": "0.8813245990376922954606643176",
+     "sharpe_baseline": "3.2428",
+     "sharpe_realistic": "1.854",
+     "max_drawdown_baseline": "0.08240455753432534923349210685",
+     "max_drawdown_realistic": "0.09571729319802615632991080460",
+     "regime_trade_count": 24,
+     "regime_expectancy": "86.1715899987500000000000001",
+     "regime_win_rate": "0.7083",
+     "walk_forward_windows": 14,
+     "walk_forward_included": 9,
+     "walk_forward_oos_expectancy_mean": -456.34887596444446,
+     "walk_forward_oos_status": "computed",
+     "trade_count_significance": 9,
      "trades": [
       1507.082512375,
       -89.7956244,
@@ -86,13 +84,64 @@
       -225.14833584,
       -247.79223054,
       204.17211106,
-      -121.58918898,
-      27.2498256,
-      23.2865762,
-      -41.23911906
+      -121.58918898
      ]
     }
    ]
+  }
+ },
+ "walk_forward_distribution": {
+  "out_of_sample_expectancy": {
+   "count": 6,
+   "min": "-643.09418644500000000000",
+   "max": "235.0366534466666666666666667",
+   "mean": "-74.24640684555555555555555555",
+   "median": "46.73651745250000000000000000",
+   "count_positive": 4
+  },
+  "out_of_sample_sharpe_ratio": {
+   "count": 6,
+   "min": "-15.1589",
+   "max": "1229.4202",
+   "mean": "206.5865833333333333333333333",
+   "median": "8.53165",
+   "count_positive": 4
+  },
+  "out_of_sample_win_rate": {
+   "count": 6,
+   "min": "0.0000",
+   "max": "1.0000",
+   "mean": "0.5833333333333333333333333333",
+   "median": "0.58335",
+   "count_positive": 5
+  }
+ },
+ "walk_forward_distribution_by_rule": {
+  "breakout_v1": {
+   "total_windows": 14,
+   "included_window_count": 6,
+   "excluded_window_count": 8,
+   "out_of_sample_expectancy": {
+    "count": 6,
+    "min": "-276.30058950000000000000",
+    "max": "330.6257977700000000000000000",
+    "mean": "85.24912974416666666666666667",
+    "median": "116.543437260000000000000",
+    "count_positive": 5
+   }
+  },
+  "price_movement_v1": {
+   "total_windows": 14,
+   "included_window_count": 9,
+   "excluded_window_count": 5,
+   "out_of_sample_expectancy": {
+    "count": 9,
+    "min": "-1334.04482240000000000000",
+    "max": "473.18300028000000000000",
+    "mean": "-456.3488759644444444444444444",
+    "median": "-231.739714640000000000000",
+    "count_positive": 2
+   }
   }
  }
 }

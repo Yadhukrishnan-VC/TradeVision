@@ -84,10 +84,12 @@ class TestGenerateWindows:
 
 class TestCalculateDistribution:
     def test_hand_computed_three_values(self) -> None:
-        assert calculate_distribution([Decimal("50"), Decimal("-75"), Decimal("200")]) == {
+        values = [Decimal("50"), Decimal("-75"), Decimal("200")]
+        assert calculate_distribution(values) == {
             "count": 3,
             "min": "-75",
             "max": "200",
+            "mean": str(sum(values) / Decimal(3)),
             "median": "50",
             "count_positive": 2,
         }
@@ -97,11 +99,19 @@ class TestCalculateDistribution:
         assert dist["median"] == "2.5"
         assert dist["count"] == 4
 
+    def test_mean_matches_hand_computed_value(self) -> None:
+        # REAL-DATA-BACKFILL-4: 'mean' must be present and exact — the edge
+        # report's walk_forward_oos_expectancy_mean reads this key.
+        dist = calculate_distribution([Decimal("-75"), Decimal("200")])
+        assert dist["mean"] == str(Decimal("125") / Decimal(2))
+        assert dist["mean"] == "62.5"
+
     def test_empty_input_returns_null_extrema(self) -> None:
         assert calculate_distribution([]) == {
             "count": 0,
             "min": None,
             "max": None,
+            "mean": None,
             "median": None,
             "count_positive": 0,
         }

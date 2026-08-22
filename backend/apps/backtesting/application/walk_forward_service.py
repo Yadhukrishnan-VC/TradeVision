@@ -137,6 +137,14 @@ class WalkForwardService(BaseService):
         )
 
         per_window: list[dict[str, Any]] = []
+        # Per-rule OOS tracking (REAL-DATA-BACKFILL-4): rules trade at very
+        # different frequencies, so one account-wide OOS distribution cannot
+        # answer "does THIS rule have out-of-sample edge". Each window records
+        # every attributed rule's own OOS expectancy/trade-count (from
+        # ``run_stats``' per-rule split buckets), and the cross-window
+        # distributions are computed per rule.
+        rules_seen: set[str] = set()
+        rule_oos_expectancies: dict[str, list[Decimal]] = {}
         for index, (win_start, win_end) in enumerate(windows):
             account = Account.objects.create(
                 name=f"WalkForward {symbol} window-{index}",
@@ -160,6 +168,13 @@ class WalkForwardService(BaseService):
             run_result = self._runner.run(run.id)
             stats = self._stats.run_stats(run)
             oos = stats["out_of_sample"]
+            oos_trade_count_by_rule: dict[str, int] = {}
+            oos_expectancy_by_rule: dict[str, str | None] = {}
+            for rid, rule_bucket in (stats.get("by_rule") or {}).items():
+                rule_oos = rule_bucket.get("out_of_sample") or {}
+                oos_trade_count_by_rule[rid] = int(rule_oos.get("trade_count") or 0)
+                oos_expectancy_by_rule[rid] = rule_oos.get("expectancy")
+                rules_seen.add(rid)
             per_window.append(
                 {
                     "window_index": index,
@@ -174,8 +189,13 @@ class WalkForwardService(BaseService):
                     "out_of_sample_expectancy": oos["expectancy"],
                     "out_of_sample_sharpe_ratio": oos["sharpe_ratio"],
                     "out_of_sample_win_rate": oos["win_rate"],
+                    "out_of_sample_trade_count_by_rule": oos_trade_count_by_rule,
+                    "out_of_sample_expectancy_by_rule": oos_expectancy_by_rule,
                 }
             )
+            for rid, exp in oos_expectancy_by_rule.items():
+                if oos_trade_count_by_rule.get(rid, 0) >= 1 and exp is not None:
+                    rule_oos_expectancies.setdefault(rid, []).append(Decimal(exp))
 
         included = [
             window
@@ -189,6 +209,22 @@ class WalkForwardService(BaseService):
             for window in included
             if window["out_of_sample_sharpe_ratio"] is not None
         ]
+
+        # Per-rule cross-window distributions (REAL-DATA-BACKFILL-4): a window
+        # counts toward a rule's distribution when that rule itself had >= 1
+        # OOS trade in the window (the account-wide distribution above keeps
+        # its stricter >= MIN_TRADES_FOR_DISTRIBUTION rule, unchanged).
+        distribution_by_rule: dict[str, dict[str, Any]] = {}
+        included_by_rule: dict[str, int] = {}
+        for rid in sorted(rules_seen):
+            values = rule_oos_expectancies.get(rid, [])
+            included_by_rule[rid] = len(values)
+            distribution_by_rule[rid] = {
+                "total_windows": len(per_window),
+                "included_window_count": len(values),
+                "excluded_window_count": len(per_window) - len(values),
+                "out_of_sample_expectancy": calculate_distribution(values),
+            }
 
         return {
             "symbol": symbol,
@@ -211,4 +247,6 @@ class WalkForwardService(BaseService):
                     [Decimal(w["out_of_sample_win_rate"]) for w in included]
                 ),
             },
+            "distribution_by_rule": distribution_by_rule,
+            "included_window_count_by_rule": included_by_rule,
         }

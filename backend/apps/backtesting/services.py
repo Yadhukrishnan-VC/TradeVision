@@ -226,6 +226,55 @@ class BacktestRunnerService(BaseService):
 class BacktestStatsService(BaseService):
     """Read-only aggregation & quantitative edge analysis of a backtest run."""
 
+    @staticmethod
+    def _rule_split_metrics(bucket: dict[str, Any] | None) -> dict[str, Any]:
+        """Metrics for one rule's in-sample or out-of-sample trade half.
+
+        Counts and P&L-based metrics only: sharpe/sortino/max-drawdown need an
+        equity curve that is not meaningful per rule per half at realistic
+        (~1-40 trades) counts, so they are ``None`` — never a fake zero.
+        An absent bucket (the rule never traded in that half) yields
+        ``trade_count=0`` and ``expectancy=None`` so callers can distinguish
+        "checked, no trades" from a computed value.
+        """
+        if not bucket or bucket["trade_count"] == 0:
+            return {
+                "trade_count": 0,
+                "win_count": 0,
+                "loss_count": 0,
+                "net_pnl": None,
+                "win_rate": None,
+                "expectancy": None,
+                "profit_factor": None,
+            }
+        count = Decimal(bucket["trade_count"])
+        win_rate = Decimal(bucket["win_count"]) / count
+        avg_win = (
+            bucket["gross_profit"] / Decimal(bucket["win_count"])
+            if bucket["win_count"] > 0
+            else Decimal("0")
+        )
+        avg_loss = (
+            bucket["gross_loss"] / Decimal(bucket["loss_count"])
+            if bucket["loss_count"] > 0
+            else Decimal("0")
+        )
+        expectancy = calculate_expectancy(
+            win_rate, avg_win, avg_loss, bucket["total_costs"] / count
+        )
+        profit_factor = calculate_profit_factor(
+            bucket["gross_profit"], bucket["gross_loss"], bucket["total_costs"]
+        )
+        return {
+            "trade_count": bucket["trade_count"],
+            "win_count": bucket["win_count"],
+            "loss_count": bucket["loss_count"],
+            "net_pnl": str(bucket["gross_profit"] - bucket["gross_loss"]),
+            "win_rate": str(round(win_rate, 4)),
+            "expectancy": str(expectancy),
+            "profit_factor": str(profit_factor) if profit_factor is not None else None,
+        }
+
     def run_stats(self, run: BacktestRun) -> dict[str, Any]:
         from apps.execution.infrastructure.models import ExecutionRequest, Fill, Order
         from apps.portfolio.infrastructure.models import AccountCapitalState
@@ -253,6 +302,23 @@ class BacktestStatsService(BaseService):
         rule_by_correlation = build_correlation_to_rule_map(rule_executions)
         rule_buckets: dict[str, dict[str, Any]] = {}
         unattributed_trade_count = 0
+
+        # Per-rule IS/OOS split buckets (REAL-DATA-BACKFILL-4): the walk-forward
+        # OOS distribution must answer "does THIS rule have out-of-sample edge",
+        # which the account-wide split cannot answer (rules trade at very
+        # different frequencies). Same accumulation pattern as the account-level
+        # is_bucket/oos_bucket below; keyed by rule_id.
+        rule_split_buckets: dict[str, dict[str, dict[str, Any]]] = {}
+
+        def _fresh_rule_split_bucket() -> dict[str, Any]:
+            return {
+                "trade_count": 0,
+                "win_count": 0,
+                "loss_count": 0,
+                "gross_profit": Decimal("0"),
+                "gross_loss": Decimal("0"),
+                "total_costs": Decimal("0"),
+            }
 
         gross_profit = Decimal("0")
         gross_loss = Decimal("0")
@@ -412,6 +478,13 @@ class BacktestStatsService(BaseService):
             else:
                 missing_regime_count += 1
 
+            # IS/OOS partition time for THIS trade: its first fill's simulated
+            # ``occurred_at`` (never the wall-clock ``order.created_at`` — see
+            # RESEARCH-INTEGRITY-1). Computed here so both the per-rule split
+            # buckets and the account-level split below share one definition.
+            trade_ts = first_fill_at.get(str(order.id)) or order.created_at
+            in_sample_trade = bool(trade_ts and trade_ts.timestamp() <= split_ts)
+
             rule_id = rule_by_correlation.get(str(order.correlation_id))
             if rule_id:
                 rule_bucket = rule_buckets.setdefault(
@@ -442,15 +515,35 @@ class BacktestStatsService(BaseService):
                 rule_bucket["equity_curve"].append(next_rule_eq)
                 if prev_rule_eq > Decimal("0"):
                     rule_bucket["returns"].append((next_rule_eq - prev_rule_eq) / prev_rule_eq)
+
+                # Per-rule IS/OOS accumulation (REAL-DATA-BACKFILL-4): counts
+                # and P&L only — ratio metrics that need an equity curve
+                # (sharpe/sortino/max-dd) are emitted as None by
+                # ``_rule_split_metrics`` because a per-rule per-half equity
+                # curve is not meaningful at these trade counts.
+                rule_splits = rule_split_buckets.setdefault(
+                    rule_id,
+                    {"in_sample": None, "out_of_sample": None},
+                )
+                split_key = "in_sample" if in_sample_trade else "out_of_sample"
+                rsb = rule_splits[split_key]
+                if rsb is None:
+                    rsb = rule_splits[split_key] = _fresh_rule_split_bucket()
+                rsb["trade_count"] += 1
+                rsb["total_costs"] += order_cost
+                if net_trade_pnl > Decimal("0"):
+                    rsb["win_count"] += 1
+                    rsb["gross_profit"] += net_trade_pnl
+                elif net_trade_pnl < Decimal("0"):
+                    rsb["loss_count"] += 1
+                    rsb["gross_loss"] += abs(net_trade_pnl)
             else:
                 unattributed_trade_count += 1
 
-            # IS/OOS partition: same equity-curve/returns accumulation the
-            # regime and rule buckets above do, for each half of the split.
-            # The trade's time is its first fill's simulated ``occurred_at``
-            # (never the wall-clock ``order.created_at`` — see RESEARCH-INTEGRITY-1).
-            trade_ts = first_fill_at.get(str(order.id)) or order.created_at
-            if trade_ts and trade_ts.timestamp() <= split_ts:
+            # Account-level IS/OOS partition: same equity-curve/returns
+            # accumulation the regime and rule buckets above do, for each half
+            # of the split. Uses the same ``trade_ts`` defined above.
+            if in_sample_trade:
                 split_bucket = is_bucket
             else:
                 split_bucket = oos_bucket
@@ -592,6 +685,12 @@ class BacktestStatsService(BaseService):
                 "max_drawdown_pct": str(r_max_dd_pct),
                 "max_drawdown_amount": str(r_max_dd_amt),
                 "trades": bucket["trades"],
+                "in_sample": self._rule_split_metrics(
+                    (rule_split_buckets.get(rule_id) or {}).get("in_sample")
+                ),
+                "out_of_sample": self._rule_split_metrics(
+                    (rule_split_buckets.get(rule_id) or {}).get("out_of_sample")
+                ),
             }
 
         # Reconciliation: every fill must trace to exactly one rule (or be
