@@ -1,0 +1,31 @@
+{
+  "symbol": "NESTLE",
+  "results": {},
+  "walk_forward_distribution": {
+    "out_of_sample_expectancy": {
+      "count": 0,
+      "min": null,
+      "max": null,
+      "mean": null,
+      "median": null,
+      "count_positive": 0
+    },
+    "out_of_sample_sharpe_ratio": {
+      "count": 0,
+      "min": null,
+      "max": null,
+      "mean": null,
+      "median": null,
+      "count_positive": 0
+    },
+    "out_of_sample_win_rate": {
+      "count": 0,
+      "min": null,
+      "max": null,
+      "mean": null,
+      "median": null,
+      "count_positive": 0
+    }
+  },
+  "walk_forward_distribution_by_rule": {}
+}

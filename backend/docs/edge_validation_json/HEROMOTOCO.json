@@ -1,127 +1,228 @@
 {
- "symbol": "HEROMOTOCO",
- "results": {
-  "breakout_v1": {
-   "RANGING": [
-    {
-     "symbol": "HEROMOTOCO",
-     "rule_id": "breakout_v1",
-     "regime": "RANGING",
-     "baseline_has_edge": false,
-     "realistic_has_edge": false,
-     "flipped": false,
-     "trade_count_baseline": 17,
-     "trade_count_realistic": 17,
-     "expectancy_baseline": "-9.49940168067226890756302524",
-     "expectancy_realistic": "-98.38177771001058823529411768",
-     "profit_factor_baseline": "1.262233532309334636378421845",
-     "profit_factor_realistic": "0.3426144584743256343711387504",
-     "sharpe_baseline": "0.8916",
-     "sharpe_realistic": "-1.9642",
-     "max_drawdown_baseline": "0.06985349956744228620425694704",
-     "max_drawdown_realistic": "0.08465919363775510171780163662",
-     "regime_trade_count": 29,
-     "regime_expectancy": "-69.10832009036344827586206898",
-     "regime_win_rate": "0.3103",
-     "walk_forward_windows": 4,
-     "walk_forward_included": 3,
-     "walk_forward_oos_expectancy_mean": null,
-     "trade_count_significance": 17,
-     "trades": [
-      -160.901900775,
-      -262.366884,
-      123.51987321,
-      -74.2657792,
-      674.19352,
-      -735.48694278437,
-      69.88284051964,
-      -21.51323944018,
-      -29.565594,
-      4.0677978,
-      -0.632897,
-      -11.5884172,
-      -5.8007824,
-      -6.762394,
-      -6.4836856,
-      -30.6900743,
-      -79.23575134018
-     ]
+  "symbol": "HEROMOTOCO",
+  "results": {
+    "high_beta_breakout_v1": {
+      "RANGING": [
+        {
+          "symbol": "HEROMOTOCO",
+          "rule_id": "high_beta_breakout_v1",
+          "regime": "RANGING",
+          "baseline_has_edge": null,
+          "realistic_has_edge": null,
+          "flipped": false,
+          "trade_count_baseline": 0,
+          "trade_count_realistic": 1,
+          "expectancy_baseline": null,
+          "expectancy_realistic": "-88.42250278036000000000",
+          "profit_factor_baseline": null,
+          "profit_factor_realistic": "0E+20",
+          "sharpe_baseline": null,
+          "sharpe_realistic": null,
+          "max_drawdown_baseline": null,
+          "max_drawdown_realistic": "0.007858936718911007953468770331",
+          "regime_trade_count": 29,
+          "regime_expectancy": "-69.10832009036344827586206898",
+          "regime_win_rate": "0.3103",
+          "walk_forward_windows": 4,
+          "walk_forward_included": 0,
+          "walk_forward_oos_expectancy_mean": null,
+          "walk_forward_oos_status": "0 OOS windows had trades",
+          "trade_count_significance": 1,
+          "trades": [
+            -79.23575134018
+          ]
+        }
+      ]
+    },
+    "price_movement_v1": {
+      "RANGING": [
+        {
+          "symbol": "HEROMOTOCO",
+          "rule_id": "price_movement_v1",
+          "regime": "RANGING",
+          "baseline_has_edge": true,
+          "realistic_has_edge": false,
+          "flipped": true,
+          "trade_count_baseline": 27,
+          "trade_count_realistic": 26,
+          "expectancy_baseline": "20.68649053497942386831275719",
+          "expectancy_realistic": "-70.76058017077615384615384615",
+          "profit_factor_baseline": "2.053823454082001781161880281",
+          "profit_factor_realistic": "0.4748960979286848942629262855",
+          "sharpe_baseline": "2.9333",
+          "sharpe_realistic": "-0.0766",
+          "max_drawdown_baseline": "0.06900338291779655994125843292",
+          "max_drawdown_realistic": "0.07290288361683396867173743916",
+          "regime_trade_count": 29,
+          "regime_expectancy": "-69.10832009036344827586206898",
+          "regime_win_rate": "0.3103",
+          "walk_forward_windows": 4,
+          "walk_forward_included": 3,
+          "walk_forward_oos_expectancy_mean": -57.93252031111111,
+          "walk_forward_oos_status": "computed",
+          "trade_count_significance": 26,
+          "trades": [
+            -160.901900775,
+            -148.4950012,
+            385.44191184,
+            -262.366884,
+            123.51987321,
+            -74.2657792,
+            674.19352,
+            96.551098,
+            -735.48694278437,
+            137.4036785,
+            -30.467078,
+            140.177642,
+            69.88284051964,
+            -21.51323944018,
+            32.62664698036,
+            -13.55597910964,
+            -12.92162754036,
+            -18.2092638,
+            -154.79617249554,
+            -29.565594,
+            4.0677978,
+            -0.632897,
+            -11.5884172,
+            -5.8007824,
+            -6.762394,
+            -6.4836856
+          ]
+        }
+      ]
+    },
+    "volatility_breakout_v1": {
+      "RANGING": [
+        {
+          "symbol": "HEROMOTOCO",
+          "rule_id": "volatility_breakout_v1",
+          "regime": "RANGING",
+          "baseline_has_edge": null,
+          "realistic_has_edge": null,
+          "flipped": false,
+          "trade_count_baseline": 1,
+          "trade_count_realistic": 2,
+          "expectancy_baseline": "-1.0996000000000000",
+          "expectancy_realistic": "-37.97184770000000000000",
+          "profit_factor_baseline": "0E+16",
+          "profit_factor_realistic": "0E+20",
+          "sharpe_baseline": null,
+          "sharpe_realistic": "-33.9637",
+          "max_drawdown_baseline": "0.0001090629756132872559194422368",
+          "max_drawdown_realistic": "0.004575705373147674046629054087",
+          "regime_trade_count": 29,
+          "regime_expectancy": "-69.10832009036344827586206898",
+          "regime_win_rate": "0.3103",
+          "walk_forward_windows": 4,
+          "walk_forward_included": 0,
+          "walk_forward_oos_expectancy_mean": null,
+          "walk_forward_oos_status": "0 OOS windows had trades",
+          "trade_count_significance": 2,
+          "trades": [
+            -15.4433234,
+            -30.6900743
+          ]
+        }
+      ]
+    },
+    "volume_spike_v1": {
+      "UNKNOWN": [
+        {
+          "symbol": "HEROMOTOCO",
+          "rule_id": "volume_spike_v1",
+          "regime": "UNKNOWN",
+          "baseline_has_edge": null,
+          "realistic_has_edge": null,
+          "flipped": false,
+          "trade_count_baseline": 1,
+          "trade_count_realistic": 0,
+          "expectancy_baseline": "0E-16",
+          "expectancy_realistic": null,
+          "profit_factor_baseline": null,
+          "profit_factor_realistic": null,
+          "sharpe_baseline": null,
+          "sharpe_realistic": null,
+          "max_drawdown_baseline": "0",
+          "max_drawdown_realistic": null,
+          "regime_trade_count": 0,
+          "regime_expectancy": null,
+          "regime_win_rate": null,
+          "walk_forward_windows": 4,
+          "walk_forward_included": 0,
+          "walk_forward_oos_expectancy_mean": null,
+          "walk_forward_oos_status": "0 OOS windows had trades",
+          "trade_count_significance": 0,
+          "trades": []
+        }
+      ]
     }
-   ]
   },
-  "price_movement_v1": {
-   "RANGING": [
-    {
-     "symbol": "HEROMOTOCO",
-     "rule_id": "price_movement_v1",
-     "regime": "RANGING",
-     "baseline_has_edge": true,
-     "realistic_has_edge": false,
-     "flipped": true,
-     "trade_count_baseline": 11,
-     "trade_count_realistic": 11,
-     "expectancy_baseline": "63.77703636363636363636363639",
-     "expectancy_realistic": "-26.94100134094181818181818182",
-     "profit_factor_baseline": "7.173879210870648556025465757",
-     "profit_factor_realistic": "0.7277566740871786012115025640",
-     "sharpe_baseline": "7.8967",
-     "sharpe_realistic": "3.9417",
-     "max_drawdown_baseline": "0.01487162966332155392572388672",
-     "max_drawdown_realistic": "0.01977354435569969606348340628",
-     "regime_trade_count": 29,
-     "regime_expectancy": "-69.10832009036344827586206898",
-     "regime_win_rate": "0.3103",
-     "walk_forward_windows": 4,
-     "walk_forward_included": 3,
-     "walk_forward_oos_expectancy_mean": null,
-     "trade_count_significance": 11,
-     "trades": [
-      -148.4950012,
-      385.44191184,
-      96.551098,
-      137.4036785,
-      -30.467078,
-      140.177642,
-      32.62664698036,
-      -13.55597910964,
-      -12.92162754036,
-      -18.2092638,
-      -154.79617249554
-     ]
+  "walk_forward_distribution": {
+    "out_of_sample_expectancy": {
+      "count": 3,
+      "min": "-322.48743310000000000000",
+      "max": "11.547850500000000000000",
+      "mean": "-188.5964913444444444444444444",
+      "median": "-254.8498914333333333333333333",
+      "count_positive": 1
+    },
+    "out_of_sample_sharpe_ratio": {
+      "count": 3,
+      "min": "-102.9176",
+      "max": "7.151",
+      "mean": "-41.72053333333333333333333333",
+      "median": "-29.395",
+      "count_positive": 1
+    },
+    "out_of_sample_win_rate": {
+      "count": 3,
+      "min": "0.0000",
+      "max": "0.5000",
+      "mean": "0.1666666666666666666666666667",
+      "median": "0.0000",
+      "count_positive": 1
     }
-   ]
   },
-  "volatility_breakout_v1": {
-   "RANGING": [
-    {
-     "symbol": "HEROMOTOCO",
-     "rule_id": "volatility_breakout_v1",
-     "regime": "RANGING",
-     "baseline_has_edge": null,
-     "realistic_has_edge": null,
-     "flipped": false,
-     "trade_count_baseline": 1,
-     "trade_count_realistic": 1,
-     "expectancy_baseline": "-1.0996000000000000",
-     "expectancy_realistic": "-35.30004680000000000000",
-     "profit_factor_baseline": "0E+16",
-     "profit_factor_realistic": "0E+20",
-     "sharpe_baseline": null,
-     "sharpe_realistic": null,
-     "max_drawdown_baseline": "0.0001090629756132872559194422368",
-     "max_drawdown_realistic": "0.001531734088179618434214724274",
-     "regime_trade_count": 29,
-     "regime_expectancy": "-69.10832009036344827586206898",
-     "regime_win_rate": "0.3103",
-     "walk_forward_windows": 4,
-     "walk_forward_included": 3,
-     "walk_forward_oos_expectancy_mean": null,
-     "trade_count_significance": 1,
-     "trades": [
-      -15.4433234
-     ]
+  "walk_forward_distribution_by_rule": {
+    "breakout_v1": {
+      "total_windows": 4,
+      "included_window_count": 1,
+      "excluded_window_count": 3,
+      "out_of_sample_expectancy": {
+        "count": 1,
+        "min": "-322.48743310000000000000",
+        "max": "-322.48743310000000000000",
+        "mean": "-322.48743310000000000000",
+        "median": "-322.48743310000000000000",
+        "count_positive": 0
+      }
+    },
+    "price_movement_v1": {
+      "total_windows": 4,
+      "included_window_count": 3,
+      "excluded_window_count": 1,
+      "out_of_sample_expectancy": {
+        "count": 3,
+        "min": "-254.8498914333333333333333333",
+        "max": "69.50448000000000000000",
+        "mean": "-57.9325203111111111111111111",
+        "median": "11.547850500000000000000",
+        "count_positive": 2
+      }
+    },
+    "volatility_breakout_v1": {
+      "total_windows": 4,
+      "included_window_count": 0,
+      "excluded_window_count": 4,
+      "out_of_sample_expectancy": {
+        "count": 0,
+        "min": null,
+        "max": null,
+        "mean": null,
+        "median": null,
+        "count_positive": 0
+      }
     }
-   ]
   }
- }
 }

@@ -1,122 +1,192 @@
 {
- "symbol": "WIPRO",
- "results": {
-  "breakout_v1": {
-   "RANGING": [
-    {
-     "symbol": "WIPRO",
-     "rule_id": "breakout_v1",
-     "regime": "RANGING",
-     "baseline_has_edge": null,
-     "realistic_has_edge": null,
-     "flipped": false,
-     "trade_count_baseline": 8,
-     "trade_count_realistic": 8,
-     "expectancy_baseline": "180.2050000000000000000000000",
-     "expectancy_realistic": "-158.8401569375000000000000000",
-     "profit_factor_baseline": "1.778801793528172438009831992",
-     "profit_factor_realistic": "0.6518904594508724234113481814",
-     "sharpe_baseline": "3.3313",
-     "sharpe_realistic": "0.7113",
-     "max_drawdown_baseline": "0.2060412508335718743261886216",
-     "max_drawdown_realistic": "0.2310720146810002610954242156",
-     "regime_trade_count": 24,
-     "regime_expectancy": "-143.3519398252083333333333334",
-     "regime_win_rate": "0.5833",
-     "walk_forward_windows": 4,
-     "walk_forward_included": 2,
-     "walk_forward_oos_expectancy_mean": null,
-     "trade_count_significance": 8,
-     "trades": [
-      365.98089294,
-      -1977.4902404,
-      -98.066091,
-      337.23515826,
-      867.9529188,
-      224.36040705,
-      307.4194836,
-      276.678718
-     ]
+  "symbol": "WIPRO",
+  "results": {
+    "breakout_v1": {
+      "RANGING": [
+        {
+          "symbol": "WIPRO",
+          "rule_id": "breakout_v1",
+          "regime": "RANGING",
+          "baseline_has_edge": null,
+          "realistic_has_edge": null,
+          "flipped": false,
+          "trade_count_baseline": 9,
+          "trade_count_realistic": 8,
+          "expectancy_baseline": "137.1455555555555555555555556",
+          "expectancy_realistic": "-158.8401569375000000000000000",
+          "profit_factor_baseline": "1.622838400403683612968336067",
+          "profit_factor_realistic": "0.6518904594508724234113481814",
+          "sharpe_baseline": "2.6981",
+          "sharpe_realistic": "0.7113",
+          "max_drawdown_baseline": "0.2061629492508387842435411049",
+          "max_drawdown_realistic": "0.2310720146810002610954242156",
+          "regime_trade_count": 24,
+          "regime_expectancy": "-143.3519398252083333333333334",
+          "regime_win_rate": "0.5833",
+          "walk_forward_windows": 4,
+          "walk_forward_included": 3,
+          "walk_forward_oos_expectancy_mean": 56.40341684,
+          "walk_forward_oos_status": "computed",
+          "trade_count_significance": 8,
+          "trades": [
+            365.98089294,
+            -1977.4902404,
+            -98.066091,
+            337.23515826,
+            867.9529188,
+            224.36040705,
+            307.4194836,
+            276.678718
+          ]
+        }
+      ]
+    },
+    "price_movement_v1": {
+      "RANGING": [
+        {
+          "symbol": "WIPRO",
+          "rule_id": "price_movement_v1",
+          "regime": "RANGING",
+          "baseline_has_edge": true,
+          "realistic_has_edge": false,
+          "flipped": true,
+          "trade_count_baseline": 14,
+          "trade_count_realistic": 12,
+          "expectancy_baseline": "98.62035714285714285714285718",
+          "expectancy_realistic": "-70.85646195874999999999999995",
+          "profit_factor_baseline": "3.755972829481574016239850094",
+          "profit_factor_realistic": "0.6639384183601459075465744804",
+          "sharpe_baseline": "6.2088",
+          "sharpe_realistic": "2.9545",
+          "max_drawdown_baseline": "0.03126601732998295370277024458",
+          "max_drawdown_realistic": "0.04342410277431248087253510506",
+          "regime_trade_count": 24,
+          "regime_expectancy": "-143.3519398252083333333333334",
+          "regime_win_rate": "0.5833",
+          "walk_forward_windows": 4,
+          "walk_forward_included": 1,
+          "walk_forward_oos_expectancy_mean": 85.46960336,
+          "walk_forward_oos_status": "computed",
+          "trade_count_significance": 12,
+          "trades": [
+            15.5319910625,
+            -296.77898607,
+            121.2041984,
+            294.544752605,
+            904.884228395,
+            -268.8346232,
+            224.35856778,
+            119.3229275,
+            -209.814249015,
+            -49.54000931,
+            -81.88498782,
+            -49.13365083
+          ]
+        }
+      ]
+    },
+    "volatility_breakout_v1": {
+      "RANGING": [
+        {
+          "symbol": "WIPRO",
+          "rule_id": "volatility_breakout_v1",
+          "regime": "RANGING",
+          "baseline_has_edge": null,
+          "realistic_has_edge": null,
+          "flipped": false,
+          "trade_count_baseline": 5,
+          "trade_count_realistic": 4,
+          "expectancy_baseline": "288.91500000000000000",
+          "expectancy_realistic": "-329.861939200000000000000",
+          "profit_factor_baseline": "3.026051893408134642356241234",
+          "profit_factor_realistic": "0.5360552488187395915675550101",
+          "sharpe_baseline": "6.1795",
+          "sharpe_realistic": "-0.3959",
+          "max_drawdown_baseline": "0.07927627814570889647723165287",
+          "max_drawdown_realistic": "0.1798415811171808777099767419",
+          "regime_trade_count": 24,
+          "regime_expectancy": "-143.3519398252083333333333334",
+          "regime_win_rate": "0.5833",
+          "walk_forward_windows": 4,
+          "walk_forward_included": 0,
+          "walk_forward_oos_expectancy_mean": null,
+          "walk_forward_oos_status": "0 OOS windows had trades",
+          "trade_count_significance": 4,
+          "trades": [
+            701.8990011,
+            822.6292833,
+            -975.7585642,
+            -641.7145986
+          ]
+        }
+      ]
     }
-   ]
   },
-  "price_movement_v1": {
-   "RANGING": [
-    {
-     "symbol": "WIPRO",
-     "rule_id": "price_movement_v1",
-     "regime": "RANGING",
-     "baseline_has_edge": true,
-     "realistic_has_edge": false,
-     "flipped": true,
-     "trade_count_baseline": 12,
-     "trade_count_realistic": 12,
-     "expectancy_baseline": "132.38125000000000000",
-     "expectancy_realistic": "-70.85646195874999999999999995",
-     "profit_factor_baseline": "4.417493112947658402203856749",
-     "profit_factor_realistic": "0.6639384183601459075465744804",
-     "sharpe_baseline": "7.2296",
-     "sharpe_realistic": "2.9545",
-     "max_drawdown_baseline": "0.02298707659052390580475916099",
-     "max_drawdown_realistic": "0.04342410277431248087253510506",
-     "regime_trade_count": 24,
-     "regime_expectancy": "-143.3519398252083333333333334",
-     "regime_win_rate": "0.5833",
-     "walk_forward_windows": 4,
-     "walk_forward_included": 2,
-     "walk_forward_oos_expectancy_mean": null,
-     "trade_count_significance": 12,
-     "trades": [
-      15.5319910625,
-      -296.77898607,
-      121.2041984,
-      294.544752605,
-      904.884228395,
-      -268.8346232,
-      224.35856778,
-      119.3229275,
-      -209.814249015,
-      -49.54000931,
-      -81.88498782,
-      -49.13365083
-     ]
+  "walk_forward_distribution": {
+    "out_of_sample_expectancy": {
+      "count": 1,
+      "min": "-0.8067984266666666666666667",
+      "max": "-0.8067984266666666666666667",
+      "mean": "-0.8067984266666666666666667",
+      "median": "-0.8067984266666666666666667",
+      "count_positive": 0
+    },
+    "out_of_sample_sharpe_ratio": {
+      "count": 1,
+      "min": "10.0209",
+      "max": "10.0209",
+      "mean": "10.0209",
+      "median": "10.0209",
+      "count_positive": 1
+    },
+    "out_of_sample_win_rate": {
+      "count": 1,
+      "min": "0.6667",
+      "max": "0.6667",
+      "mean": "0.6667",
+      "median": "0.6667",
+      "count_positive": 1
     }
-   ]
   },
-  "volatility_breakout_v1": {
-   "RANGING": [
-    {
-     "symbol": "WIPRO",
-     "rule_id": "volatility_breakout_v1",
-     "regime": "RANGING",
-     "baseline_has_edge": null,
-     "realistic_has_edge": null,
-     "flipped": false,
-     "trade_count_baseline": 4,
-     "trade_count_realistic": 4,
-     "expectancy_baseline": "198.20625000000000000",
-     "expectancy_realistic": "-329.861939200000000000000",
-     "profit_factor_baseline": "1.628926701570680628272251309",
-     "profit_factor_realistic": "0.5360552488187395915675550101",
-     "sharpe_baseline": "3.2891",
-     "sharpe_realistic": "-0.3959",
-     "max_drawdown_baseline": "0.1400796389988690673515719897",
-     "max_drawdown_realistic": "0.1798415811171808777099767419",
-     "regime_trade_count": 24,
-     "regime_expectancy": "-143.3519398252083333333333334",
-     "regime_win_rate": "0.5833",
-     "walk_forward_windows": 4,
-     "walk_forward_included": 2,
-     "walk_forward_oos_expectancy_mean": null,
-     "trade_count_significance": 4,
-     "trades": [
-      701.8990011,
-      822.6292833,
-      -975.7585642,
-      -641.7145986
-     ]
+  "walk_forward_distribution_by_rule": {
+    "breakout_v1": {
+      "total_windows": 4,
+      "included_window_count": 3,
+      "excluded_window_count": 1,
+      "out_of_sample_expectancy": {
+        "count": 3,
+        "min": "-173.35960200000000000000",
+        "max": "185.83601652000000000000",
+        "mean": "56.40341684000000000000",
+        "median": "156.73383600000000000000",
+        "count_positive": 2
+      }
+    },
+    "price_movement_v1": {
+      "total_windows": 4,
+      "included_window_count": 1,
+      "excluded_window_count": 3,
+      "out_of_sample_expectancy": {
+        "count": 1,
+        "min": "85.46960336000000000000",
+        "max": "85.46960336000000000000",
+        "mean": "85.46960336000000000000",
+        "median": "85.46960336000000000000",
+        "count_positive": 1
+      }
+    },
+    "volatility_breakout_v1": {
+      "total_windows": 4,
+      "included_window_count": 0,
+      "excluded_window_count": 4,
+      "out_of_sample_expectancy": {
+        "count": 0,
+        "min": null,
+        "max": null,
+        "mean": null,
+        "median": null,
+        "count_positive": 0
+      }
     }
-   ]
   }
- }
 }

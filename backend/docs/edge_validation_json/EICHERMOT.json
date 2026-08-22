@@ -1,122 +1,192 @@
 {
- "symbol": "EICHERMOT",
- "results": {
-  "breakout_v1": {
-   "RANGING": [
-    {
-     "symbol": "EICHERMOT",
-     "rule_id": "breakout_v1",
-     "regime": "RANGING",
-     "baseline_has_edge": null,
-     "realistic_has_edge": null,
-     "flipped": false,
-     "trade_count_baseline": 7,
-     "trade_count_realistic": 7,
-     "expectancy_baseline": "340.0204857142857142857142857",
-     "expectancy_realistic": "172.3655829352114285714285714",
-     "profit_factor_baseline": "999.99",
-     "profit_factor_realistic": "2.504955224963142458553097961",
-     "sharpe_baseline": "13.3104",
-     "sharpe_realistic": "11.2293",
-     "max_drawdown_baseline": "0",
-     "max_drawdown_realistic": "0.01068400923920704726436395982",
-     "regime_trade_count": 24,
-     "regime_expectancy": "66.2363975858666666666666667",
-     "regime_win_rate": "0.5417",
-     "walk_forward_windows": 4,
-     "walk_forward_included": 3,
-     "walk_forward_oos_expectancy_mean": null,
-     "trade_count_significance": 7,
-     "trades": [
-      -110.1507467,
-      905.432632,
-      657.42907032324,
-      69.8082525,
-      -10.1923572,
-      331.03202235,
-      44.5813411
-     ]
+  "symbol": "EICHERMOT",
+  "results": {
+    "breakout_v1": {
+      "RANGING": [
+        {
+          "symbol": "EICHERMOT",
+          "rule_id": "breakout_v1",
+          "regime": "RANGING",
+          "baseline_has_edge": null,
+          "realistic_has_edge": null,
+          "flipped": false,
+          "trade_count_baseline": 7,
+          "trade_count_realistic": 7,
+          "expectancy_baseline": "340.0204857142857142857142857",
+          "expectancy_realistic": "172.3655829352114285714285714",
+          "profit_factor_baseline": "999.99",
+          "profit_factor_realistic": "2.504955224963142458553097961",
+          "sharpe_baseline": "13.3104",
+          "sharpe_realistic": "11.2293",
+          "max_drawdown_baseline": "0",
+          "max_drawdown_realistic": "0.01068400923920704726436395982",
+          "regime_trade_count": 24,
+          "regime_expectancy": "66.2363975858666666666666667",
+          "regime_win_rate": "0.5417",
+          "walk_forward_windows": 4,
+          "walk_forward_included": 3,
+          "walk_forward_oos_expectancy_mean": 163.20936673333333,
+          "walk_forward_oos_status": "computed",
+          "trade_count_significance": 7,
+          "trades": [
+            -110.1507467,
+            905.432632,
+            657.42907032324,
+            69.8082525,
+            -10.1923572,
+            331.03202235,
+            44.5813411
+          ]
+        }
+      ]
+    },
+    "price_movement_v1": {
+      "RANGING": [
+        {
+          "symbol": "EICHERMOT",
+          "rule_id": "price_movement_v1",
+          "regime": "RANGING",
+          "baseline_has_edge": true,
+          "realistic_has_edge": true,
+          "flipped": false,
+          "trade_count_baseline": 10,
+          "trade_count_realistic": 10,
+          "expectancy_baseline": "428.39452000000000000",
+          "expectancy_realistic": "88.5129667814320000000000000",
+          "profit_factor_baseline": "6.925210822085108913794271946",
+          "profit_factor_realistic": "1.274760147034658457734302155",
+          "sharpe_baseline": "8.3021",
+          "sharpe_realistic": "5.9213",
+          "max_drawdown_baseline": "0.06339058901468152571421012780",
+          "max_drawdown_realistic": "0.09212919982490682000239356194",
+          "regime_trade_count": 24,
+          "regime_expectancy": "66.2363975858666666666666667",
+          "regime_win_rate": "0.5417",
+          "walk_forward_windows": 4,
+          "walk_forward_included": 2,
+          "walk_forward_oos_expectancy_mean": -356.65596896475,
+          "walk_forward_oos_status": "computed",
+          "trade_count_significance": 10,
+          "trades": [
+            1011.556884,
+            1344.3252432054,
+            -43.1853849,
+            -84.3671669,
+            -80.503806,
+            -743.95417409865,
+            1628.37984097365,
+            -114.245924,
+            -181.76988987324,
+            122.3307734
+          ]
+        }
+      ]
+    },
+    "volatility_breakout_v1": {
+      "RANGING": [
+        {
+          "symbol": "EICHERMOT",
+          "rule_id": "volatility_breakout_v1",
+          "regime": "RANGING",
+          "baseline_has_edge": null,
+          "realistic_has_edge": null,
+          "flipped": false,
+          "trade_count_baseline": 7,
+          "trade_count_realistic": 7,
+          "expectancy_baseline": "97.00085714285714285714285714",
+          "expectancy_realistic": "-71.71645804285714285714285715",
+          "profit_factor_baseline": "63.88955986959098992294013041",
+          "profit_factor_realistic": "0.4337371848647873301211872008",
+          "sharpe_baseline": "10.8825",
+          "sharpe_realistic": "3.9207",
+          "max_drawdown_baseline": "0.0005331766714648255046711672260",
+          "max_drawdown_realistic": "0.01032560652307435048904967517",
+          "regime_trade_count": 24,
+          "regime_expectancy": "66.2363975858666666666666667",
+          "regime_win_rate": "0.5417",
+          "walk_forward_windows": 4,
+          "walk_forward_included": 1,
+          "walk_forward_oos_expectancy_mean": -174.149744,
+          "walk_forward_oos_status": "computed",
+          "trade_count_significance": 7,
+          "trades": [
+            188.683572,
+            -106.475144,
+            119.545572,
+            -84.59797225,
+            62.4419836,
+            13.854673,
+            -9.7689125
+          ]
+        }
+      ]
     }
-   ]
   },
-  "price_movement_v1": {
-   "RANGING": [
-    {
-     "symbol": "EICHERMOT",
-     "rule_id": "price_movement_v1",
-     "regime": "RANGING",
-     "baseline_has_edge": true,
-     "realistic_has_edge": true,
-     "flipped": false,
-     "trade_count_baseline": 10,
-     "trade_count_realistic": 10,
-     "expectancy_baseline": "428.39452000000000000",
-     "expectancy_realistic": "88.5129667814320000000000000",
-     "profit_factor_baseline": "6.925210822085108913794271946",
-     "profit_factor_realistic": "1.274760147034658457734302155",
-     "sharpe_baseline": "8.3021",
-     "sharpe_realistic": "5.9213",
-     "max_drawdown_baseline": "0.06339058901468152571421012780",
-     "max_drawdown_realistic": "0.09212919982490682000239356194",
-     "regime_trade_count": 24,
-     "regime_expectancy": "66.2363975858666666666666667",
-     "regime_win_rate": "0.5417",
-     "walk_forward_windows": 4,
-     "walk_forward_included": 3,
-     "walk_forward_oos_expectancy_mean": null,
-     "trade_count_significance": 10,
-     "trades": [
-      1011.556884,
-      1344.3252432054,
-      -43.1853849,
-      -84.3671669,
-      -80.503806,
-      -743.95417409865,
-      1628.37984097365,
-      -114.245924,
-      -181.76988987324,
-      122.3307734
-     ]
+  "walk_forward_distribution": {
+    "out_of_sample_expectancy": {
+      "count": 3,
+      "min": "-486.60573612950000000000",
+      "max": "89.7309534666666666666666666",
+      "mean": "-193.4044548431666666666666667",
+      "median": "-183.3385818666666666666666667",
+      "count_positive": 1
+    },
+    "out_of_sample_sharpe_ratio": {
+      "count": 3,
+      "min": "-96.593",
+      "max": "7.3511",
+      "mean": "-30.0143",
+      "median": "-0.801",
+      "count_positive": 1
+    },
+    "out_of_sample_win_rate": {
+      "count": 3,
+      "min": "0.0000",
+      "max": "0.3333",
+      "mean": "0.2222",
+      "median": "0.3333",
+      "count_positive": 2
     }
-   ]
   },
-  "volatility_breakout_v1": {
-   "RANGING": [
-    {
-     "symbol": "EICHERMOT",
-     "rule_id": "volatility_breakout_v1",
-     "regime": "RANGING",
-     "baseline_has_edge": null,
-     "realistic_has_edge": null,
-     "flipped": false,
-     "trade_count_baseline": 7,
-     "trade_count_realistic": 7,
-     "expectancy_baseline": "97.00085714285714285714285714",
-     "expectancy_realistic": "-71.71645804285714285714285715",
-     "profit_factor_baseline": "63.88955986959098992294013041",
-     "profit_factor_realistic": "0.4337371848647873301211872008",
-     "sharpe_baseline": "10.8825",
-     "sharpe_realistic": "3.9207",
-     "max_drawdown_baseline": "0.0005331766714648255046711672260",
-     "max_drawdown_realistic": "0.01032560652307435048904967517",
-     "regime_trade_count": 24,
-     "regime_expectancy": "66.2363975858666666666666667",
-     "regime_win_rate": "0.5417",
-     "walk_forward_windows": 4,
-     "walk_forward_included": 3,
-     "walk_forward_oos_expectancy_mean": null,
-     "trade_count_significance": 7,
-     "trades": [
-      188.683572,
-      -106.475144,
-      119.545572,
-      -84.59797225,
-      62.4419836,
-      13.854673,
-      -9.7689125
-     ]
+  "walk_forward_distribution_by_rule": {
+    "breakout_v1": {
+      "total_windows": 4,
+      "included_window_count": 3,
+      "excluded_window_count": 1,
+      "out_of_sample_expectancy": {
+        "count": 3,
+        "min": "-201.71625760000000000000",
+        "max": "722.60526400000000000000",
+        "mean": "163.2093667333333333333333333",
+        "median": "-31.26090620000000000000",
+        "count_positive": 1
+      }
+    },
+    "price_movement_v1": {
+      "total_windows": 4,
+      "included_window_count": 2,
+      "excluded_window_count": 2,
+      "out_of_sample_expectancy": {
+        "count": 2,
+        "min": "-486.60573612950000000000",
+        "max": "-226.70620180000000000000",
+        "mean": "-356.65596896475000000000",
+        "median": "-356.65596896475000000000",
+        "count_positive": 0
+      }
+    },
+    "volatility_breakout_v1": {
+      "total_windows": 4,
+      "included_window_count": 1,
+      "excluded_window_count": 3,
+      "out_of_sample_expectancy": {
+        "count": 1,
+        "min": "-174.149744000000000000000",
+        "max": "-174.149744000000000000000",
+        "mean": "-174.149744000000000000000",
+        "median": "-174.149744000000000000000",
+        "count_positive": 0
+      }
     }
-   ]
   }
- }
 }

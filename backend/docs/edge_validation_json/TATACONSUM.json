@@ -1,128 +1,198 @@
 {
- "symbol": "TATACONSUM",
- "results": {
-  "breakout_v1": {
-   "RANGING": [
-    {
-     "symbol": "TATACONSUM",
-     "rule_id": "breakout_v1",
-     "regime": "RANGING",
-     "baseline_has_edge": false,
-     "realistic_has_edge": false,
-     "flipped": false,
-     "trade_count_baseline": 15,
-     "trade_count_realistic": 15,
-     "expectancy_baseline": "-112.58478000000000000",
-     "expectancy_realistic": "-208.0669906404493333333333334",
-     "profit_factor_baseline": "0.6472196199734865223155103844",
-     "profit_factor_realistic": "0.3209976480957348860218750746",
-     "sharpe_baseline": "-1.3707",
-     "sharpe_realistic": "-2.368",
-     "max_drawdown_baseline": "0.2887551981670546907048078286",
-     "max_drawdown_realistic": "0.3133910288796859722796007540",
-     "regime_trade_count": 30,
-     "regime_expectancy": "-37.5039889465580000000000000",
-     "regime_win_rate": "0.4667",
-     "walk_forward_windows": 4,
-     "walk_forward_included": 3,
-     "walk_forward_oos_expectancy_mean": null,
-     "trade_count_significance": 15,
-     "trades": [
-      -3137.43541947,
-      752.925287,
-      397.23614556,
-      270.09650568,
-      -74.4999625,
-      -3.4746606,
-      45.1722348,
-      -13.64809878837,
-      0.2138724,
-      -4.096054,
-      -155.82396401,
-      -11.82570136,
-      9.80772114,
-      -6.3973806,
-      -2.95175273
-     ]
+  "symbol": "TATACONSUM",
+  "results": {
+    "breakout_v1": {
+      "RANGING": [
+        {
+          "symbol": "TATACONSUM",
+          "rule_id": "breakout_v1",
+          "regime": "RANGING",
+          "baseline_has_edge": false,
+          "realistic_has_edge": false,
+          "flipped": false,
+          "trade_count_baseline": 15,
+          "trade_count_realistic": 15,
+          "expectancy_baseline": "-112.58478000000000000",
+          "expectancy_realistic": "-208.0669906404493333333333334",
+          "profit_factor_baseline": "0.6472196199734865223155103844",
+          "profit_factor_realistic": "0.3209976480957348860218750746",
+          "sharpe_baseline": "-1.3707",
+          "sharpe_realistic": "-2.368",
+          "max_drawdown_baseline": "0.2887551981670546907048078286",
+          "max_drawdown_realistic": "0.3133910288796859722796007540",
+          "regime_trade_count": 30,
+          "regime_expectancy": "-37.5039889465580000000000000",
+          "regime_win_rate": "0.4667",
+          "walk_forward_windows": 4,
+          "walk_forward_included": 2,
+          "walk_forward_oos_expectancy_mean": -126.4292104,
+          "walk_forward_oos_status": "computed",
+          "trade_count_significance": 15,
+          "trades": [
+            -3137.43541947,
+            752.925287,
+            397.23614556,
+            270.09650568,
+            -74.4999625,
+            -3.4746606,
+            45.1722348,
+            -13.64809878837,
+            0.2138724,
+            -4.096054,
+            -155.82396401,
+            -11.82570136,
+            9.80772114,
+            -6.3973806,
+            -2.95175273
+          ]
+        }
+      ]
+    },
+    "price_movement_v1": {
+      "RANGING": [
+        {
+          "symbol": "TATACONSUM",
+          "rule_id": "price_movement_v1",
+          "regime": "RANGING",
+          "baseline_has_edge": true,
+          "realistic_has_edge": true,
+          "flipped": false,
+          "trade_count_baseline": 10,
+          "trade_count_realistic": 10,
+          "expectancy_baseline": "203.9700000000000000000000000",
+          "expectancy_realistic": "128.7080213000000000000000000",
+          "profit_factor_baseline": "14.42091754892524863650946423",
+          "profit_factor_realistic": "2.901750658415452411331121465",
+          "sharpe_baseline": "8.0342",
+          "sharpe_realistic": "7.374",
+          "max_drawdown_baseline": "0.01279314422760408949418915001",
+          "max_drawdown_realistic": "0.01922744684443511918500004713",
+          "regime_trade_count": 30,
+          "regime_expectancy": "-37.5039889465580000000000000",
+          "regime_win_rate": "0.4667",
+          "walk_forward_windows": 4,
+          "walk_forward_included": 3,
+          "walk_forward_oos_expectancy_mean": -248.69527893666665,
+          "walk_forward_oos_status": "computed",
+          "trade_count_significance": 10,
+          "trades": [
+            779.78662344,
+            971.913657,
+            146.33000434,
+            -47.0433093,
+            12.56035,
+            -83.37305933,
+            -74.99966955,
+            49.58072472,
+            3.6959009,
+            -4.22896572
+          ]
+        }
+      ]
+    },
+    "volatility_breakout_v1": {
+      "RANGING": [
+        {
+          "symbol": "TATACONSUM",
+          "rule_id": "volatility_breakout_v1",
+          "regime": "RANGING",
+          "baseline_has_edge": null,
+          "realistic_has_edge": null,
+          "flipped": false,
+          "trade_count_baseline": 5,
+          "trade_count_realistic": 5,
+          "expectancy_baseline": "248.01000000000000000",
+          "expectancy_realistic": "141.760995642000000000000",
+          "profit_factor_baseline": "8.488224637681159420289855072",
+          "profit_factor_realistic": "2.373887505819573750782395358",
+          "sharpe_baseline": "7.5792",
+          "sharpe_realistic": "7.0877",
+          "max_drawdown_baseline": "0.01651820094716282184364862686",
+          "max_drawdown_realistic": "0.02069807118512622308761195768",
+          "regime_trade_count": 30,
+          "regime_expectancy": "-37.5039889465580000000000000",
+          "regime_win_rate": "0.4667",
+          "walk_forward_windows": 4,
+          "walk_forward_included": 0,
+          "walk_forward_oos_expectancy_mean": null,
+          "walk_forward_oos_status": "0 OOS windows had trades",
+          "trade_count_significance": 5,
+          "trades": [
+            978.0293025,
+            246.6876228,
+            -126.589961355,
+            -18.26512926,
+            -62.61193308
+          ]
+        }
+      ]
     }
-   ]
   },
-  "price_movement_v1": {
-   "RANGING": [
-    {
-     "symbol": "TATACONSUM",
-     "rule_id": "price_movement_v1",
-     "regime": "RANGING",
-     "baseline_has_edge": true,
-     "realistic_has_edge": true,
-     "flipped": false,
-     "trade_count_baseline": 10,
-     "trade_count_realistic": 10,
-     "expectancy_baseline": "203.9700000000000000000000000",
-     "expectancy_realistic": "128.7080213000000000000000000",
-     "profit_factor_baseline": "14.42091754892524863650946423",
-     "profit_factor_realistic": "2.901750658415452411331121465",
-     "sharpe_baseline": "8.0342",
-     "sharpe_realistic": "7.374",
-     "max_drawdown_baseline": "0.01279314422760408949418915001",
-     "max_drawdown_realistic": "0.01922744684443511918500004713",
-     "regime_trade_count": 30,
-     "regime_expectancy": "-37.5039889465580000000000000",
-     "regime_win_rate": "0.4667",
-     "walk_forward_windows": 4,
-     "walk_forward_included": 3,
-     "walk_forward_oos_expectancy_mean": null,
-     "trade_count_significance": 10,
-     "trades": [
-      779.78662344,
-      971.913657,
-      146.33000434,
-      -47.0433093,
-      12.56035,
-      -83.37305933,
-      -74.99966955,
-      49.58072472,
-      3.6959009,
-      -4.22896572
-     ]
+  "walk_forward_distribution": {
+    "out_of_sample_expectancy": {
+      "count": 3,
+      "min": "-632.6094062100000000000000001",
+      "max": "23.567493740000000000000",
+      "mean": "-271.9256106366666666666666667",
+      "median": "-206.73491944000000000000",
+      "count_positive": 1
+    },
+    "out_of_sample_sharpe_ratio": {
+      "count": 3,
+      "min": "-115.5139",
+      "max": "10.7043",
+      "mean": "-37.33366666666666666666666667",
+      "median": "-7.1914",
+      "count_positive": 1
+    },
+    "out_of_sample_win_rate": {
+      "count": 3,
+      "min": "0.0000",
+      "max": "0.5000",
+      "mean": "0.2777666666666666666666666667",
+      "median": "0.3333",
+      "count_positive": 2
     }
-   ]
   },
-  "volatility_breakout_v1": {
-   "RANGING": [
-    {
-     "symbol": "TATACONSUM",
-     "rule_id": "volatility_breakout_v1",
-     "regime": "RANGING",
-     "baseline_has_edge": null,
-     "realistic_has_edge": null,
-     "flipped": false,
-     "trade_count_baseline": 5,
-     "trade_count_realistic": 5,
-     "expectancy_baseline": "248.01000000000000000",
-     "expectancy_realistic": "141.760995642000000000000",
-     "profit_factor_baseline": "8.488224637681159420289855072",
-     "profit_factor_realistic": "2.373887505819573750782395358",
-     "sharpe_baseline": "7.5792",
-     "sharpe_realistic": "7.0877",
-     "max_drawdown_baseline": "0.01651820094716282184364862686",
-     "max_drawdown_realistic": "0.02069807118512622308761195768",
-     "regime_trade_count": 30,
-     "regime_expectancy": "-37.5039889465580000000000000",
-     "regime_win_rate": "0.4667",
-     "walk_forward_windows": 4,
-     "walk_forward_included": 3,
-     "walk_forward_oos_expectancy_mean": null,
-     "trade_count_significance": 5,
-     "trades": [
-      978.0293025,
-      246.6876228,
-      -126.589961355,
-      -18.26512926,
-      -62.61193308
-     ]
+  "walk_forward_distribution_by_rule": {
+    "breakout_v1": {
+      "total_windows": 4,
+      "included_window_count": 2,
+      "excluded_window_count": 2,
+      "out_of_sample_expectancy": {
+        "count": 2,
+        "min": "-208.44209960000000000000",
+        "max": "-44.41632120000000000000",
+        "mean": "-126.42921040000000000000",
+        "median": "-126.42921040000000000000",
+        "count_positive": 0
+      }
+    },
+    "price_movement_v1": {
+      "total_windows": 4,
+      "included_window_count": 3,
+      "excluded_window_count": 1,
+      "out_of_sample_expectancy": {
+        "count": 3,
+        "min": "-632.6094062100000000000000001",
+        "max": "91.55130868000000000000",
+        "mean": "-248.6952789366666666666666667",
+        "median": "-205.02773928000000000000",
+        "count_positive": 1
+      }
+    },
+    "volatility_breakout_v1": {
+      "total_windows": 4,
+      "included_window_count": 0,
+      "excluded_window_count": 4,
+      "out_of_sample_expectancy": {
+        "count": 0,
+        "min": null,
+        "max": null,
+        "mean": null,
+        "median": null,
+        "count_positive": 0
+      }
     }
-   ]
   }
- }
 }

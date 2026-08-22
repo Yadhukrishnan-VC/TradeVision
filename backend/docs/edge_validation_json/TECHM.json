@@ -1,132 +1,202 @@
 {
- "symbol": "TECHM",
- "results": {
-  "breakout_v1": {
-   "RANGING": [
-    {
-     "symbol": "TECHM",
-     "rule_id": "breakout_v1",
-     "regime": "RANGING",
-     "baseline_has_edge": true,
-     "realistic_has_edge": false,
-     "flipped": true,
-     "trade_count_baseline": 11,
-     "trade_count_realistic": 11,
-     "expectancy_baseline": "159.9590909090909090909090909",
-     "expectancy_realistic": "-104.2174929309090909090909091",
-     "profit_factor_baseline": "2.735341979387543764485428276",
-     "profit_factor_realistic": "0.6301272404536980184233509729",
-     "sharpe_baseline": "5.4472",
-     "sharpe_realistic": "1.6815",
-     "max_drawdown_baseline": "0.09827207981644890131254248826",
-     "max_drawdown_realistic": "0.1340330526531969303268377588",
-     "regime_trade_count": 34,
-     "regime_expectancy": "-100.0461577158823529411764706",
-     "regime_win_rate": "0.4412",
-     "walk_forward_windows": 4,
-     "walk_forward_included": 3,
-     "walk_forward_oos_expectancy_mean": null,
-     "trade_count_significance": 11,
-     "trades": [
-      58.72372425,
-      510.03430398,
-      441.390697,
-      -254.5883795,
-      -1085.79826953,
-      678.5077396,
-      -44.1964908,
-      54.56506704,
-      103.808874,
-      -27.6552175,
-      106.00094034
-     ]
+  "symbol": "TECHM",
+  "results": {
+    "breakout_v1": {
+      "RANGING": [
+        {
+          "symbol": "TECHM",
+          "rule_id": "breakout_v1",
+          "regime": "RANGING",
+          "baseline_has_edge": true,
+          "realistic_has_edge": false,
+          "flipped": true,
+          "trade_count_baseline": 11,
+          "trade_count_realistic": 11,
+          "expectancy_baseline": "159.9590909090909090909090909",
+          "expectancy_realistic": "-104.2174929309090909090909091",
+          "profit_factor_baseline": "2.735341979387543764485428276",
+          "profit_factor_realistic": "0.6301272404536980184233509729",
+          "sharpe_baseline": "5.4472",
+          "sharpe_realistic": "1.6815",
+          "max_drawdown_baseline": "0.09827207981644890131254248826",
+          "max_drawdown_realistic": "0.1340330526531969303268377588",
+          "regime_trade_count": 34,
+          "regime_expectancy": "-100.0461577158823529411764706",
+          "regime_win_rate": "0.4412",
+          "walk_forward_windows": 4,
+          "walk_forward_included": 2,
+          "walk_forward_oos_expectancy_mean": 74.7712856,
+          "walk_forward_oos_status": "computed",
+          "trade_count_significance": 11,
+          "trades": [
+            58.72372425,
+            510.03430398,
+            441.390697,
+            -254.5883795,
+            -1085.79826953,
+            678.5077396,
+            -44.1964908,
+            54.56506704,
+            103.808874,
+            -27.6552175,
+            106.00094034
+          ]
+        }
+      ]
+    },
+    "price_movement_v1": {
+      "RANGING": [
+        {
+          "symbol": "TECHM",
+          "rule_id": "price_movement_v1",
+          "regime": "RANGING",
+          "baseline_has_edge": false,
+          "realistic_has_edge": false,
+          "flipped": false,
+          "trade_count_baseline": 21,
+          "trade_count_realistic": 21,
+          "expectancy_baseline": "-0.50714285714285714285714286",
+          "expectancy_realistic": "-59.63114790952380952380952379",
+          "profit_factor_baseline": "0.9926778961842557579924372637",
+          "profit_factor_realistic": "0.4894752276328233860032297814",
+          "sharpe_baseline": "-0.0369",
+          "sharpe_realistic": "-1.944",
+          "max_drawdown_baseline": "0.1135848326648979489731046532",
+          "max_drawdown_realistic": "0.1310029195830075989476040161",
+          "regime_trade_count": 34,
+          "regime_expectancy": "-100.0461577158823529411764706",
+          "regime_win_rate": "0.4412",
+          "walk_forward_windows": 4,
+          "walk_forward_included": 3,
+          "walk_forward_oos_expectancy_mean": -298.92918642666666,
+          "walk_forward_oos_status": "computed",
+          "trade_count_significance": 21,
+          "trades": [
+            392.445399,
+            -174.68395477,
+            113.518692,
+            235.30503438,
+            -123.40647,
+            -112.0791861,
+            -70.4664819,
+            -117.10791894,
+            -126.88785,
+            -66.8796264,
+            -692.675435,
+            129.8737388,
+            -81.74943708,
+            69.9549662,
+            156.22186302,
+            -34.38123123,
+            -57.05962092,
+            -24.68217356,
+            72.09254165,
+            31.209942,
+            -49.8954192
+          ]
+        }
+      ]
+    },
+    "volatility_breakout_v1": {
+      "RANGING": [
+        {
+          "symbol": "TECHM",
+          "rule_id": "volatility_breakout_v1",
+          "regime": "RANGING",
+          "baseline_has_edge": null,
+          "realistic_has_edge": null,
+          "flipped": false,
+          "trade_count_baseline": 2,
+          "trade_count_realistic": 2,
+          "expectancy_baseline": "-312.0500000000000000",
+          "expectancy_realistic": "-501.46141700000000000000",
+          "profit_factor_baseline": "0E+16",
+          "profit_factor_realistic": "0E+20",
+          "sharpe_baseline": "-35.1753",
+          "sharpe_realistic": "-45.7225",
+          "max_drawdown_baseline": "0.06247048871192680127996192374",
+          "max_drawdown_realistic": "0.07837377919584228785364332775",
+          "regime_trade_count": 34,
+          "regime_expectancy": "-100.0461577158823529411764706",
+          "regime_win_rate": "0.4412",
+          "walk_forward_windows": 4,
+          "walk_forward_included": 0,
+          "walk_forward_oos_expectancy_mean": null,
+          "walk_forward_oos_status": "0 OOS windows had trades",
+          "trade_count_significance": 2,
+          "trades": [
+            -295.432375,
+            -487.546542
+          ]
+        }
+      ]
     }
-   ]
   },
-  "price_movement_v1": {
-   "RANGING": [
-    {
-     "symbol": "TECHM",
-     "rule_id": "price_movement_v1",
-     "regime": "RANGING",
-     "baseline_has_edge": false,
-     "realistic_has_edge": false,
-     "flipped": false,
-     "trade_count_baseline": 21,
-     "trade_count_realistic": 21,
-     "expectancy_baseline": "-0.50714285714285714285714286",
-     "expectancy_realistic": "-59.63114790952380952380952379",
-     "profit_factor_baseline": "0.9926778961842557579924372637",
-     "profit_factor_realistic": "0.4894752276328233860032297814",
-     "sharpe_baseline": "-0.0369",
-     "sharpe_realistic": "-1.944",
-     "max_drawdown_baseline": "0.1135848326648979489731046532",
-     "max_drawdown_realistic": "0.1310029195830075989476040161",
-     "regime_trade_count": 34,
-     "regime_expectancy": "-100.0461577158823529411764706",
-     "regime_win_rate": "0.4412",
-     "walk_forward_windows": 4,
-     "walk_forward_included": 3,
-     "walk_forward_oos_expectancy_mean": null,
-     "trade_count_significance": 21,
-     "trades": [
-      392.445399,
-      -174.68395477,
-      113.518692,
-      235.30503438,
-      -123.40647,
-      -112.0791861,
-      -70.4664819,
-      -117.10791894,
-      -126.88785,
-      -66.8796264,
-      -692.675435,
-      129.8737388,
-      -81.74943708,
-      69.9549662,
-      156.22186302,
-      -34.38123123,
-      -57.05962092,
-      -24.68217356,
-      72.09254165,
-      31.209942,
-      -49.8954192
-     ]
+  "walk_forward_distribution": {
+    "out_of_sample_expectancy": {
+      "count": 2,
+      "min": "-342.9339562533333333333333334",
+      "max": "-28.8426043000000000000000000",
+      "mean": "-185.8882802766666666666666667",
+      "median": "-185.8882802766666666666666667",
+      "count_positive": 0
+    },
+    "out_of_sample_sharpe_ratio": {
+      "count": 2,
+      "min": "-3.7585",
+      "max": "1.2687",
+      "mean": "-1.2449",
+      "median": "-1.2449",
+      "count_positive": 1
+    },
+    "out_of_sample_win_rate": {
+      "count": 2,
+      "min": "0.2500",
+      "max": "0.3333",
+      "mean": "0.29165",
+      "median": "0.29165",
+      "count_positive": 2
     }
-   ]
   },
-  "volatility_breakout_v1": {
-   "RANGING": [
-    {
-     "symbol": "TECHM",
-     "rule_id": "volatility_breakout_v1",
-     "regime": "RANGING",
-     "baseline_has_edge": null,
-     "realistic_has_edge": null,
-     "flipped": false,
-     "trade_count_baseline": 2,
-     "trade_count_realistic": 2,
-     "expectancy_baseline": "-312.0500000000000000",
-     "expectancy_realistic": "-501.46141700000000000000",
-     "profit_factor_baseline": "0E+16",
-     "profit_factor_realistic": "0E+20",
-     "sharpe_baseline": "-35.1753",
-     "sharpe_realistic": "-45.7225",
-     "max_drawdown_baseline": "0.06247048871192680127996192374",
-     "max_drawdown_realistic": "0.07837377919584228785364332775",
-     "regime_trade_count": 34,
-     "regime_expectancy": "-100.0461577158823529411764706",
-     "regime_win_rate": "0.4412",
-     "walk_forward_windows": 4,
-     "walk_forward_included": 3,
-     "walk_forward_oos_expectancy_mean": null,
-     "trade_count_significance": 2,
-     "trades": [
-      -295.432375,
-      -487.546542
-     ]
+  "walk_forward_distribution_by_rule": {
+    "breakout_v1": {
+      "total_windows": 4,
+      "included_window_count": 2,
+      "excluded_window_count": 2,
+      "out_of_sample_expectancy": {
+        "count": 2,
+        "min": "-429.99490800000000000000",
+        "max": "579.53747920000000000000",
+        "mean": "74.77128560000000000000",
+        "median": "74.77128560000000000000",
+        "count_positive": 1
+      }
+    },
+    "price_movement_v1": {
+      "total_windows": 4,
+      "included_window_count": 3,
+      "excluded_window_count": 1,
+      "out_of_sample_expectancy": {
+        "count": 3,
+        "min": "-568.54147460000000000000",
+        "max": "-28.8426043000000000000000000",
+        "mean": "-298.9291864266666666666666667",
+        "median": "-299.403480380000000000000",
+        "count_positive": 0
+      }
+    },
+    "volatility_breakout_v1": {
+      "total_windows": 4,
+      "included_window_count": 0,
+      "excluded_window_count": 4,
+      "out_of_sample_expectancy": {
+        "count": 0,
+        "min": null,
+        "max": null,
+        "mean": null,
+        "median": null,
+        "count_positive": 0
+      }
     }
-   ]
   }
- }
 }

@@ -1,124 +1,194 @@
 {
- "symbol": "GRASIM",
- "results": {
-  "breakout_v1": {
-   "RANGING": [
-    {
-     "symbol": "GRASIM",
-     "rule_id": "breakout_v1",
-     "regime": "RANGING",
-     "baseline_has_edge": true,
-     "realistic_has_edge": false,
-     "flipped": true,
-     "trade_count_baseline": 10,
-     "trade_count_realistic": 10,
-     "expectancy_baseline": "91.68404000000000000",
-     "expectancy_realistic": "-17.028117360334000000000",
-     "profit_factor_baseline": "6.065811086474501108647450111",
-     "profit_factor_realistic": "0.8567560233417781465815935270",
-     "sharpe_baseline": "8.1829",
-     "sharpe_realistic": "4.965",
-     "max_drawdown_baseline": "0.02142605826018965840626023395",
-     "max_drawdown_realistic": "0.02556353276671849939133768914",
-     "regime_trade_count": 26,
-     "regime_expectancy": "-47.37179766215076923076923081",
-     "regime_win_rate": "0.4615",
-     "walk_forward_windows": 4,
-     "walk_forward_included": 2,
-     "walk_forward_oos_expectancy_mean": null,
-     "trade_count_significance": 10,
-     "trades": [
-      461.44504311216,
-      -113.1783,
-      232.99032,
-      85.6180764,
-      -48.12900533883,
-      141.5859643,
-      96.828699,
-      -180.7503884,
-      -9.9725748,
-      -74.613072
-     ]
+  "symbol": "GRASIM",
+  "results": {
+    "breakout_v1": {
+      "RANGING": [
+        {
+          "symbol": "GRASIM",
+          "rule_id": "breakout_v1",
+          "regime": "RANGING",
+          "baseline_has_edge": true,
+          "realistic_has_edge": false,
+          "flipped": true,
+          "trade_count_baseline": 10,
+          "trade_count_realistic": 10,
+          "expectancy_baseline": "91.68404000000000000",
+          "expectancy_realistic": "-17.028117360334000000000",
+          "profit_factor_baseline": "6.065811086474501108647450111",
+          "profit_factor_realistic": "0.8567560233417781465815935270",
+          "sharpe_baseline": "8.1829",
+          "sharpe_realistic": "4.965",
+          "max_drawdown_baseline": "0.02142605826018965840626023395",
+          "max_drawdown_realistic": "0.02556353276671849939133768914",
+          "regime_trade_count": 26,
+          "regime_expectancy": "-47.37179766215076923076923081",
+          "regime_win_rate": "0.4615",
+          "walk_forward_windows": 4,
+          "walk_forward_included": 2,
+          "walk_forward_oos_expectancy_mean": -303.30506544951,
+          "walk_forward_oos_status": "computed",
+          "trade_count_significance": 10,
+          "trades": [
+            461.44504311216,
+            -113.1783,
+            232.99032,
+            85.6180764,
+            -48.12900533883,
+            141.5859643,
+            96.828699,
+            -180.7503884,
+            -9.9725748,
+            -74.613072
+          ]
+        }
+      ]
+    },
+    "price_movement_v1": {
+      "RANGING": [
+        {
+          "symbol": "GRASIM",
+          "rule_id": "price_movement_v1",
+          "regime": "RANGING",
+          "baseline_has_edge": false,
+          "realistic_has_edge": false,
+          "flipped": false,
+          "trade_count_baseline": 11,
+          "trade_count_realistic": 11,
+          "expectancy_baseline": "-51.33198181818181818181818184",
+          "expectancy_realistic": "-181.3605560570218181818181818",
+          "profit_factor_baseline": "0.5887464070505385463890607548",
+          "profit_factor_realistic": "0.2186912036834822154689001440",
+          "sharpe_baseline": "-2.811",
+          "sharpe_realistic": "-6.2699",
+          "max_drawdown_baseline": "0.1252811203682829686458009830",
+          "max_drawdown_realistic": "0.1633534077725636402565721127",
+          "regime_trade_count": 26,
+          "regime_expectancy": "-47.37179766215076923076923081",
+          "regime_win_rate": "0.4615",
+          "walk_forward_windows": 4,
+          "walk_forward_included": 2,
+          "walk_forward_oos_expectancy_mean": -232.89642974,
+          "walk_forward_oos_status": "computed",
+          "trade_count_significance": 11,
+          "trades": [
+            449.76226110255,
+            80.751935,
+            -59.20664772108,
+            -192.02078531883,
+            -514.4891135,
+            -68.057608665,
+            -96.89355328,
+            27.88415216874,
+            -486.338655,
+            -275.1994926,
+            -30.66723
+          ]
+        }
+      ]
+    },
+    "volatility_breakout_v1": {
+      "RANGING": [
+        {
+          "symbol": "GRASIM",
+          "rule_id": "volatility_breakout_v1",
+          "regime": "RANGING",
+          "baseline_has_edge": null,
+          "realistic_has_edge": null,
+          "flipped": false,
+          "trade_count_baseline": 5,
+          "trade_count_realistic": 5,
+          "expectancy_baseline": "456.65248000000000000",
+          "expectancy_realistic": "186.716110202932000000000",
+          "profit_factor_baseline": "11.78791589888967635246869832",
+          "profit_factor_realistic": "1.889042288593758533054414235",
+          "sharpe_baseline": "12.1798",
+          "sharpe_realistic": "11.2013",
+          "max_drawdown_baseline": "0.02037691081556415926081193241",
+          "max_drawdown_realistic": "0.02566607761551577861456688492",
+          "regime_trade_count": 26,
+          "regime_expectancy": "-47.37179766215076923076923081",
+          "regime_win_rate": "0.4615",
+          "walk_forward_windows": 4,
+          "walk_forward_included": 0,
+          "walk_forward_oos_expectancy_mean": null,
+          "walk_forward_oos_status": "0 OOS windows had trades",
+          "trade_count_significance": 5,
+          "trades": [
+            898.92575901233,
+            244.339768,
+            -266.4738287,
+            770.56411833,
+            69.84780544
+          ]
+        }
+      ]
     }
-   ]
   },
-  "price_movement_v1": {
-   "RANGING": [
-    {
-     "symbol": "GRASIM",
-     "rule_id": "price_movement_v1",
-     "regime": "RANGING",
-     "baseline_has_edge": false,
-     "realistic_has_edge": false,
-     "flipped": false,
-     "trade_count_baseline": 11,
-     "trade_count_realistic": 11,
-     "expectancy_baseline": "-51.33198181818181818181818184",
-     "expectancy_realistic": "-181.3605560570218181818181818",
-     "profit_factor_baseline": "0.5887464070505385463890607548",
-     "profit_factor_realistic": "0.2186912036834822154689001440",
-     "sharpe_baseline": "-2.811",
-     "sharpe_realistic": "-6.2699",
-     "max_drawdown_baseline": "0.1252811203682829686458009830",
-     "max_drawdown_realistic": "0.1633534077725636402565721127",
-     "regime_trade_count": 26,
-     "regime_expectancy": "-47.37179766215076923076923081",
-     "regime_win_rate": "0.4615",
-     "walk_forward_windows": 4,
-     "walk_forward_included": 2,
-     "walk_forward_oos_expectancy_mean": null,
-     "trade_count_significance": 11,
-     "trades": [
-      449.76226110255,
-      80.751935,
-      -59.20664772108,
-      -192.02078531883,
-      -514.4891135,
-      -68.057608665,
-      -96.89355328,
-      27.88415216874,
-      -486.338655,
-      -275.1994926,
-      -30.66723
-     ]
+  "walk_forward_distribution": {
+    "out_of_sample_expectancy": {
+      "count": 1,
+      "min": "-47.23236333333333333333333330",
+      "max": "-47.23236333333333333333333330",
+      "mean": "-47.23236333333333333333333330",
+      "median": "-47.23236333333333333333333330",
+      "count_positive": 0
+    },
+    "out_of_sample_sharpe_ratio": {
+      "count": 1,
+      "min": "6.1172",
+      "max": "6.1172",
+      "mean": "6.1172",
+      "median": "6.1172",
+      "count_positive": 1
+    },
+    "out_of_sample_win_rate": {
+      "count": 1,
+      "min": "0.6667",
+      "max": "0.6667",
+      "mean": "0.6667",
+      "median": "0.6667",
+      "count_positive": 1
     }
-   ]
   },
-  "volatility_breakout_v1": {
-   "RANGING": [
-    {
-     "symbol": "GRASIM",
-     "rule_id": "volatility_breakout_v1",
-     "regime": "RANGING",
-     "baseline_has_edge": null,
-     "realistic_has_edge": null,
-     "flipped": false,
-     "trade_count_baseline": 5,
-     "trade_count_realistic": 5,
-     "expectancy_baseline": "456.65248000000000000",
-     "expectancy_realistic": "186.716110202932000000000",
-     "profit_factor_baseline": "11.78791589888967635246869832",
-     "profit_factor_realistic": "1.889042288593758533054414235",
-     "sharpe_baseline": "12.1798",
-     "sharpe_realistic": "11.2013",
-     "max_drawdown_baseline": "0.02037691081556415926081193241",
-     "max_drawdown_realistic": "0.02566607761551577861456688492",
-     "regime_trade_count": 26,
-     "regime_expectancy": "-47.37179766215076923076923081",
-     "regime_win_rate": "0.4615",
-     "walk_forward_windows": 4,
-     "walk_forward_included": 2,
-     "walk_forward_oos_expectancy_mean": null,
-     "trade_count_significance": 5,
-     "trades": [
-      898.92575901233,
-      244.339768,
-      -266.4738287,
-      770.56411833,
-      69.84780544
-     ]
+  "walk_forward_distribution_by_rule": {
+    "breakout_v1": {
+      "total_windows": 4,
+      "included_window_count": 2,
+      "excluded_window_count": 2,
+      "out_of_sample_expectancy": {
+        "count": 2,
+        "min": "-538.47215089902000000000",
+        "max": "-68.137980000000000000000",
+        "mean": "-303.305065449510000000000",
+        "median": "-303.305065449510000000000",
+        "count_positive": 0
+      }
+    },
+    "price_movement_v1": {
+      "total_windows": 4,
+      "included_window_count": 2,
+      "excluded_window_count": 2,
+      "out_of_sample_expectancy": {
+        "count": 2,
+        "min": "-460.37172948000000000000",
+        "max": "-5.42113000000000000000",
+        "mean": "-232.89642974000000000000",
+        "median": "-232.89642974000000000000",
+        "count_positive": 0
+      }
+    },
+    "volatility_breakout_v1": {
+      "total_windows": 4,
+      "included_window_count": 0,
+      "excluded_window_count": 4,
+      "out_of_sample_expectancy": {
+        "count": 0,
+        "min": null,
+        "max": null,
+        "mean": null,
+        "median": null,
+        "count_positive": 0
+      }
     }
-   ]
   }
- }
 }

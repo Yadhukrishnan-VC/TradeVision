@@ -1,121 +1,222 @@
 {
- "symbol": "ASIANPAINT",
- "results": {
-  "breakout_v1": {
-   "RANGING": [
-    {
-     "symbol": "ASIANPAINT",
-     "rule_id": "breakout_v1",
-     "regime": "RANGING",
-     "baseline_has_edge": null,
-     "realistic_has_edge": null,
-     "flipped": false,
-     "trade_count_baseline": 6,
-     "trade_count_realistic": 6,
-     "expectancy_baseline": "336.4498000000000000000000000",
-     "expectancy_realistic": "-6.3886356282599999999999999",
-     "profit_factor_baseline": "999.99",
-     "profit_factor_realistic": "0.9720253530332653664323996913",
-     "sharpe_baseline": "13.8205",
-     "sharpe_realistic": "7.1108",
-     "max_drawdown_baseline": "0",
-     "max_drawdown_realistic": "0.01131342851158105871315037240",
-     "regime_trade_count": 23,
-     "regime_expectancy": "-183.6315682463147826086956522",
-     "regime_win_rate": "0.4783",
-     "walk_forward_windows": 4,
-     "walk_forward_included": 2,
-     "walk_forward_oos_expectancy_mean": null,
-     "trade_count_significance": 6,
-     "trades": [
-      -75.6783496,
-      -18.687168,
-      15.6819198,
-      291.65122952414,
-      -81.5599255,
-      1024.56908544108
-     ]
+  "symbol": "ASIANPAINT",
+  "results": {
+    "breakout_v1": {
+      "UNKNOWN": [
+        {
+          "symbol": "ASIANPAINT",
+          "rule_id": "breakout_v1",
+          "regime": "UNKNOWN",
+          "baseline_has_edge": null,
+          "realistic_has_edge": null,
+          "flipped": false,
+          "trade_count_baseline": 1,
+          "trade_count_realistic": 0,
+          "expectancy_baseline": "142.0000000000000000",
+          "expectancy_realistic": null,
+          "profit_factor_baseline": "999.99",
+          "profit_factor_realistic": null,
+          "sharpe_baseline": null,
+          "sharpe_realistic": null,
+          "max_drawdown_baseline": "0",
+          "max_drawdown_realistic": null,
+          "regime_trade_count": 0,
+          "regime_expectancy": null,
+          "regime_win_rate": null,
+          "walk_forward_windows": 4,
+          "walk_forward_included": 2,
+          "walk_forward_oos_expectancy_mean": -1104.868107663135,
+          "walk_forward_oos_status": "computed",
+          "trade_count_significance": 0,
+          "trades": []
+        }
+      ]
+    },
+    "price_movement_v1": {
+      "RANGING": [
+        {
+          "symbol": "ASIANPAINT",
+          "rule_id": "price_movement_v1",
+          "regime": "RANGING",
+          "baseline_has_edge": true,
+          "realistic_has_edge": false,
+          "flipped": true,
+          "trade_count_baseline": 18,
+          "trade_count_realistic": 19,
+          "expectancy_baseline": "193.7816703703703703703703704",
+          "expectancy_realistic": "-154.7998807834336842105263158",
+          "profit_factor_baseline": "3.402049672392609801675294448",
+          "profit_factor_realistic": "0.5718751516389101330691359957",
+          "sharpe_baseline": "5.9441",
+          "sharpe_realistic": "1.2908",
+          "max_drawdown_baseline": "0.1241210276754749813959372095",
+          "max_drawdown_realistic": "0.1450209006337833115278655817",
+          "regime_trade_count": 23,
+          "regime_expectancy": "-183.6315682463147826086956522",
+          "regime_win_rate": "0.4783",
+          "walk_forward_windows": 4,
+          "walk_forward_included": 1,
+          "walk_forward_oos_expectancy_mean": -107.3183115,
+          "walk_forward_oos_status": "computed",
+          "trade_count_significance": 19,
+          "trades": [
+            -1209.622029,
+            1587.22996784,
+            -155.8163529,
+            -319.237848,
+            -75.6783496,
+            -18.687168,
+            148.866624,
+            245.455716,
+            -168.863045,
+            -608.5291056,
+            507.9237904,
+            -194.70336138,
+            15.6819198,
+            291.65122952414,
+            -81.5599255,
+            -81.26669951784,
+            1024.56908544108,
+            107.377279,
+            -123.553297
+          ]
+        }
+      ]
+    },
+    "volatility_breakout_v1": {
+      "RANGING": [
+        {
+          "symbol": "ASIANPAINT",
+          "rule_id": "volatility_breakout_v1",
+          "regime": "RANGING",
+          "baseline_has_edge": null,
+          "realistic_has_edge": null,
+          "flipped": false,
+          "trade_count_baseline": 3,
+          "trade_count_realistic": 3,
+          "expectancy_baseline": "-1.4333333333333333333333333",
+          "expectancy_realistic": "-471.2517094600000000000000000",
+          "profit_factor_baseline": "0.9943309162821357943309162821",
+          "profit_factor_realistic": "0.2644016409788859771882496508",
+          "sharpe_baseline": "-0.0304",
+          "sharpe_realistic": "-3.9983",
+          "max_drawdown_baseline": "0.09093613582885951376294424588",
+          "max_drawdown_realistic": "0.1323081104068897214858966921",
+          "regime_trade_count": 23,
+          "regime_expectancy": "-183.6315682463147826086956522",
+          "regime_win_rate": "0.4783",
+          "walk_forward_windows": 4,
+          "walk_forward_included": 1,
+          "walk_forward_oos_expectancy_mean": 90.74748918,
+          "walk_forward_oos_status": "computed",
+          "trade_count_significance": 3,
+          "trades": [
+            -1103.58440931,
+            183.3775398,
+            324.77908032
+          ]
+        }
+      ]
+    },
+    "volume_spike_v1": {
+      "RANGING": [
+        {
+          "symbol": "ASIANPAINT",
+          "rule_id": "volume_spike_v1",
+          "regime": "RANGING",
+          "baseline_has_edge": null,
+          "realistic_has_edge": null,
+          "flipped": false,
+          "trade_count_baseline": 1,
+          "trade_count_realistic": 1,
+          "expectancy_baseline": "0E-16",
+          "expectancy_realistic": "131.42679360000000000000",
+          "profit_factor_baseline": null,
+          "profit_factor_realistic": "1.563877138437482707431687109",
+          "sharpe_baseline": null,
+          "sharpe_realistic": null,
+          "max_drawdown_baseline": "0",
+          "max_drawdown_realistic": "0",
+          "regime_trade_count": 23,
+          "regime_expectancy": "-183.6315682463147826086956522",
+          "regime_win_rate": "0.4783",
+          "walk_forward_windows": 4,
+          "walk_forward_included": 0,
+          "walk_forward_oos_expectancy_mean": null,
+          "walk_forward_oos_status": "0 OOS windows had trades",
+          "trade_count_significance": 1,
+          "trades": [
+            364.5037968
+          ]
+        }
+      ]
     }
-   ]
   },
-  "price_movement_v1": {
-   "RANGING": [
-    {
-     "symbol": "ASIANPAINT",
-     "rule_id": "price_movement_v1",
-     "regime": "RANGING",
-     "baseline_has_edge": true,
-     "realistic_has_edge": false,
-     "flipped": true,
-     "trade_count_baseline": 14,
-     "trade_count_realistic": 14,
-     "expectancy_baseline": "115.0979476190476190476190477",
-     "expectancy_realistic": "-197.9599376796914285714285714",
-     "profit_factor_baseline": "2.289010829465045920072764212",
-     "profit_factor_realistic": "0.5165641718747954552471746129",
-     "sharpe_baseline": "3.862",
-     "sharpe_realistic": "0.1869",
-     "max_drawdown_baseline": "0.1241210276754749813959372095",
-     "max_drawdown_realistic": "0.1450209006337833115278655817",
-     "regime_trade_count": 23,
-     "regime_expectancy": "-183.6315682463147826086956522",
-     "regime_win_rate": "0.4783",
-     "walk_forward_windows": 4,
-     "walk_forward_included": 2,
-     "walk_forward_oos_expectancy_mean": null,
-     "trade_count_significance": 14,
-     "trades": [
-      -1209.622029,
-      1587.22996784,
-      364.5037968,
-      -155.8163529,
-      -319.237848,
-      148.866624,
-      245.455716,
-      -168.863045,
-      -608.5291056,
-      507.9237904,
-      -194.70336138,
-      -81.26669951784,
-      107.377279,
-      -123.553297
-     ]
+  "walk_forward_distribution": {
+    "out_of_sample_expectancy": {
+      "count": 2,
+      "min": "-107.318311500000000000000",
+      "max": "-5.03164095529500000000",
+      "mean": "-56.174976227647500000000",
+      "median": "-56.174976227647500000000",
+      "count_positive": 0
+    },
+    "out_of_sample_sharpe_ratio": {
+      "count": 2,
+      "min": "1.8712",
+      "max": "23.1841",
+      "mean": "12.52765",
+      "median": "12.52765",
+      "count_positive": 2
+    },
+    "out_of_sample_win_rate": {
+      "count": 2,
+      "min": "0.5000",
+      "max": "1.0000",
+      "mean": "0.7500",
+      "median": "0.7500",
+      "count_positive": 2
     }
-   ]
   },
-  "volatility_breakout_v1": {
-   "RANGING": [
-    {
-     "symbol": "ASIANPAINT",
-     "rule_id": "volatility_breakout_v1",
-     "regime": "RANGING",
-     "baseline_has_edge": null,
-     "realistic_has_edge": null,
-     "flipped": false,
-     "trade_count_baseline": 3,
-     "trade_count_realistic": 3,
-     "expectancy_baseline": "-1.4333333333333333333333333",
-     "expectancy_realistic": "-471.2517094600000000000000000",
-     "profit_factor_baseline": "0.9943309162821357943309162821",
-     "profit_factor_realistic": "0.2644016409788859771882496508",
-     "sharpe_baseline": "-0.0304",
-     "sharpe_realistic": "-3.9983",
-     "max_drawdown_baseline": "0.09093613582885951376294424588",
-     "max_drawdown_realistic": "0.1323081104068897214858966921",
-     "regime_trade_count": 23,
-     "regime_expectancy": "-183.6315682463147826086956522",
-     "regime_win_rate": "0.4783",
-     "walk_forward_windows": 4,
-     "walk_forward_included": 2,
-     "walk_forward_oos_expectancy_mean": null,
-     "trade_count_significance": 3,
-     "trades": [
-      -1103.58440931,
-      183.3775398,
-      324.77908032
-     ]
+  "walk_forward_distribution_by_rule": {
+    "breakout_v1": {
+      "total_windows": 4,
+      "included_window_count": 2,
+      "excluded_window_count": 2,
+      "out_of_sample_expectancy": {
+        "count": 2,
+        "min": "-2108.92544423568000000000",
+        "max": "-100.81077109059000000000",
+        "mean": "-1104.86810766313500000000",
+        "median": "-1104.86810766313500000000",
+        "count_positive": 0
+      }
+    },
+    "price_movement_v1": {
+      "total_windows": 4,
+      "included_window_count": 1,
+      "excluded_window_count": 3,
+      "out_of_sample_expectancy": {
+        "count": 1,
+        "min": "-107.318311500000000000000",
+        "max": "-107.318311500000000000000",
+        "mean": "-107.318311500000000000000",
+        "median": "-107.318311500000000000000",
+        "count_positive": 0
+      }
+    },
+    "volatility_breakout_v1": {
+      "total_windows": 4,
+      "included_window_count": 1,
+      "excluded_window_count": 3,
+      "out_of_sample_expectancy": {
+        "count": 1,
+        "min": "90.74748918000000000000",
+        "max": "90.74748918000000000000",
+        "mean": "90.74748918000000000000",
+        "median": "90.74748918000000000000",
+        "count_positive": 1
+      }
     }
-   ]
   }
- }
 }

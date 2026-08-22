@@ -1,121 +1,191 @@
 {
- "symbol": "BRITANNIA",
- "results": {
-  "breakout_v1": {
-   "RANGING": [
-    {
-     "symbol": "BRITANNIA",
-     "rule_id": "breakout_v1",
-     "regime": "RANGING",
-     "baseline_has_edge": null,
-     "realistic_has_edge": null,
-     "flipped": false,
-     "trade_count_baseline": 6,
-     "trade_count_realistic": 6,
-     "expectancy_baseline": "49.32486666666666666666666666",
-     "expectancy_realistic": "-72.11298117321333333333333335",
-     "profit_factor_baseline": "2.071305443238214522300371763",
-     "profit_factor_realistic": "0.4691781599038981486536912747",
-     "sharpe_baseline": "3.3061",
-     "sharpe_realistic": "-0.1308",
-     "max_drawdown_baseline": "0.02757726267145217481885071058",
-     "max_drawdown_realistic": "0.03914567587097115632383878840",
-     "regime_trade_count": 23,
-     "regime_expectancy": "-126.2115717660556521739130435",
-     "regime_win_rate": "0.4348",
-     "walk_forward_windows": 4,
-     "walk_forward_included": 2,
-     "walk_forward_oos_expectancy_mean": null,
-     "trade_count_significance": 6,
-     "trades": [
-      331.721234,
-      -254.64284311338,
-      -51.1489370759,
-      -86.2779555,
-      37.09311161964,
-      13.61719645
-     ]
+  "symbol": "BRITANNIA",
+  "results": {
+    "breakout_v1": {
+      "RANGING": [
+        {
+          "symbol": "BRITANNIA",
+          "rule_id": "breakout_v1",
+          "regime": "RANGING",
+          "baseline_has_edge": null,
+          "realistic_has_edge": null,
+          "flipped": false,
+          "trade_count_baseline": 6,
+          "trade_count_realistic": 6,
+          "expectancy_baseline": "49.32486666666666666666666666",
+          "expectancy_realistic": "-72.11298117321333333333333335",
+          "profit_factor_baseline": "2.071305443238214522300371763",
+          "profit_factor_realistic": "0.4691781599038981486536912747",
+          "sharpe_baseline": "3.3061",
+          "sharpe_realistic": "-0.1308",
+          "max_drawdown_baseline": "0.02757726267145217481885071058",
+          "max_drawdown_realistic": "0.03914567587097115632383878840",
+          "regime_trade_count": 23,
+          "regime_expectancy": "-126.2115717660556521739130435",
+          "regime_win_rate": "0.4348",
+          "walk_forward_windows": 4,
+          "walk_forward_included": 0,
+          "walk_forward_oos_expectancy_mean": null,
+          "walk_forward_oos_status": "0 OOS windows had trades",
+          "trade_count_significance": 6,
+          "trades": [
+            331.721234,
+            -254.64284311338,
+            -51.1489370759,
+            -86.2779555,
+            37.09311161964,
+            13.61719645
+          ]
+        }
+      ]
+    },
+    "price_movement_v1": {
+      "RANGING": [
+        {
+          "symbol": "BRITANNIA",
+          "rule_id": "price_movement_v1",
+          "regime": "RANGING",
+          "baseline_has_edge": true,
+          "realistic_has_edge": false,
+          "flipped": true,
+          "trade_count_baseline": 11,
+          "trade_count_realistic": 11,
+          "expectancy_baseline": "7.57719090909090909090909091",
+          "expectancy_realistic": "-93.60954161368545454545454546",
+          "profit_factor_baseline": "2.245479861111111111111111111",
+          "profit_factor_realistic": "0.1478915941464548069055289273",
+          "sharpe_baseline": "3.8211",
+          "sharpe_realistic": "-4.4683",
+          "max_drawdown_baseline": "0.01437760666644892717984872194",
+          "max_drawdown_realistic": "0.03273159415290634041631972810",
+          "regime_trade_count": 23,
+          "regime_expectancy": "-126.2115717660556521739130435",
+          "regime_win_rate": "0.4348",
+          "walk_forward_windows": 4,
+          "walk_forward_included": 2,
+          "walk_forward_oos_expectancy_mean": 54.6342073,
+          "walk_forward_oos_status": "computed",
+          "trade_count_significance": 11,
+          "trades": [
+            -293.0070864,
+            87.978325,
+            -20.78226816027,
+            56.07527711964,
+            7.608778,
+            12.0426081,
+            -11.93989870964,
+            15.01019245,
+            -153.799119,
+            -10.2657128,
+            -16.6409992
+          ]
+        }
+      ]
+    },
+    "volatility_breakout_v1": {
+      "RANGING": [
+        {
+          "symbol": "BRITANNIA",
+          "rule_id": "volatility_breakout_v1",
+          "regime": "RANGING",
+          "baseline_has_edge": null,
+          "realistic_has_edge": null,
+          "flipped": false,
+          "trade_count_baseline": 6,
+          "trade_count_realistic": 6,
+          "expectancy_baseline": "-91.06773333333333333333333335",
+          "expectancy_realistic": "-240.0805509715766666666666667",
+          "profit_factor_baseline": "0.7523244173425863032473151591",
+          "profit_factor_realistic": "0.1583280901607185718267279333",
+          "sharpe_baseline": "-1.2429",
+          "sharpe_realistic": "-4.7116",
+          "max_drawdown_baseline": "0.07295668867128366609818991949",
+          "max_drawdown_realistic": "0.09787903461967984944460126502",
+          "regime_trade_count": 23,
+          "regime_expectancy": "-126.2115717660556521739130435",
+          "regime_win_rate": "0.4348",
+          "walk_forward_windows": 4,
+          "walk_forward_included": 1,
+          "walk_forward_oos_expectancy_mean": -84.17564,
+          "walk_forward_oos_status": "computed",
+          "trade_count_significance": 6,
+          "trades": [
+            208.5369265,
+            -909.545473,
+            -39.51332,
+            -9.26902298973,
+            -21.8746335,
+            62.43442
+          ]
+        }
+      ]
     }
-   ]
   },
-  "price_movement_v1": {
-   "RANGING": [
-    {
-     "symbol": "BRITANNIA",
-     "rule_id": "price_movement_v1",
-     "regime": "RANGING",
-     "baseline_has_edge": true,
-     "realistic_has_edge": false,
-     "flipped": true,
-     "trade_count_baseline": 11,
-     "trade_count_realistic": 11,
-     "expectancy_baseline": "7.57719090909090909090909091",
-     "expectancy_realistic": "-93.60954161368545454545454546",
-     "profit_factor_baseline": "2.245479861111111111111111111",
-     "profit_factor_realistic": "0.1478915941464548069055289273",
-     "sharpe_baseline": "3.8211",
-     "sharpe_realistic": "-4.4683",
-     "max_drawdown_baseline": "0.01437760666644892717984872194",
-     "max_drawdown_realistic": "0.03273159415290634041631972810",
-     "regime_trade_count": 23,
-     "regime_expectancy": "-126.2115717660556521739130435",
-     "regime_win_rate": "0.4348",
-     "walk_forward_windows": 4,
-     "walk_forward_included": 2,
-     "walk_forward_oos_expectancy_mean": null,
-     "trade_count_significance": 11,
-     "trades": [
-      -293.0070864,
-      87.978325,
-      -20.78226816027,
-      56.07527711964,
-      7.608778,
-      12.0426081,
-      -11.93989870964,
-      15.01019245,
-      -153.799119,
-      -10.2657128,
-      -16.6409992
-     ]
+  "walk_forward_distribution": {
+    "out_of_sample_expectancy": {
+      "count": 1,
+      "min": "2.66571660000000000000",
+      "max": "2.66571660000000000000",
+      "mean": "2.66571660000000000000",
+      "median": "2.66571660000000000000",
+      "count_positive": 1
+    },
+    "out_of_sample_sharpe_ratio": {
+      "count": 1,
+      "min": "49.7555",
+      "max": "49.7555",
+      "mean": "49.7555",
+      "median": "49.7555",
+      "count_positive": 1
+    },
+    "out_of_sample_win_rate": {
+      "count": 1,
+      "min": "1.0000",
+      "max": "1.0000",
+      "mean": "1.0000",
+      "median": "1.0000",
+      "count_positive": 1
     }
-   ]
   },
-  "volatility_breakout_v1": {
-   "RANGING": [
-    {
-     "symbol": "BRITANNIA",
-     "rule_id": "volatility_breakout_v1",
-     "regime": "RANGING",
-     "baseline_has_edge": null,
-     "realistic_has_edge": null,
-     "flipped": false,
-     "trade_count_baseline": 6,
-     "trade_count_realistic": 6,
-     "expectancy_baseline": "-91.06773333333333333333333335",
-     "expectancy_realistic": "-240.0805509715766666666666667",
-     "profit_factor_baseline": "0.7523244173425863032473151591",
-     "profit_factor_realistic": "0.1583280901607185718267279333",
-     "sharpe_baseline": "-1.2429",
-     "sharpe_realistic": "-4.7116",
-     "max_drawdown_baseline": "0.07295668867128366609818991949",
-     "max_drawdown_realistic": "0.09787903461967984944460126502",
-     "regime_trade_count": 23,
-     "regime_expectancy": "-126.2115717660556521739130435",
-     "regime_win_rate": "0.4348",
-     "walk_forward_windows": 4,
-     "walk_forward_included": 2,
-     "walk_forward_oos_expectancy_mean": null,
-     "trade_count_significance": 6,
-     "trades": [
-      208.5369265,
-      -909.545473,
-      -39.51332,
-      -9.26902298973,
-      -21.8746335,
-      62.43442
-     ]
+  "walk_forward_distribution_by_rule": {
+    "breakout_v1": {
+      "total_windows": 4,
+      "included_window_count": 0,
+      "excluded_window_count": 4,
+      "out_of_sample_expectancy": {
+        "count": 0,
+        "min": null,
+        "max": null,
+        "mean": null,
+        "median": null,
+        "count_positive": 0
+      }
+    },
+    "price_movement_v1": {
+      "total_windows": 4,
+      "included_window_count": 2,
+      "excluded_window_count": 2,
+      "out_of_sample_expectancy": {
+        "count": 2,
+        "min": "2.66571660000000000000",
+        "max": "106.60269800000000000000",
+        "mean": "54.63420730000000000000",
+        "median": "54.63420730000000000000",
+        "count_positive": 2
+      }
+    },
+    "volatility_breakout_v1": {
+      "total_windows": 4,
+      "included_window_count": 1,
+      "excluded_window_count": 3,
+      "out_of_sample_expectancy": {
+        "count": 1,
+        "min": "-84.17564000000000000000",
+        "max": "-84.17564000000000000000",
+        "mean": "-84.17564000000000000000",
+        "median": "-84.17564000000000000000",
+        "count_positive": 0
+      }
     }
-   ]
   }
- }
 }

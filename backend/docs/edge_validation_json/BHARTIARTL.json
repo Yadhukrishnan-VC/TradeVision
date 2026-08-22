@@ -1,127 +1,197 @@
 {
- "symbol": "BHARTIARTL",
- "results": {
-  "breakout_v1": {
-   "RANGING": [
-    {
-     "symbol": "BHARTIARTL",
-     "rule_id": "breakout_v1",
-     "regime": "RANGING",
-     "baseline_has_edge": true,
-     "realistic_has_edge": false,
-     "flipped": true,
-     "trade_count_baseline": 21,
-     "trade_count_realistic": 21,
-     "expectancy_baseline": "48.02083333333333333333333332",
-     "expectancy_realistic": "-61.71480588714285714285714279",
-     "profit_factor_baseline": "1.975886269569911822926039230",
-     "profit_factor_realistic": "0.6237304720092531046483438072",
-     "sharpe_baseline": "2.4497",
-     "sharpe_realistic": "0.4371",
-     "max_drawdown_baseline": "0.1310609969895302024419553304",
-     "max_drawdown_realistic": "0.1790943137007053247310035471",
-     "regime_trade_count": 29,
-     "regime_expectancy": "-39.53431352206896551724137931",
-     "regime_win_rate": "0.5862",
-     "walk_forward_windows": 4,
-     "walk_forward_included": 3,
-     "walk_forward_oos_expectancy_mean": null,
-     "trade_count_significance": 21,
-     "trades": [
-      924.95092482,
-      -1552.0160097,
-      -160.4177402,
-      -85.714734,
-      249.1011369,
-      107.4367258,
-      444.251268,
-      -76.9001436,
-      52.842126675,
-      138.433328,
-      71.0206488,
-      60.3128925,
-      12.6132846,
-      25.0687645,
-      -4.37557715,
-      39.77993207,
-      4.35183263,
-      6.83037144,
-      -18.421474,
-      -6.914809,
-      11.3643766
-     ]
+  "symbol": "BHARTIARTL",
+  "results": {
+    "breakout_v1": {
+      "RANGING": [
+        {
+          "symbol": "BHARTIARTL",
+          "rule_id": "breakout_v1",
+          "regime": "RANGING",
+          "baseline_has_edge": true,
+          "realistic_has_edge": false,
+          "flipped": true,
+          "trade_count_baseline": 21,
+          "trade_count_realistic": 21,
+          "expectancy_baseline": "48.02083333333333333333333332",
+          "expectancy_realistic": "-61.71480588714285714285714279",
+          "profit_factor_baseline": "1.975886269569911822926039230",
+          "profit_factor_realistic": "0.6237304720092531046483438072",
+          "sharpe_baseline": "2.4497",
+          "sharpe_realistic": "0.4371",
+          "max_drawdown_baseline": "0.1310609969895302024419553304",
+          "max_drawdown_realistic": "0.1790943137007053247310035471",
+          "regime_trade_count": 29,
+          "regime_expectancy": "-39.53431352206896551724137931",
+          "regime_win_rate": "0.5862",
+          "walk_forward_windows": 4,
+          "walk_forward_included": 2,
+          "walk_forward_oos_expectancy_mean": -341.742023475,
+          "walk_forward_oos_status": "computed",
+          "trade_count_significance": 21,
+          "trades": [
+            924.95092482,
+            -1552.0160097,
+            -160.4177402,
+            -85.714734,
+            249.1011369,
+            107.4367258,
+            444.251268,
+            -76.9001436,
+            52.842126675,
+            138.433328,
+            71.0206488,
+            60.3128925,
+            12.6132846,
+            25.0687645,
+            -4.37557715,
+            39.77993207,
+            4.35183263,
+            6.83037144,
+            -18.421474,
+            -6.914809,
+            11.3643766
+          ]
+        }
+      ]
+    },
+    "price_movement_v1": {
+      "RANGING": [
+        {
+          "symbol": "BHARTIARTL",
+          "rule_id": "price_movement_v1",
+          "regime": "RANGING",
+          "baseline_has_edge": null,
+          "realistic_has_edge": null,
+          "flipped": false,
+          "trade_count_baseline": 4,
+          "trade_count_realistic": 4,
+          "expectancy_baseline": "-52.337500000000000000",
+          "expectancy_realistic": "-47.97393505750000000000000000",
+          "profit_factor_baseline": "0.2919792267743796884016156953",
+          "profit_factor_realistic": "0.1808565640618861943200507103",
+          "sharpe_baseline": "-5.5193",
+          "sharpe_realistic": "-6.7149",
+          "max_drawdown_baseline": "0.01552190904762014696731119445",
+          "max_drawdown_realistic": "0.01655200867732399522520469795",
+          "regime_trade_count": 29,
+          "regime_expectancy": "-39.53431352206896551724137931",
+          "regime_win_rate": "0.5862",
+          "walk_forward_windows": 4,
+          "walk_forward_included": 1,
+          "walk_forward_oos_expectancy_mean": 97.33797035,
+          "walk_forward_oos_status": "computed",
+          "trade_count_significance": 4,
+          "trades": [
+            -166.03291149,
+            42.36816498,
+            -6.350278305,
+            -21.7025578
+          ]
+        }
+      ]
+    },
+    "volatility_breakout_v1": {
+      "RANGING": [
+        {
+          "symbol": "BHARTIARTL",
+          "rule_id": "volatility_breakout_v1",
+          "regime": "RANGING",
+          "baseline_has_edge": null,
+          "realistic_has_edge": null,
+          "flipped": false,
+          "trade_count_baseline": 4,
+          "trade_count_realistic": 4,
+          "expectancy_baseline": "193.82500000000000000",
+          "expectancy_realistic": "85.352892930000000000000",
+          "profit_factor_baseline": "191.0975609756097560975609756",
+          "profit_factor_realistic": "2.284099208725740399868017310",
+          "sharpe_baseline": "8.0268",
+          "sharpe_realistic": "7.8738",
+          "max_drawdown_baseline": "0.0004084189844888378747810296759",
+          "max_drawdown_realistic": "0.001153829312998753504622231677",
+          "regime_trade_count": 29,
+          "regime_expectancy": "-39.53431352206896551724137931",
+          "regime_win_rate": "0.5862",
+          "walk_forward_windows": 4,
+          "walk_forward_included": 0,
+          "walk_forward_oos_expectancy_mean": null,
+          "walk_forward_oos_status": "0 OOS windows had trades",
+          "trade_count_significance": 4,
+          "trades": [
+            599.2000986,
+            -6.56208334,
+            -5.0188722,
+            8.0877928
+          ]
+        }
+      ]
     }
-   ]
   },
-  "price_movement_v1": {
-   "RANGING": [
-    {
-     "symbol": "BHARTIARTL",
-     "rule_id": "price_movement_v1",
-     "regime": "RANGING",
-     "baseline_has_edge": null,
-     "realistic_has_edge": null,
-     "flipped": false,
-     "trade_count_baseline": 4,
-     "trade_count_realistic": 4,
-     "expectancy_baseline": "-52.337500000000000000",
-     "expectancy_realistic": "-47.97393505750000000000000000",
-     "profit_factor_baseline": "0.2919792267743796884016156953",
-     "profit_factor_realistic": "0.1808565640618861943200507103",
-     "sharpe_baseline": "-5.5193",
-     "sharpe_realistic": "-6.7149",
-     "max_drawdown_baseline": "0.01552190904762014696731119445",
-     "max_drawdown_realistic": "0.01655200867732399522520469795",
-     "regime_trade_count": 29,
-     "regime_expectancy": "-39.53431352206896551724137931",
-     "regime_win_rate": "0.5862",
-     "walk_forward_windows": 4,
-     "walk_forward_included": 3,
-     "walk_forward_oos_expectancy_mean": null,
-     "trade_count_significance": 4,
-     "trades": [
-      -166.03291149,
-      42.36816498,
-      -6.350278305,
-      -21.7025578
-     ]
+  "walk_forward_distribution": {
+    "out_of_sample_expectancy": {
+      "count": 3,
+      "min": "-786.51400600000000000000",
+      "max": "103.0299590500000000000000000",
+      "mean": "-195.3820255333333333333333333",
+      "median": "97.337970350000000000000",
+      "count_positive": 2
+    },
+    "out_of_sample_sharpe_ratio": {
+      "count": 3,
+      "min": "-43.6647",
+      "max": "8.486",
+      "mean": "-8.9942",
+      "median": "8.1961",
+      "count_positive": 2
+    },
+    "out_of_sample_win_rate": {
+      "count": 3,
+      "min": "0.0000",
+      "max": "0.6667",
+      "mean": "0.3889",
+      "median": "0.5000",
+      "count_positive": 2
     }
-   ]
   },
-  "volatility_breakout_v1": {
-   "RANGING": [
-    {
-     "symbol": "BHARTIARTL",
-     "rule_id": "volatility_breakout_v1",
-     "regime": "RANGING",
-     "baseline_has_edge": null,
-     "realistic_has_edge": null,
-     "flipped": false,
-     "trade_count_baseline": 4,
-     "trade_count_realistic": 4,
-     "expectancy_baseline": "193.82500000000000000",
-     "expectancy_realistic": "85.352892930000000000000",
-     "profit_factor_baseline": "191.0975609756097560975609756",
-     "profit_factor_realistic": "2.284099208725740399868017310",
-     "sharpe_baseline": "8.0268",
-     "sharpe_realistic": "7.8738",
-     "max_drawdown_baseline": "0.0004084189844888378747810296759",
-     "max_drawdown_realistic": "0.001153829312998753504622231677",
-     "regime_trade_count": 29,
-     "regime_expectancy": "-39.53431352206896551724137931",
-     "regime_win_rate": "0.5862",
-     "walk_forward_windows": 4,
-     "walk_forward_included": 3,
-     "walk_forward_oos_expectancy_mean": null,
-     "trade_count_significance": 4,
-     "trades": [
-      599.2000986,
-      -6.56208334,
-      -5.0188722,
-      8.0877928
-     ]
+  "walk_forward_distribution_by_rule": {
+    "breakout_v1": {
+      "total_windows": 4,
+      "included_window_count": 2,
+      "excluded_window_count": 2,
+      "out_of_sample_expectancy": {
+        "count": 2,
+        "min": "-786.51400600000000000000",
+        "max": "103.0299590500000000000000000",
+        "mean": "-341.7420234750000000000000000",
+        "median": "-341.7420234750000000000000000",
+        "count_positive": 1
+      }
+    },
+    "price_movement_v1": {
+      "total_windows": 4,
+      "included_window_count": 1,
+      "excluded_window_count": 3,
+      "out_of_sample_expectancy": {
+        "count": 1,
+        "min": "97.337970350000000000000",
+        "max": "97.337970350000000000000",
+        "mean": "97.337970350000000000000",
+        "median": "97.337970350000000000000",
+        "count_positive": 1
+      }
+    },
+    "volatility_breakout_v1": {
+      "total_windows": 4,
+      "included_window_count": 0,
+      "excluded_window_count": 4,
+      "out_of_sample_expectancy": {
+        "count": 0,
+        "min": null,
+        "max": null,
+        "mean": null,
+        "median": null,
+        "count_positive": 0
+      }
     }
-   ]
   }
- }
 }

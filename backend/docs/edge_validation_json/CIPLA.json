@@ -1,128 +1,198 @@
 {
- "symbol": "CIPLA",
- "results": {
-  "breakout_v1": {
-   "RANGING": [
-    {
-     "symbol": "CIPLA",
-     "rule_id": "breakout_v1",
-     "regime": "RANGING",
-     "baseline_has_edge": null,
-     "realistic_has_edge": null,
-     "flipped": false,
-     "trade_count_baseline": 7,
-     "trade_count_realistic": 7,
-     "expectancy_baseline": "261.5500000000000000000000000",
-     "expectancy_realistic": "98.3180111342857142857142857",
-     "profit_factor_baseline": "4.818560812035526554286750045",
-     "profit_factor_realistic": "1.455932267479438344615628106",
-     "sharpe_baseline": "8.3356",
-     "sharpe_realistic": "6.6055",
-     "max_drawdown_baseline": "0.04545317970182509831436156751",
-     "max_drawdown_realistic": "0.06224289387526160191813698856",
-     "regime_trade_count": 30,
-     "regime_expectancy": "100.3113470983333333333333334",
-     "regime_win_rate": "0.4667",
-     "walk_forward_windows": 4,
-     "walk_forward_included": 2,
-     "walk_forward_oos_expectancy_mean": null,
-     "trade_count_significance": 7,
-     "trades": [
-      874.733664,
-      918.5174383,
-      328.05759308,
-      -372.1839471,
-      76.40931158,
-      -289.4473065,
-      -24.29703939
-     ]
+  "symbol": "CIPLA",
+  "results": {
+    "breakout_v1": {
+      "RANGING": [
+        {
+          "symbol": "CIPLA",
+          "rule_id": "breakout_v1",
+          "regime": "RANGING",
+          "baseline_has_edge": null,
+          "realistic_has_edge": null,
+          "flipped": false,
+          "trade_count_baseline": 7,
+          "trade_count_realistic": 7,
+          "expectancy_baseline": "261.5500000000000000000000000",
+          "expectancy_realistic": "98.3180111342857142857142857",
+          "profit_factor_baseline": "4.818560812035526554286750045",
+          "profit_factor_realistic": "1.455932267479438344615628106",
+          "sharpe_baseline": "8.3356",
+          "sharpe_realistic": "6.6055",
+          "max_drawdown_baseline": "0.04545317970182509831436156751",
+          "max_drawdown_realistic": "0.06224289387526160191813698856",
+          "regime_trade_count": 30,
+          "regime_expectancy": "100.3113470983333333333333334",
+          "regime_win_rate": "0.4667",
+          "walk_forward_windows": 4,
+          "walk_forward_included": 2,
+          "walk_forward_oos_expectancy_mean": -605.84956617,
+          "walk_forward_oos_status": "computed",
+          "trade_count_significance": 7,
+          "trades": [
+            874.733664,
+            918.5174383,
+            328.05759308,
+            -372.1839471,
+            76.40931158,
+            -289.4473065,
+            -24.29703939
+          ]
+        }
+      ]
+    },
+    "price_movement_v1": {
+      "RANGING": [
+        {
+          "symbol": "CIPLA",
+          "rule_id": "price_movement_v1",
+          "regime": "RANGING",
+          "baseline_has_edge": true,
+          "realistic_has_edge": true,
+          "flipped": false,
+          "trade_count_baseline": 18,
+          "trade_count_realistic": 18,
+          "expectancy_baseline": "233.3564814814814814814814815",
+          "expectancy_realistic": "64.9380196350000000000000000",
+          "profit_factor_baseline": "3.433331666833316668333166683",
+          "profit_factor_realistic": "1.238788754099215664939963019",
+          "sharpe_baseline": "5.703",
+          "sharpe_realistic": "3.9754",
+          "max_drawdown_baseline": "0.1486048173455729938554513040",
+          "max_drawdown_realistic": "0.1605320322934250886363781629",
+          "regime_trade_count": 30,
+          "regime_expectancy": "100.3113470983333333333333334",
+          "regime_win_rate": "0.4667",
+          "walk_forward_windows": 4,
+          "walk_forward_included": 2,
+          "walk_forward_oos_expectancy_mean": -170.5009735675,
+          "walk_forward_oos_status": "computed",
+          "trade_count_significance": 18,
+          "trades": [
+            -272.98253035,
+            1725.0054094,
+            -1570.949546625,
+            710.9026374,
+            562.31702225,
+            -171.2910672,
+            -66.63561043,
+            1550.288048,
+            -393.09549444,
+            -15.9796875,
+            -107.105482,
+            -86.9058558,
+            336.45874908,
+            -34.32508002,
+            -28.49676025,
+            279.53457,
+            820.6978505,
+            78.7361922
+          ]
+        }
+      ]
+    },
+    "volatility_breakout_v1": {
+      "RANGING": [
+        {
+          "symbol": "CIPLA",
+          "rule_id": "volatility_breakout_v1",
+          "regime": "RANGING",
+          "baseline_has_edge": null,
+          "realistic_has_edge": null,
+          "flipped": false,
+          "trade_count_baseline": 5,
+          "trade_count_realistic": 5,
+          "expectancy_baseline": "352.76000000000000000",
+          "expectancy_realistic": "230.445996316000000000000",
+          "profit_factor_baseline": "21.84869976359338061465721040",
+          "profit_factor_realistic": "3.327646231887458575726911646",
+          "sharpe_baseline": "10.7893",
+          "sharpe_realistic": "9.7407",
+          "max_drawdown_baseline": "0.008641945478026152243454139458",
+          "max_drawdown_realistic": "0.01429554857783763139394670051",
+          "regime_trade_count": 30,
+          "regime_expectancy": "100.3113470983333333333333334",
+          "regime_win_rate": "0.4667",
+          "walk_forward_windows": 4,
+          "walk_forward_included": 1,
+          "walk_forward_oos_expectancy_mean": 2805.058256,
+          "walk_forward_oos_status": "computed",
+          "trade_count_significance": 5,
+          "trades": [
+            666.014752,
+            981.234604,
+            -117.2421828,
+            -6.16812273,
+            -16.51233468
+          ]
+        }
+      ]
     }
-   ]
   },
-  "price_movement_v1": {
-   "RANGING": [
-    {
-     "symbol": "CIPLA",
-     "rule_id": "price_movement_v1",
-     "regime": "RANGING",
-     "baseline_has_edge": true,
-     "realistic_has_edge": true,
-     "flipped": false,
-     "trade_count_baseline": 18,
-     "trade_count_realistic": 18,
-     "expectancy_baseline": "233.3564814814814814814814815",
-     "expectancy_realistic": "64.9380196350000000000000000",
-     "profit_factor_baseline": "3.433331666833316668333166683",
-     "profit_factor_realistic": "1.238788754099215664939963019",
-     "sharpe_baseline": "5.703",
-     "sharpe_realistic": "3.9754",
-     "max_drawdown_baseline": "0.1486048173455729938554513040",
-     "max_drawdown_realistic": "0.1605320322934250886363781629",
-     "regime_trade_count": 30,
-     "regime_expectancy": "100.3113470983333333333333334",
-     "regime_win_rate": "0.4667",
-     "walk_forward_windows": 4,
-     "walk_forward_included": 2,
-     "walk_forward_oos_expectancy_mean": null,
-     "trade_count_significance": 18,
-     "trades": [
-      -272.98253035,
-      1725.0054094,
-      -1570.949546625,
-      710.9026374,
-      562.31702225,
-      -171.2910672,
-      -66.63561043,
-      1550.288048,
-      -393.09549444,
-      -15.9796875,
-      -107.105482,
-      -86.9058558,
-      336.45874908,
-      -34.32508002,
-      -28.49676025,
-      279.53457,
-      820.6978505,
-      78.7361922
-     ]
+  "walk_forward_distribution": {
+    "out_of_sample_expectancy": {
+      "count": 2,
+      "min": "67.278677865000000000000",
+      "max": "336.431954580000000000000",
+      "mean": "201.855316222500000000000",
+      "median": "201.855316222500000000000",
+      "count_positive": 2
+    },
+    "out_of_sample_sharpe_ratio": {
+      "count": 2,
+      "min": "5.7437",
+      "max": "5.9985",
+      "mean": "5.8711",
+      "median": "5.8711",
+      "count_positive": 2
+    },
+    "out_of_sample_win_rate": {
+      "count": 2,
+      "min": "0.5000",
+      "max": "0.5000",
+      "mean": "0.5000",
+      "median": "0.5000",
+      "count_positive": 2
     }
-   ]
   },
-  "volatility_breakout_v1": {
-   "RANGING": [
-    {
-     "symbol": "CIPLA",
-     "rule_id": "volatility_breakout_v1",
-     "regime": "RANGING",
-     "baseline_has_edge": null,
-     "realistic_has_edge": null,
-     "flipped": false,
-     "trade_count_baseline": 5,
-     "trade_count_realistic": 5,
-     "expectancy_baseline": "352.76000000000000000",
-     "expectancy_realistic": "230.445996316000000000000",
-     "profit_factor_baseline": "21.84869976359338061465721040",
-     "profit_factor_realistic": "3.327646231887458575726911646",
-     "sharpe_baseline": "10.7893",
-     "sharpe_realistic": "9.7407",
-     "max_drawdown_baseline": "0.008641945478026152243454139458",
-     "max_drawdown_realistic": "0.01429554857783763139394670051",
-     "regime_trade_count": 30,
-     "regime_expectancy": "100.3113470983333333333333334",
-     "regime_win_rate": "0.4667",
-     "walk_forward_windows": 4,
-     "walk_forward_included": 2,
-     "walk_forward_oos_expectancy_mean": null,
-     "trade_count_significance": 5,
-     "trades": [
-      666.014752,
-      981.234604,
-      -117.2421828,
-      -6.16812273,
-      -16.51233468
-     ]
+  "walk_forward_distribution_by_rule": {
+    "breakout_v1": {
+      "total_windows": 4,
+      "included_window_count": 2,
+      "excluded_window_count": 2,
+      "out_of_sample_expectancy": {
+        "count": 2,
+        "min": "-686.17422600000000000000",
+        "max": "-525.524906340000000000000",
+        "mean": "-605.849566170000000000000",
+        "median": "-605.849566170000000000000",
+        "count_positive": 0
+      }
+    },
+    "price_movement_v1": {
+      "total_windows": 4,
+      "included_window_count": 2,
+      "excluded_window_count": 2,
+      "out_of_sample_expectancy": {
+        "count": 2,
+        "min": "-408.28062500000000000000",
+        "max": "67.278677865000000000000",
+        "mean": "-170.500973567500000000000",
+        "median": "-170.500973567500000000000",
+        "count_positive": 1
+      }
+    },
+    "volatility_breakout_v1": {
+      "total_windows": 4,
+      "included_window_count": 1,
+      "excluded_window_count": 3,
+      "out_of_sample_expectancy": {
+        "count": 1,
+        "min": "2805.05825600000000000000",
+        "max": "2805.05825600000000000000",
+        "mean": "2805.05825600000000000000",
+        "median": "2805.05825600000000000000",
+        "count_positive": 1
+      }
     }
-   ]
   }
- }
 }

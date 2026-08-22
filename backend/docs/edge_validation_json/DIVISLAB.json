@@ -1,134 +1,204 @@
 {
- "symbol": "DIVISLAB",
- "results": {
-  "breakout_v1": {
-   "RANGING": [
-    {
-     "symbol": "DIVISLAB",
-     "rule_id": "breakout_v1",
-     "regime": "RANGING",
-     "baseline_has_edge": true,
-     "realistic_has_edge": false,
-     "flipped": true,
-     "trade_count_baseline": 13,
-     "trade_count_realistic": 13,
-     "expectancy_baseline": "185.2886384615384615384615384",
-     "expectancy_realistic": "-65.23207671483076923076923076",
-     "profit_factor_baseline": "7.366496097702704056585815475",
-     "profit_factor_realistic": "0.6785657318904756942696468388",
-     "sharpe_baseline": "10.4527",
-     "sharpe_realistic": "6.2658",
-     "max_drawdown_baseline": "0.04167015008001476812015943713",
-     "max_drawdown_realistic": "0.07001606415096092526876819646",
-     "regime_trade_count": 36,
-     "regime_expectancy": "-168.1550289962688888888888889",
-     "regime_win_rate": "0.5000",
-     "walk_forward_windows": 4,
-     "walk_forward_included": 2,
-     "walk_forward_oos_expectancy_mean": null,
-     "trade_count_significance": 13,
-     "trades": [
-      500.70402,
-      249.6069852054,
-      368.283875,
-      122.89599,
-      150.1579044,
-      -128.1087319018,
-      -284.815645,
-      -187.51682,
-      -69.6438758,
-      86.429964,
-      159.3353904,
-      62.055466,
-      90.74175305
-     ]
+  "symbol": "DIVISLAB",
+  "results": {
+    "breakout_v1": {
+      "RANGING": [
+        {
+          "symbol": "DIVISLAB",
+          "rule_id": "breakout_v1",
+          "regime": "RANGING",
+          "baseline_has_edge": true,
+          "realistic_has_edge": false,
+          "flipped": true,
+          "trade_count_baseline": 13,
+          "trade_count_realistic": 13,
+          "expectancy_baseline": "185.2886384615384615384615384",
+          "expectancy_realistic": "-65.23207671483076923076923076",
+          "profit_factor_baseline": "7.366496097702704056585815475",
+          "profit_factor_realistic": "0.6785657318904756942696468388",
+          "sharpe_baseline": "10.4527",
+          "sharpe_realistic": "6.2658",
+          "max_drawdown_baseline": "0.04167015008001476812015943713",
+          "max_drawdown_realistic": "0.07001606415096092526876819646",
+          "regime_trade_count": 36,
+          "regime_expectancy": "-168.1550289962688888888888889",
+          "regime_win_rate": "0.5000",
+          "walk_forward_windows": 4,
+          "walk_forward_included": 2,
+          "walk_forward_oos_expectancy_mean": 149.1555384,
+          "walk_forward_oos_status": "computed",
+          "trade_count_significance": 13,
+          "trades": [
+            500.70402,
+            249.6069852054,
+            368.283875,
+            122.89599,
+            150.1579044,
+            -128.1087319018,
+            -284.815645,
+            -187.51682,
+            -69.6438758,
+            86.429964,
+            159.3353904,
+            62.055466,
+            90.74175305
+          ]
+        }
+      ]
+    },
+    "price_movement_v1": {
+      "RANGING": [
+        {
+          "symbol": "DIVISLAB",
+          "rule_id": "price_movement_v1",
+          "regime": "RANGING",
+          "baseline_has_edge": false,
+          "realistic_has_edge": false,
+          "flipped": false,
+          "trade_count_baseline": 20,
+          "trade_count_realistic": 20,
+          "expectancy_baseline": "-107.601955000000000000",
+          "expectancy_realistic": "-217.5345907919460000000000000",
+          "profit_factor_baseline": "0.6308566999534555426237916866",
+          "profit_factor_realistic": "0.3115633995763304421331769754",
+          "sharpe_baseline": "-1.756",
+          "sharpe_realistic": "-3.2667",
+          "max_drawdown_baseline": "0.3197081729759784669988351719",
+          "max_drawdown_realistic": "0.3928302829146084392318393451",
+          "regime_trade_count": 36,
+          "regime_expectancy": "-168.1550289962688888888888889",
+          "regime_win_rate": "0.5000",
+          "walk_forward_windows": 4,
+          "walk_forward_included": 2,
+          "walk_forward_oos_expectancy_mean": -536.56486211784,
+          "walk_forward_oos_status": "computed",
+          "trade_count_significance": 20,
+          "trades": [
+            -910.8525778,
+            -2342.64743727279,
+            -116.77346411784,
+            -204.182089,
+            -179.63925,
+            324.640244,
+            164.19370786117,
+            -164.10622430937,
+            8.97777821964,
+            -19.08686736027,
+            315.95943956964,
+            1042.826119,
+            -380.38527095964,
+            -92.532534,
+            -97.95786,
+            12.7249825,
+            -41.823935,
+            75.344559,
+            -23.56215,
+            24.3108968
+          ]
+        }
+      ]
+    },
+    "volatility_breakout_v1": {
+      "RANGING": [
+        {
+          "symbol": "DIVISLAB",
+          "rule_id": "volatility_breakout_v1",
+          "regime": "RANGING",
+          "baseline_has_edge": null,
+          "realistic_has_edge": null,
+          "flipped": false,
+          "trade_count_baseline": 3,
+          "trade_count_realistic": 3,
+          "expectancy_baseline": "138.4011000000000000",
+          "expectancy_realistic": "-284.9574102446533333333333333",
+          "profit_factor_baseline": "999.99",
+          "profit_factor_realistic": "0.09259651234870949233011392535",
+          "sharpe_baseline": "26.2956",
+          "sharpe_realistic": "-4.8465",
+          "max_drawdown_baseline": "0",
+          "max_drawdown_realistic": "0.02141537080478534099436584038",
+          "regime_trade_count": 36,
+          "regime_expectancy": "-168.1550289962688888888888889",
+          "regime_win_rate": "0.5000",
+          "walk_forward_windows": 4,
+          "walk_forward_included": 1,
+          "walk_forward_oos_expectancy_mean": -21.18266623396,
+          "walk_forward_oos_status": "computed",
+          "trade_count_significance": 3,
+          "trades": [
+            -169.05195,
+            -35.60470725,
+            87.23592993302
+          ]
+        }
+      ]
     }
-   ]
   },
-  "price_movement_v1": {
-   "RANGING": [
-    {
-     "symbol": "DIVISLAB",
-     "rule_id": "price_movement_v1",
-     "regime": "RANGING",
-     "baseline_has_edge": false,
-     "realistic_has_edge": false,
-     "flipped": false,
-     "trade_count_baseline": 20,
-     "trade_count_realistic": 20,
-     "expectancy_baseline": "-107.601955000000000000",
-     "expectancy_realistic": "-217.5345907919460000000000000",
-     "profit_factor_baseline": "0.6308566999534555426237916866",
-     "profit_factor_realistic": "0.3115633995763304421331769754",
-     "sharpe_baseline": "-1.756",
-     "sharpe_realistic": "-3.2667",
-     "max_drawdown_baseline": "0.3197081729759784669988351719",
-     "max_drawdown_realistic": "0.3928302829146084392318393451",
-     "regime_trade_count": 36,
-     "regime_expectancy": "-168.1550289962688888888888889",
-     "regime_win_rate": "0.5000",
-     "walk_forward_windows": 4,
-     "walk_forward_included": 2,
-     "walk_forward_oos_expectancy_mean": null,
-     "trade_count_significance": 20,
-     "trades": [
-      -910.8525778,
-      -2342.64743727279,
-      -116.77346411784,
-      -204.182089,
-      -179.63925,
-      324.640244,
-      164.19370786117,
-      -164.10622430937,
-      8.97777821964,
-      -19.08686736027,
-      315.95943956964,
-      1042.826119,
-      -380.38527095964,
-      -92.532534,
-      -97.95786,
-      12.7249825,
-      -41.823935,
-      75.344559,
-      -23.56215,
-      24.3108968
-     ]
+  "walk_forward_distribution": {
+    "out_of_sample_expectancy": {
+      "count": 2,
+      "min": "-794.70099720000000000000",
+      "max": "-131.183153116980000000000",
+      "mean": "-462.942075158490000000000",
+      "median": "-462.942075158490000000000",
+      "count_positive": 0
+    },
+    "out_of_sample_sharpe_ratio": {
+      "count": 2,
+      "min": "-247.2149",
+      "max": "-4.0965",
+      "mean": "-125.6557",
+      "median": "-125.6557",
+      "count_positive": 0
+    },
+    "out_of_sample_win_rate": {
+      "count": 2,
+      "min": "0.0000",
+      "max": "0.5000",
+      "mean": "0.2500",
+      "median": "0.2500",
+      "count_positive": 1
     }
-   ]
   },
-  "volatility_breakout_v1": {
-   "RANGING": [
-    {
-     "symbol": "DIVISLAB",
-     "rule_id": "volatility_breakout_v1",
-     "regime": "RANGING",
-     "baseline_has_edge": null,
-     "realistic_has_edge": null,
-     "flipped": false,
-     "trade_count_baseline": 3,
-     "trade_count_realistic": 3,
-     "expectancy_baseline": "138.4011000000000000",
-     "expectancy_realistic": "-284.9574102446533333333333333",
-     "profit_factor_baseline": "999.99",
-     "profit_factor_realistic": "0.09259651234870949233011392535",
-     "sharpe_baseline": "26.2956",
-     "sharpe_realistic": "-4.8465",
-     "max_drawdown_baseline": "0",
-     "max_drawdown_realistic": "0.02141537080478534099436584038",
-     "regime_trade_count": 36,
-     "regime_expectancy": "-168.1550289962688888888888889",
-     "regime_win_rate": "0.5000",
-     "walk_forward_windows": 4,
-     "walk_forward_included": 2,
-     "walk_forward_oos_expectancy_mean": null,
-     "trade_count_significance": 3,
-     "trades": [
-      -169.05195,
-      -35.60470725,
-      87.23592993302
-     ]
+  "walk_forward_distribution_by_rule": {
+    "breakout_v1": {
+      "total_windows": 4,
+      "included_window_count": 2,
+      "excluded_window_count": 2,
+      "out_of_sample_expectancy": {
+        "count": 2,
+        "min": "-241.18364000000000000000",
+        "max": "539.49471680000000000000",
+        "mean": "149.15553840000000000000",
+        "median": "149.15553840000000000000",
+        "count_positive": 1
+      }
+    },
+    "price_movement_v1": {
+      "total_windows": 4,
+      "included_window_count": 2,
+      "excluded_window_count": 2,
+      "out_of_sample_expectancy": {
+        "count": 2,
+        "min": "-794.70099720000000000000",
+        "max": "-278.42872703568000000000",
+        "mean": "-536.56486211784000000000",
+        "median": "-536.56486211784000000000",
+        "count_positive": 0
+      }
+    },
+    "volatility_breakout_v1": {
+      "total_windows": 4,
+      "included_window_count": 1,
+      "excluded_window_count": 3,
+      "out_of_sample_expectancy": {
+        "count": 1,
+        "min": "-21.18266623396000000000",
+        "max": "-21.18266623396000000000",
+        "mean": "-21.18266623396000000000",
+        "median": "-21.18266623396000000000",
+        "count_positive": 0
+      }
     }
-   ]
   }
- }
 }

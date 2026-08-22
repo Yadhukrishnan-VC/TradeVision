@@ -1,111 +1,181 @@
 {
- "symbol": "INDUSINDBK",
- "results": {
-  "breakout_v1": {
-   "RANGING": [
-    {
-     "symbol": "INDUSINDBK",
-     "rule_id": "breakout_v1",
-     "regime": "RANGING",
-     "baseline_has_edge": null,
-     "realistic_has_edge": null,
-     "flipped": false,
-     "trade_count_baseline": 1,
-     "trade_count_realistic": 1,
-     "expectancy_baseline": "201.6500000000000000",
-     "expectancy_realistic": "11.82604360000000000000",
-     "profit_factor_baseline": "999.99",
-     "profit_factor_realistic": "1.107303193761173960916894770",
-     "sharpe_baseline": null,
-     "sharpe_realistic": null,
-     "max_drawdown_baseline": "0",
-     "max_drawdown_realistic": "0",
-     "regime_trade_count": 13,
-     "regime_expectancy": "-212.5836517584615384615384615",
-     "regime_win_rate": "0.3077",
-     "walk_forward_windows": 4,
-     "walk_forward_included": 2,
-     "walk_forward_oos_expectancy_mean": null,
-     "trade_count_significance": 1,
-     "trades": [
-      122.0375218
-     ]
+  "symbol": "INDUSINDBK",
+  "results": {
+    "breakout_v1": {
+      "RANGING": [
+        {
+          "symbol": "INDUSINDBK",
+          "rule_id": "breakout_v1",
+          "regime": "RANGING",
+          "baseline_has_edge": null,
+          "realistic_has_edge": null,
+          "flipped": false,
+          "trade_count_baseline": 1,
+          "trade_count_realistic": 1,
+          "expectancy_baseline": "201.6500000000000000",
+          "expectancy_realistic": "11.82604360000000000000",
+          "profit_factor_baseline": "999.99",
+          "profit_factor_realistic": "1.107303193761173960916894770",
+          "sharpe_baseline": null,
+          "sharpe_realistic": null,
+          "max_drawdown_baseline": "0",
+          "max_drawdown_realistic": "0",
+          "regime_trade_count": 13,
+          "regime_expectancy": "-212.5836517584615384615384615",
+          "regime_win_rate": "0.3077",
+          "walk_forward_windows": 4,
+          "walk_forward_included": 0,
+          "walk_forward_oos_expectancy_mean": null,
+          "walk_forward_oos_status": "0 OOS windows had trades",
+          "trade_count_significance": 1,
+          "trades": [
+            122.0375218
+          ]
+        }
+      ]
+    },
+    "price_movement_v1": {
+      "RANGING": [
+        {
+          "symbol": "INDUSINDBK",
+          "rule_id": "price_movement_v1",
+          "regime": "RANGING",
+          "baseline_has_edge": false,
+          "realistic_has_edge": false,
+          "flipped": false,
+          "trade_count_baseline": 11,
+          "trade_count_realistic": 11,
+          "expectancy_baseline": "-5.1909090909090909090909092",
+          "expectancy_realistic": "-255.2487612081818181818181818",
+          "profit_factor_baseline": "0.9651510527921879768080561489",
+          "profit_factor_realistic": "0.2859860689690665847436966468",
+          "sharpe_baseline": "-0.1793",
+          "sharpe_realistic": "-4.4064",
+          "max_drawdown_baseline": "0.1818072482722965222367409266",
+          "max_drawdown_realistic": "0.2592449044101870577553912167",
+          "regime_trade_count": 13,
+          "regime_expectancy": "-212.5836517584615384615384615",
+          "regime_win_rate": "0.3077",
+          "walk_forward_windows": 4,
+          "walk_forward_included": 4,
+          "walk_forward_oos_expectancy_mean": -156.15772348458333,
+          "walk_forward_oos_status": "computed",
+          "trade_count_significance": 11,
+          "trades": [
+            740.88904076,
+            383.7017455,
+            -220.31317545,
+            -140.404099815,
+            -121.824819375,
+            -114.2348171,
+            -259.6653492,
+            -213.902726715,
+            -323.81033846,
+            -825.423825765,
+            -115.627358525
+          ]
+        }
+      ]
+    },
+    "volatility_breakout_v1": {
+      "RANGING": [
+        {
+          "symbol": "INDUSINDBK",
+          "rule_id": "volatility_breakout_v1",
+          "regime": "RANGING",
+          "baseline_has_edge": null,
+          "realistic_has_edge": null,
+          "flipped": false,
+          "trade_count_baseline": 1,
+          "trade_count_realistic": 1,
+          "expectancy_baseline": "426.3000000000000000",
+          "expectancy_realistic": "32.32285683000000000000",
+          "profit_factor_baseline": "999.99",
+          "profit_factor_realistic": "1.141306749200069569577613254",
+          "sharpe_baseline": null,
+          "sharpe_realistic": null,
+          "max_drawdown_baseline": "0",
+          "max_drawdown_realistic": "0",
+          "regime_trade_count": 13,
+          "regime_expectancy": "-212.5836517584615384615384615",
+          "regime_win_rate": "0.3077",
+          "walk_forward_windows": 4,
+          "walk_forward_included": 1,
+          "walk_forward_oos_expectancy_mean": 49.552866,
+          "walk_forward_oos_status": "computed",
+          "trade_count_significance": 1,
+          "trades": [
+            261.065340915
+          ]
+        }
+      ]
     }
-   ]
   },
-  "price_movement_v1": {
-   "RANGING": [
-    {
-     "symbol": "INDUSINDBK",
-     "rule_id": "price_movement_v1",
-     "regime": "RANGING",
-     "baseline_has_edge": false,
-     "realistic_has_edge": false,
-     "flipped": false,
-     "trade_count_baseline": 11,
-     "trade_count_realistic": 11,
-     "expectancy_baseline": "-5.1909090909090909090909092",
-     "expectancy_realistic": "-255.2487612081818181818181818",
-     "profit_factor_baseline": "0.9651510527921879768080561489",
-     "profit_factor_realistic": "0.2859860689690665847436966468",
-     "sharpe_baseline": "-0.1793",
-     "sharpe_realistic": "-4.4064",
-     "max_drawdown_baseline": "0.1818072482722965222367409266",
-     "max_drawdown_realistic": "0.2592449044101870577553912167",
-     "regime_trade_count": 13,
-     "regime_expectancy": "-212.5836517584615384615384615",
-     "regime_win_rate": "0.3077",
-     "walk_forward_windows": 4,
-     "walk_forward_included": 2,
-     "walk_forward_oos_expectancy_mean": null,
-     "trade_count_significance": 11,
-     "trades": [
-      740.88904076,
-      383.7017455,
-      -220.31317545,
-      -140.404099815,
-      -121.824819375,
-      -114.2348171,
-      -259.6653492,
-      -213.902726715,
-      -323.81033846,
-      -825.423825765,
-      -115.627358525
-     ]
+  "walk_forward_distribution": {
+    "out_of_sample_expectancy": {
+      "count": 2,
+      "min": "-191.78144897500000000000",
+      "max": "239.5407456875000000000000000",
+      "mean": "23.8796483562500000000000000",
+      "median": "23.8796483562500000000000000",
+      "count_positive": 1
+    },
+    "out_of_sample_sharpe_ratio": {
+      "count": 2,
+      "min": "-349.774",
+      "max": "8.6627",
+      "mean": "-170.55565",
+      "median": "-170.55565",
+      "count_positive": 1
+    },
+    "out_of_sample_win_rate": {
+      "count": 2,
+      "min": "0.0000",
+      "max": "0.7500",
+      "mean": "0.3750",
+      "median": "0.3750",
+      "count_positive": 1
     }
-   ]
   },
-  "volatility_breakout_v1": {
-   "RANGING": [
-    {
-     "symbol": "INDUSINDBK",
-     "rule_id": "volatility_breakout_v1",
-     "regime": "RANGING",
-     "baseline_has_edge": null,
-     "realistic_has_edge": null,
-     "flipped": false,
-     "trade_count_baseline": 1,
-     "trade_count_realistic": 1,
-     "expectancy_baseline": "426.3000000000000000",
-     "expectancy_realistic": "32.32285683000000000000",
-     "profit_factor_baseline": "999.99",
-     "profit_factor_realistic": "1.141306749200069569577613254",
-     "sharpe_baseline": null,
-     "sharpe_realistic": null,
-     "max_drawdown_baseline": "0",
-     "max_drawdown_realistic": "0",
-     "regime_trade_count": 13,
-     "regime_expectancy": "-212.5836517584615384615384615",
-     "regime_win_rate": "0.3077",
-     "walk_forward_windows": 4,
-     "walk_forward_included": 2,
-     "walk_forward_oos_expectancy_mean": null,
-     "trade_count_significance": 1,
-     "trades": [
-      261.065340915
-     ]
+  "walk_forward_distribution_by_rule": {
+    "breakout_v1": {
+      "total_windows": 4,
+      "included_window_count": 0,
+      "excluded_window_count": 4,
+      "out_of_sample_expectancy": {
+        "count": 0,
+        "min": null,
+        "max": null,
+        "mean": null,
+        "median": null,
+        "count_positive": 0
+      }
+    },
+    "price_movement_v1": {
+      "total_windows": 4,
+      "included_window_count": 4,
+      "excluded_window_count": 0,
+      "out_of_sample_expectancy": {
+        "count": 4,
+        "min": "-796.50429628000000000000",
+        "max": "302.8700389166666666666666667",
+        "mean": "-156.1577234845833333333333333",
+        "median": "-65.49831828750000000000",
+        "count_positive": 2
+      }
+    },
+    "volatility_breakout_v1": {
+      "total_windows": 4,
+      "included_window_count": 1,
+      "excluded_window_count": 3,
+      "out_of_sample_expectancy": {
+        "count": 1,
+        "min": "49.55286600000000000000",
+        "max": "49.55286600000000000000",
+        "mean": "49.55286600000000000000",
+        "median": "49.55286600000000000000",
+        "count_positive": 1
+      }
     }
-   ]
   }
- }
 }

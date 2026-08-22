@@ -1,192 +1,233 @@
 {
- "symbol": "RELIANCE",
- "results": {
-  "breakout_v1": {
-   "RANGING": [
-    {
-     "symbol": "RELIANCE",
-     "rule_id": "breakout_v1",
-     "regime": "RANGING",
-     "baseline_has_edge": null,
-     "realistic_has_edge": null,
-     "flipped": false,
-     "trade_count_baseline": 2,
-     "trade_count_realistic": 1,
-     "expectancy_baseline": "407.0500000000000000",
-     "expectancy_realistic": "248.75585550000000000000",
-     "profit_factor_baseline": "999.99",
-     "profit_factor_realistic": "2.074492002749135923860476949",
-     "sharpe_baseline": "18.9957",
-     "sharpe_realistic": null,
-     "max_drawdown_baseline": "0",
-     "max_drawdown_realistic": "0",
-     "regime_trade_count": 33,
-     "regime_expectancy": "33.18812797439393939393939391",
-     "regime_win_rate": "0.3636",
-     "walk_forward_windows": 14,
-     "walk_forward_included": 6,
-     "walk_forward_oos_expectancy_mean": null,
-     "trade_count_significance": 1,
-     "trades": [
-      480.26605275
-     ]
+  "symbol": "RELIANCE",
+  "results": {
+    "breakout_v1": {
+      "RANGING": [
+        {
+          "symbol": "RELIANCE",
+          "rule_id": "breakout_v1",
+          "regime": "RANGING",
+          "baseline_has_edge": null,
+          "realistic_has_edge": null,
+          "flipped": false,
+          "trade_count_baseline": 1,
+          "trade_count_realistic": 1,
+          "expectancy_baseline": "647.5000000000000000",
+          "expectancy_realistic": "248.75585550000000000000",
+          "profit_factor_baseline": "999.99",
+          "profit_factor_realistic": "2.074492002749135923860476949",
+          "sharpe_baseline": null,
+          "sharpe_realistic": null,
+          "max_drawdown_baseline": "0",
+          "max_drawdown_realistic": "0",
+          "regime_trade_count": 33,
+          "regime_expectancy": "33.18812797439393939393939391",
+          "regime_win_rate": "0.3636",
+          "walk_forward_windows": 4,
+          "walk_forward_included": 2,
+          "walk_forward_oos_expectancy_mean": -869.15891117,
+          "walk_forward_oos_status": "computed",
+          "trade_count_significance": 1,
+          "trades": [
+            480.26605275
+          ]
+        }
+      ]
+    },
+    "price_movement_v1": {
+      "RANGING": [
+        {
+          "symbol": "RELIANCE",
+          "rule_id": "price_movement_v1",
+          "regime": "RANGING",
+          "baseline_has_edge": true,
+          "realistic_has_edge": false,
+          "flipped": true,
+          "trade_count_baseline": 28,
+          "trade_count_realistic": 26,
+          "expectancy_baseline": "70.91703296703296703296703294",
+          "expectancy_realistic": "-11.93950896980769230769230769",
+          "profit_factor_baseline": "2.936301706580518294824074724",
+          "profit_factor_realistic": "0.8869983291087022186460295312",
+          "sharpe_baseline": "3.2032",
+          "sharpe_realistic": "2.2692",
+          "max_drawdown_baseline": "0.04483215783091515345948092811",
+          "max_drawdown_realistic": "0.05850230764339137939176846596",
+          "regime_trade_count": 33,
+          "regime_expectancy": "33.18812797439393939393939391",
+          "regime_win_rate": "0.3636",
+          "walk_forward_windows": 4,
+          "walk_forward_included": 2,
+          "walk_forward_oos_expectancy_mean": -159.066926895,
+          "walk_forward_oos_status": "computed",
+          "trade_count_significance": 26,
+          "trades": [
+            1446.6945568,
+            116.97949835,
+            -58.38009903,
+            140.01051463,
+            -34.507459575,
+            -170.68575894,
+            -186.0062414,
+            -22.44237375,
+            -16.921301,
+            -87.438468285,
+            -77.980661395,
+            18.3924154875,
+            164.3458014,
+            465.5826084,
+            -84.3719877,
+            -109.1335485,
+            5.8305254,
+            -37.57608244,
+            -211.2629078,
+            -6.5433534,
+            -6.1773756,
+            -12.0652604,
+            8.53887704,
+            70.3010056,
+            -91.21735525,
+            -53.737504
+          ]
+        }
+      ]
+    },
+    "volatility_breakout_v1": {
+      "RANGING": [
+        {
+          "symbol": "RELIANCE",
+          "rule_id": "volatility_breakout_v1",
+          "regime": "RANGING",
+          "baseline_has_edge": null,
+          "realistic_has_edge": null,
+          "flipped": false,
+          "trade_count_baseline": 4,
+          "trade_count_realistic": 5,
+          "expectancy_baseline": "687.543750000000000000",
+          "expectancy_realistic": "239.869858574000000000000",
+          "profit_factor_baseline": "999.99",
+          "profit_factor_realistic": "2.130737187430532140371803358",
+          "sharpe_baseline": "8.1426",
+          "sharpe_realistic": "6.1789",
+          "max_drawdown_baseline": "0",
+          "max_drawdown_realistic": "0.02469210419942529586010306429",
+          "regime_trade_count": 33,
+          "regime_expectancy": "33.18812797439393939393939391",
+          "regime_win_rate": "0.3636",
+          "walk_forward_windows": 4,
+          "walk_forward_included": 1,
+          "walk_forward_oos_expectancy_mean": 0.0,
+          "walk_forward_oos_status": "computed",
+          "trade_count_significance": 5,
+          "trades": [
+            2242.48955315,
+            -19.03078775,
+            -37.099632845,
+            -195.56363,
+            17.53883138
+          ]
+        }
+      ]
+    },
+    "volume_spike_v1": {
+      "RANGING": [
+        {
+          "symbol": "RELIANCE",
+          "rule_id": "volume_spike_v1",
+          "regime": "RANGING",
+          "baseline_has_edge": null,
+          "realistic_has_edge": null,
+          "flipped": false,
+          "trade_count_baseline": 0,
+          "trade_count_realistic": 1,
+          "expectancy_baseline": null,
+          "expectancy_realistic": "-42.46969200000000000000",
+          "profit_factor_baseline": null,
+          "profit_factor_realistic": "0E+20",
+          "sharpe_baseline": null,
+          "sharpe_realistic": null,
+          "max_drawdown_baseline": null,
+          "max_drawdown_realistic": "0.002573017871204963538101331495",
+          "regime_trade_count": 33,
+          "regime_expectancy": "33.18812797439393939393939391",
+          "regime_win_rate": "0.3636",
+          "walk_forward_windows": 4,
+          "walk_forward_included": 0,
+          "walk_forward_oos_expectancy_mean": null,
+          "walk_forward_oos_status": "0 OOS windows had trades",
+          "trade_count_significance": 1,
+          "trades": [
+            -26.169846
+          ]
+        }
+      ]
     }
-   ]
   },
-  "high_beta_breakout_v1": {
-   "RANGING": [
-    {
-     "symbol": "RELIANCE",
-     "rule_id": "high_beta_breakout_v1",
-     "regime": "RANGING",
-     "baseline_has_edge": null,
-     "realistic_has_edge": null,
-     "flipped": false,
-     "trade_count_baseline": 0,
-     "trade_count_realistic": 1,
-     "expectancy_baseline": null,
-     "expectancy_realistic": "-57.00852080000000000000",
-     "profit_factor_baseline": null,
-     "profit_factor_realistic": "0E+20",
-     "sharpe_baseline": null,
-     "sharpe_realistic": null,
-     "max_drawdown_baseline": null,
-     "max_drawdown_realistic": "0.001186255762832595455842494681",
-     "regime_trade_count": 33,
-     "regime_expectancy": "33.18812797439393939393939391",
-     "regime_win_rate": "0.3636",
-     "walk_forward_windows": 14,
-     "walk_forward_included": 6,
-     "walk_forward_oos_expectancy_mean": null,
-     "trade_count_significance": 1,
-     "trades": [
-      -12.0652604
-     ]
+  "walk_forward_distribution": {
+    "out_of_sample_expectancy": {
+      "count": 2,
+      "min": "-1038.37613062000000000000",
+      "max": "10.150292555000000000000",
+      "mean": "-514.112919032500000000000",
+      "median": "-514.112919032500000000000",
+      "count_positive": 1
+    },
+    "out_of_sample_sharpe_ratio": {
+      "count": 2,
+      "min": "-11.9309",
+      "max": "6.7864",
+      "mean": "-2.57225",
+      "median": "-2.57225",
+      "count_positive": 1
+    },
+    "out_of_sample_win_rate": {
+      "count": 2,
+      "min": "0.0000",
+      "max": "0.5000",
+      "mean": "0.2500",
+      "median": "0.2500",
+      "count_positive": 1
     }
-   ]
   },
-  "price_movement_v1": {
-   "RANGING": [
-    {
-     "symbol": "RELIANCE",
-     "rule_id": "price_movement_v1",
-     "regime": "RANGING",
-     "baseline_has_edge": true,
-     "realistic_has_edge": false,
-     "flipped": true,
-     "trade_count_baseline": 25,
-     "trade_count_realistic": 25,
-     "expectancy_baseline": "83.68127272727272727272727273",
-     "expectancy_realistic": "-17.95698259660000000000000001",
-     "profit_factor_baseline": "3.692857809147725506047697522",
-     "profit_factor_realistic": "0.8444259399569429277086122080",
-     "sharpe_baseline": "3.5924",
-     "sharpe_realistic": "1.9565",
-     "max_drawdown_baseline": "0.04344861294807630934783190188",
-     "max_drawdown_realistic": "0.07234642447298747142971942549",
-     "regime_trade_count": 33,
-     "regime_expectancy": "33.18812797439393939393939391",
-     "regime_win_rate": "0.3636",
-     "walk_forward_windows": 14,
-     "walk_forward_included": 6,
-     "walk_forward_oos_expectancy_mean": null,
-     "trade_count_significance": 25,
-     "trades": [
-      1446.6945568,
-      116.97949835,
-      -58.38009903,
-      140.01051463,
-      -34.507459575,
-      -170.68575894,
-      -186.0062414,
-      -87.438468285,
-      -77.980661395,
-      18.3924154875,
-      164.3458014,
-      465.5826084,
-      -84.3719877,
-      -109.1335485,
-      -195.56363,
-      5.8305254,
-      -37.57608244,
-      -211.2629078,
-      -6.5433534,
-      -6.1773756,
-      -26.169846,
-      8.53887704,
-      70.3010056,
-      -91.21735525,
-      -53.737504
-     ]
+  "walk_forward_distribution_by_rule": {
+    "breakout_v1": {
+      "total_windows": 4,
+      "included_window_count": 2,
+      "excluded_window_count": 2,
+      "out_of_sample_expectancy": {
+        "count": 2,
+        "min": "-1841.51920160000000000000",
+        "max": "103.20137926000000000000",
+        "mean": "-869.15891117000000000000",
+        "median": "-869.15891117000000000000",
+        "count_positive": 1
+      }
+    },
+    "price_movement_v1": {
+      "total_windows": 4,
+      "included_window_count": 2,
+      "excluded_window_count": 2,
+      "out_of_sample_expectancy": {
+        "count": 2,
+        "min": "-235.23305964000000000000",
+        "max": "-82.90079415000000000000",
+        "mean": "-159.06692689500000000000",
+        "median": "-159.06692689500000000000",
+        "count_positive": 0
+      }
+    },
+    "volatility_breakout_v1": {
+      "total_windows": 4,
+      "included_window_count": 1,
+      "excluded_window_count": 3,
+      "out_of_sample_expectancy": {
+        "count": 1,
+        "min": "0E-12",
+        "max": "0E-12",
+        "mean": "0E-12",
+        "median": "0E-12",
+        "count_positive": 0
+      }
     }
-   ]
-  },
-  "volatility_breakout_v1": {
-   "RANGING": [
-    {
-     "symbol": "RELIANCE",
-     "rule_id": "volatility_breakout_v1",
-     "regime": "RANGING",
-     "baseline_has_edge": null,
-     "realistic_has_edge": null,
-     "flipped": false,
-     "trade_count_baseline": 4,
-     "trade_count_realistic": 6,
-     "expectancy_baseline": "687.543750000000000000",
-     "expectancy_realistic": "225.3975755616666666666666666",
-     "profit_factor_baseline": "999.99",
-     "profit_factor_realistic": "2.489997230123968698854070630",
-     "sharpe_baseline": "8.1426",
-     "sharpe_realistic": "6.2117",
-     "max_drawdown_baseline": "0",
-     "max_drawdown_realistic": "0.009368318985349253590963751093",
-     "regime_trade_count": 33,
-     "regime_expectancy": "33.18812797439393939393939391",
-     "regime_win_rate": "0.3636",
-     "walk_forward_windows": 14,
-     "walk_forward_included": 6,
-     "walk_forward_oos_expectancy_mean": null,
-     "trade_count_significance": 6,
-     "trades": [
-      2242.48955315,
-      -22.44237375,
-      -16.921301,
-      -19.03078775,
-      -37.099632845,
-      17.53883138
-     ]
-    }
-   ]
-  },
-  "volume_spike_v1": {
-   "UNKNOWN": [
-    {
-     "symbol": "RELIANCE",
-     "rule_id": "volume_spike_v1",
-     "regime": "UNKNOWN",
-     "baseline_has_edge": null,
-     "realistic_has_edge": null,
-     "flipped": false,
-     "trade_count_baseline": 2,
-     "trade_count_realistic": 0,
-     "expectancy_baseline": "-131.9500000000000000",
-     "expectancy_realistic": null,
-     "profit_factor_baseline": "0E+16",
-     "profit_factor_realistic": null,
-     "sharpe_baseline": "-28.0306",
-     "sharpe_realistic": null,
-     "max_drawdown_baseline": "0.02594663400812484252696562989",
-     "max_drawdown_realistic": null,
-     "regime_trade_count": 0,
-     "regime_expectancy": null,
-     "regime_win_rate": null,
-     "walk_forward_windows": 14,
-     "walk_forward_included": 6,
-     "walk_forward_oos_expectancy_mean": null,
-     "trade_count_significance": 0,
-     "trades": []
-    }
-   ]
   }
- }
 }
