@@ -98,6 +98,10 @@ LOCAL_APPS: list[str] = [
     # WATCH-1 — Per-account User Watchlist. Consumes market_data (read-only)
     # for best-effort quote enrichment.
     "apps.watchlist",
+    # LIVE-PAPER-DRESS-REHEARSAL-1 — owner-flagged rule observation + live
+    # paper-vs-backtest drift monitor. Paper-only: never touches
+    # validated_regimes and refuses to operate when BROKER_ENVIRONMENT=live.
+    "apps.live_drift",
     # PIPELINE-HEALTH-1 — Forward paper-trading pipeline health & staleness
     # monitoring. Observability-only: consumes upstream events (read-only)
     # and publishes pipeline_health.StageStalled on HEALTHY->STALLED.
@@ -542,6 +546,23 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": RECONCILIATION_BEAT_INTERVAL_SECONDS,
         "options": {"queue": "maintenance"},
     },
+    # LIVE-PAPER-DRESS-REHEARSAL-1 — daily decision-chain reconciliation:
+    # what the rule engine expected (RuleFired/RiskApproved) vs what the
+    # paper execution write model actually produced (requests/orders/fills)
+    # over the trailing 24h. Read-only flagging, never auto-repair.
+    "reconcile-rule-expectations": {
+        "task": "apps.portfolio_reconciliation.infrastructure.tasks.reconcile_rule_expectations",
+        "schedule": crontab(hour=4, minute=0),
+        "options": {"queue": "maintenance"},
+    },
+    # LIVE-PAPER-DRESS-REHEARSAL-1 — rolling-window live-vs-backtest drift
+    # check for owner-flagged ObservedRule combos. Paper-only; no-ops when
+    # BROKER_ENVIRONMENT=live.
+    "evaluate-live-drift": {
+        "task": "apps.live_drift.infrastructure.tasks.evaluate_live_drift",
+        "schedule": 900.0,
+        "options": {"queue": "monitoring"},
+    },
     # MACRO-CONTEXT-1 — daily FRED/ALFRED vintage ingestion. Runs after US
     # morning releases (~14:00 UTC / 19:30 IST); idempotent on re-run.
     "ingest-macro-series": {
@@ -914,6 +935,27 @@ CALIBRATION_DRIFT_MIN_TRADES: int = config(
 )
 CALIBRATION_DRIFT_ALPHA: float = config(
     "CALIBRATION_DRIFT_ALPHA", default=0.05, cast=float
+)
+
+# ---------------------------------------------------------------------------
+# LIVE-PAPER-DRESS-REHEARSAL-1 — live paper dress rehearsal
+#
+# Drift monitor + paper-only observation firing. Nothing here enables real
+# capital: BROKER_ENVIRONMENT stays "sandbox" and validated_regimes stay
+# untouched. The Telegram notifier is optional and hard-off unless both env
+# vars are set (the free-integrations batch does not exist yet).
+# ---------------------------------------------------------------------------
+TELEGRAM_BOT_TOKEN: str = config("TELEGRAM_BOT_TOKEN", default="")
+TELEGRAM_CHAT_ID: str = config("TELEGRAM_CHAT_ID", default="")
+DRIFT_MIN_TRADES: int = config("DRIFT_MIN_TRADES", default=5, cast=int)
+DRIFT_WINDOW_DAYS: int = config("DRIFT_WINDOW_DAYS", default=7, cast=int)
+DRIFT_ALERT_RELATIVE_THRESHOLD: Decimal = config(
+    "DRIFT_ALERT_RELATIVE_THRESHOLD", default=Decimal("1.0"), cast=Decimal
+)
+# Width of one tick-aggregation bucket for the streaming path (seconds);
+# must match the operating timeframe (MARKET_DATA_POLL_TIMEFRAME default 1min).
+MARKET_DATA_TICK_BUCKET_SECONDS: int = config(
+    "MARKET_DATA_TICK_BUCKET_SECONDS", default=60, cast=int
 )
 
 # M4 — gateway implementation feeding Risk Management's capital/exposure reads.

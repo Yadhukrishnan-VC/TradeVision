@@ -1,9 +1,13 @@
 # Test Suite Baseline Status
 
-Recorded: 2026-08-22 · HEAD at capture: `361e856` (REAL-DATA-BACKFILL-4) · branch `trading-core`
+Recorded: 2026-08-22 · branch `trading-core`
 
 Purpose: a real, diffable baseline for the pytest suite in this dev environment,
 so future batches compare against recorded numbers instead of verbal claims.
+
+> **Read the LATEST baseline first (§ Post-pgbouncer-fix).** The original
+> capture (§ Pre-fix baseline) is kept for history: its 1013 setup-errors
+> were masking ~840 tests that had never been running.
 
 ## How to reproduce
 
@@ -11,13 +15,85 @@ so future batches compare against recorded numbers instead of verbal claims.
 docker exec infra-backend-1 bash -c "cd /app && python -m pytest --tb=no -q"
 ```
 
-## Totals
+---
+
+## Post-pgbouncer-fix baseline (CURRENT — captured during LIVE-PAPER-DRESS-REHEARSAL-1)
+
+Root cause of the 1013 errors was fixed at the infra layer:
+`infra/pgbouncer/pgbouncer.ini` (now volume-mounted, survives restarts) gained
+the missing mapping `test_tradevision_dev_db = host=postgres ...`. With it,
+~840 previously-unrunnable tests execute for the first time.
+
+```
+===== 197 failed, 1719 passed, 4 warnings, 17 errors in 221.44s =====
+(run-to-run variance ±1 failure — one state-dependent test flips between runs)
+```
+
+A/B attribution (git stash with/without the batch's backend changes):
+
+| Run | failed | passed | errors |
+|---|---:|---:|---:|
+| WITHOUT batch changes | 198 | 1700 | 17 |
+| WITH batch changes    | **197** | **1719** | 17 |
+
+→ zero regressions; the batch's 18 new tests all pass and one previously
+failing pre-existing test passes again.
+
+### The 17 remaining ERRORs
+
+All in `apps/ai_engine/tests/test_prompt_manager_regression.py` (2) and
+teardown `DETAIL ...` deadlocks around journal/dashboard read-model tests (15):
+infrastructure-sensitive cleanup, not product-code assertions. Named here so
+they are not silently folded away.
+
+### Failure groups by module (197 total, top offenders)
+
+| Count | Module | Notes |
+|------:|--------|-------|
+| 21 | backtesting | mostly newly-unmasked stale expectations |
+| 20 | risk_management | newly-unmasked |
+| 19 | watchlist | newly-unmasked |
+| 19 | dashboard | newly-unmasked |
+| 18 | accounts | newly-unmasked |
+| 14 | ingestion | newly-unmasked |
+| 13 | execution | newly-unmasked |
+| 10 | technical_analysis | newly-unmasked |
+| 10 | recommendations | incl. the 3 IllegalTransition below |
+| 9+9 | portfolio_reconciliation / portfolio | newly-unmasked |
+| 8 | news_feed | newly-unmasked |
+| 8 | market_data | incl. candle-aggregation DID-NOT-RAISE |
+
+Dominant exception types across failures: `KeyError` ×97 (trigger_data /
+payload shape drift between tests and evolved producers), plain
+`AssertionError` ×43, `assert 0 == 1/2` ×19 (empty-vs-populated query
+expectations), `AttributeError` ×6, `StopIteration` ×6,
+`*.DoesNotExist` ×6 (Order/AuditLogEntry/ExecutionRequest/PatternAnalysisRun),
+plus single-digit others (`IllegalTransition` ×3, ValidationError ×2, …).
+
+**These ~190 newly-visible failures are stale code-vs-test drift that the
+pgbouncer bug had been hiding since before the REAL-DATA-BACKFILL batches**
+— they fail identically without this batch's changes (see A/B above). They
+are NOT caused by LIVE-PAPER-DRESS-REHEARSAL-1 and are out of scope to fix
+here; this file exists precisely so the next batches can diff against them
+module by module instead of re-discovering them.
+
+### The 7 originally-named failures (unchanged subset)
+
+Still present inside the counts above: recommendations `IllegalTransition`
+×3, rule_engine mock `__name__` ×2, market-data `DID NOT RAISE ValueError`,
+volume-spike `'5' != '5.0'`.
+
+---
+
+## Pre-fix baseline (HISTORICAL — captured at `361e856`, BACKFILL-5)
+
+### Totals
 
 ```
 ============ 7 failed, 880 passed, 1 warning, 1013 errors in 27.11s ============
 ```
 
-## Error categorization (the 1013 ERRORs)
+### Error categorization (the 1013 ERRORs)
 
 Grouped by exception type via a per-report plugin (`pytest_runtest_logreport`),
 not hand-counted:
@@ -34,7 +110,7 @@ during DB setup. Fix (when desired): point `config/settings/testing.py` at the
 `postgres` host/port directly, or pre-create the test database outside
 pgbouncer. None of these errors indicate product-code problems.
 
-## Failure categorization (the 7 FAILEDs) — named explicitly, none folded away
+### Failure categorization (the 7 FAILEDs) — named explicitly, none folded away
 
 | Count | Test(s) | Exact cause line |
 |------:|---------|------------------|
@@ -48,8 +124,13 @@ REAL-DATA-BACKFILL batches (recommendations domain, rule_engine event
 registration/domain rules, market_data aggregation). They are tracked here so
 they are neither ignored nor misattributed.
 
+---
+
 ## Provenance / history
 
+- LIVE-PAPER-DRESS-REHEARSAL-1 fixed the 1013-error root cause at the infra
+  layer (`infra/pgbouncer/pgbouncer.ini` mounted into the container) and
+  recorded the post-fix baseline above, including the stash A/B attribution.
 - Batch REAL-DATA-BACKFILL-4 verified via `git stash` A/B run:
   with and without its changes the suite reported identical totals
   (at that time `9 failed, 877 passed, 1013 errors`) — no regressions introduced.

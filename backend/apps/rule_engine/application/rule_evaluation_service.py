@@ -4,7 +4,7 @@ import logging
 import uuid
 
 from core.events.event_types import EnrichedIntelligencePacket
-from django.db import transaction
+from django.db import models, transaction
 
 from core.execution_context import get_account_override
 from core.rules.base_rule import RuleResult
@@ -67,7 +67,7 @@ class RuleEvaluationService(BaseService):
         # Backtest replay (account override bound) always fires ungated so the
         # run can generate the RuleExecution/Fill rows validation needs.
         if get_account_override() is None:
-            results = self._filter_by_gate(results, regime)
+            results = self._filter_by_gate(results, regime, symbol=packet.symbol)
         with transaction.atomic():
             for result in results:
                 analysis_event = result.to_analysis_event(
@@ -95,7 +95,7 @@ class RuleEvaluationService(BaseService):
         return firings
 
     def _filter_by_gate(
-        self, results: list[RuleResult], regime: str | None
+        self, results: list[RuleResult], regime: str | None, symbol: str = ""
     ) -> list[RuleResult]:
         """ADR-029 §4 gate: keep only (rule_id, regime) pairs that are both
         enabled and validated, fail-closed for everything else.
@@ -106,6 +106,12 @@ class RuleEvaluationService(BaseService):
         has no GO/NO_GO verdict in ``validated_regimes``). Rows created by
         backtesting always have ``enabled=False`` (ADR-029 §3), so a GO verdict
         alone never flips a rule live — an explicit human decision is required.
+
+        LIVE-PAPER-DRESS-REHEARSAL-1 exception: an owner-flagged
+        ``ObservedRule`` row (apps/live_drift) bypasses the *validation*
+        requirement so the rule can fire on the paper broker against live data
+        and feed the drift monitor. See :meth:`_observation_paper_bypass` for
+        the fail-closed conditions; nothing here writes validated_regimes.
         """
         allowed: list[RuleResult] = []
         if not regime:
@@ -126,6 +132,16 @@ class RuleEvaluationService(BaseService):
                 reason = "no_config"
             elif not config.enabled:
                 reason = "disabled"
+            elif self._observation_paper_bypass(result.rule_id, regime, symbol):
+                # Explicit owner opt-in; paper broker only. Logged separately
+                # from rule_gated_out so the audit trail distinguishes a
+                # validated GO from an observation bypass.
+                logger.info(
+                    "rule_observation_paper_bypass",
+                    extra={"rule_id": result.rule_id, "regime": regime, "symbol": symbol},
+                )
+                allowed.append(result)
+                continue
             elif (
                 regime not in config.validated_regimes
                 or config.validated_regimes[regime].get("status") != "GO"
@@ -144,6 +160,34 @@ class RuleEvaluationService(BaseService):
                 },
             )
         return allowed
+
+    @staticmethod
+    def _observation_paper_bypass(rule_id: str, regime: str, symbol: str = "") -> bool:
+        """Fail-closed check for the live-paper observation exception.
+
+        ALL of the following must hold before a rule may fire without a
+        validated-regime GO:
+
+        - ``BROKER_ENVIRONMENT != "live"`` — this mechanism must never unlock
+          real capital;
+        - ``RuleConfig.enabled`` is already guaranteed by the caller's chain;
+        - an **enabled** ``ObservedRule`` exists for exactly this
+          ``(rule_id, regime)`` whose symbol scope covers ``symbol``
+          (empty scope = any symbol; non-empty = exact match).
+        """
+        from django.conf import settings as dj_settings
+
+        if str(getattr(dj_settings, "BROKER_ENVIRONMENT", "sandbox")) == "live":
+            return False
+
+        from apps.live_drift.infrastructure.models import ObservedRule
+
+        scope_filter = models.Q(symbol="") | models.Q(symbol=symbol)
+        return (
+            ObservedRule.objects.filter(rule_id=rule_id, regime=regime, enabled=True)
+            .filter(scope_filter)
+            .exists()
+        )
 
     def publish_rule_firing(
         self,

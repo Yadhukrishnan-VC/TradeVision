@@ -101,6 +101,10 @@ class MarketDataProviderFactory:
             "mock": MockMarketDataProvider,
             "paper": PaperMarketDataProvider,
             "zerodha": ZerodhaMarketDataProvider,
+            # LIVE-PAPER-DRESS-REHEARSAL-1: streaming mode. Request-response
+            # (historical/warm-up) needs stay on the REST Kite provider; the
+            # WebSocket side is wired by `manage.py run_tick_stream`.
+            "zerodha_ticker": ZerodhaMarketDataProvider,
         }
 
         if provider_name not in provider_map:

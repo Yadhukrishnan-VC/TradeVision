@@ -35,6 +35,14 @@ services:
       RESERVE_POOL_SIZE: 10
       STATS_USERS: ${POSTGRES_USER}
       ADMIN_USERS: ${POSTGRES_USER}
+    volumes:
+      # Pinned pgbouncer config. The edoburu image auto-generates this file
+      # from DATABASE_URL on start, which omits the TEST database mappings —
+      # without them every pytest-django setup errors with
+      # "FATAL: no such database: test_tradevision_dev_db" (1013 suite-wide
+      # setup errors before this was pinned; see docs/TEST_SUITE_BASELINE_STATUS.md).
+      # Keep the [databases] entries in sync with config/settings/testing.py.
+      - ./pgbouncer/pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
     networks:
       - data
       - app
