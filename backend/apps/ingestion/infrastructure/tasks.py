@@ -176,11 +176,11 @@ def poll_chartink_scans_scheduled(self: Any) -> dict[str, Any]:
         )
         return {"polled": False, "reason": "SCAN_ID is 0 or unset"}
 
-    # Forward to the real task with the right arguments.
+    # Forward to the real task with the right arguments by actually
+    # dispatching it (not just constructing a signature).
     # We infer a reasonable scan_name from the ID; callers can override
     # SCAN_ID with a custom name via environment if desired.
-    return poll_chartink_scans.s(
+    poll_chartink_scans.delay(
         scan_name=f"scan-{scan_id}",
         scan_id=scan_id,
-        shared_secret=django_settings.SHARED_SECRET,
     )
