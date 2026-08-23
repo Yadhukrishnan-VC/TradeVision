@@ -65,3 +65,42 @@ class TestChartinkScanFetcher:
 
         with pytest.raises(DataIngestionError, match="Chartink scan HTTP error"):
             fetcher._execute_scan()
+
+
+
+
+
+
+class TestPollChartinkScansScheduled:
+    """Tests for poll_chartink_scans_scheduled wrapper task.
+
+    Proves:
+      1. No-op when SCAN_ID is 0 / unset.
+      2. Forwards to poll_chartink_scans with the right args when SCAN_ID is set.
+    """
+
+    @patch('django.conf.settings')
+    def test_no_op_when_scan_id_is_zero(self, mock_settings) -> None:
+        mock_settings.SCAN_ID = 0
+        mock_settings.SHARED_SECRET = None
+
+        from apps.ingestion.infrastructure.tasks import poll_chartink_scans_scheduled
+
+        result = poll_chartink_scans_scheduled()
+        assert result == {"polled": False, "reason": "SCAN_ID is 0 or unset"}
+
+    @patch('django.conf.settings')
+    def test_forwards_when_scan_id_is_set(self, mock_settings) -> None:
+        mock_settings.SCAN_ID = 42
+        mock_settings.SHARED_SECRET = "my-secret"
+
+        with patch('apps.ingestion.infrastructure.tasks.poll_chartink_scans.s') as mock_dispatch:
+            from apps.ingestion.infrastructure.tasks import poll_chartink_scans_scheduled
+
+            poll_chartink_scans_scheduled()
+
+            mock_dispatch.assert_called_once_with(
+                scan_name='scan-42',
+                scan_id=42,
+                shared_secret='my-secret',
+            )

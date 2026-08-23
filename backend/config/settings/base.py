@@ -565,9 +565,11 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": 900.0,
         "options": {"queue": "monitoring"},
     },
-    # Chartink scan — polled on a schedule. Off by default; set SCAN_ID to a real Chartink scan ID to enable polling.
+    # Chartink scan — polled on a schedule. Off by default; set SCAN_ID to a real
+    # Chartink scan ID to enable polling. The beat schedule points at the wrapper
+    # task which reads SCAN_ID from Django config and forwards args accordingly.
     "chartink-scan": {
-        "task": "apps.ingestion.infrastructure.tasks.poll_chartink_scans",
+        "task": "apps.ingestion.infrastructure.tasks.poll_chartink_scans_scheduled",
         "schedule": 3600.0,
         "options": {"queue": "webhooks"}
     },

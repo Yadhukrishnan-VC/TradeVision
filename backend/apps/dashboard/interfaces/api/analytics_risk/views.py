@@ -24,6 +24,60 @@ from apps.dashboard.interfaces.api.analytics_risk.serializers import (
     RiskSummaryResponseSerializer,
 )
 
+class DriftAlertsView(APIView):
+    """List recent DriftAlert records for dashboard visibility."""
+
+    permission_classes = [HasDashboardReadRisk]
+
+    def get(self, request: Request) -> Response:
+        from apps.dashboard.application.analytics_risk.services import DriftAlertService
+
+        service = DriftAlertService()
+        recent = service.list_recent_alerts(limit=50)
+        active_count = service.count_active_alerts()
+
+        return Response({
+            "active_alerts_count": active_count,
+            "recent_alerts": recent,
+        })
+
+
+class RuleExpectationsView(APIView):
+    """Render reconcile_rule_expectations output for dashboard."""
+
+    permission_classes = [HasDashboardReadRisk]
+
+    def get(self, request: Request) -> Response:
+        from uuid import UUID
+        from apps.portfolio_reconciliation.infrastructure.tasks import reconcile_rule_expectations
+
+        account_id_str = request.query_params.get("account_id")
+        account_id = UUID(account_id_str) if account_id_str else None
+
+        expectations = reconcile_rule_expectations(window_hours=24) if not account_id else             {"per_rule": [], "summary_count": 0}
+
+        return Response({
+            "per_rule": expectations.get("per_rule", []),
+            "summary_count": len(expectations.get("per_rule", [])),
+        })
+
+
+class EdgeValidationReportView(APIView):
+    """Read-only render of EDGE_VALIDATION_REPORT_V2.md summary table."""
+
+    permission_classes = [HasDashboardReadRisk]
+
+    def get(self, request: Request) -> Response:
+        from apps.dashboard.application.analytics_risk.services import EdgeValidationReportService
+
+        service = EdgeValidationReportService()
+        summary = service.get_edge_validation_summary()
+
+        return Response(summary)
+
+
+
+
 
 class AccountOwnershipMixin:
     """Require the URL ``account_id`` to be the caller's own account.
@@ -172,3 +226,23 @@ class RiskSummaryView(AccountOwnershipMixin, APIView):
             }
         )
         return Response(ser.data)
+
+
+class ScannerStatusView(APIView):
+    """Basic scanner status for the frontend scanner page.
+
+    Returns whether a Chartink scan is currently active
+    (based on settings.SCAN_ID) and the scan ID value.
+    """
+    permission_classes = []
+
+    def get(self, request: Request) -> Response:
+        from django.conf import settings
+        scan_id = getattr(settings, 'SCAN_ID', 0)
+        return Response({
+            "scanning": bool(scan_id),
+            "scan_id": scan_id,
+            "message": "Chartink scan active" if scan_id else "Scan disabled. Configure SCAN_ID to enable.",
+        })
+
+

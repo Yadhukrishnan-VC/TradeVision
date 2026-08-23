@@ -7,6 +7,10 @@ from apps.dashboard.interfaces.api.analytics_risk.views import (
     PerformanceView,
     PnLAnalyticsView,
     RiskSummaryView,
+    DriftAlertsView,
+    RuleExpectationsView,
+    EdgeValidationReportView,
+    ScannerStatusView,
 )
 
 urlpatterns = [
@@ -29,5 +33,25 @@ urlpatterns = [
         "accounts/<uuid:account_id>/risk",
         RiskSummaryView.as_view(),
         name="risk-summary",
+    ),
+    path(
+        "drift-alerts",
+        DriftAlertsView.as_view(),
+        name="drift-alerts",
+    ),
+    path(
+        "rule-expectations",
+        RuleExpectationsView.as_view(),
+        name="rule-expectations",
+    ),
+    path(
+        "edge-validation-report",
+        EdgeValidationReportView.as_view(),
+        name="edge-validation-report",
+    ),
+    path(
+        "scan-status",
+        ScannerStatusView.as_view(),
+        name="scanner-status",
     ),
 ]

@@ -149,3 +149,38 @@ def reprocess_unprocessed_webhooks(self: Any) -> int:
             extra={"error": str(exc)},
         )
         raise self.retry(exc=exc)
+
+
+@shared_task(
+    bind=True,
+    max_retries=3,
+    default_retry_delay=60,
+    acks_late=True,
+    queue="webhooks",
+    time_limit=60,
+)
+def poll_chartink_scans_scheduled(self: Any) -> dict[str, Any]:
+    """Wrapper that reads settings.SCAN_ID and dispatches poll_chartink_scans.
+
+    Off by default when SCAN_ID is 0 (the Django setting default). When
+    SCAN_ID is set to a real Chartink scan ID, it forwards scan_name/scan_id
+    and the optional shared_secret to the real poll_chartink_scans task.
+    """
+    from django.conf import settings as django_settings
+
+    scan_id = django_settings.SCAN_ID
+    if not scan_id:
+        logger.info(
+            "chartink-scan-scheduled-no-op",
+            extra={"reason": "SCAN_ID is 0 or unset; chartink scan polling disabled"},
+        )
+        return {"polled": False, "reason": "SCAN_ID is 0 or unset"}
+
+    # Forward to the real task with the right arguments.
+    # We infer a reasonable scan_name from the ID; callers can override
+    # SCAN_ID with a custom name via environment if desired.
+    return poll_chartink_scans.s(
+        scan_name=f"scan-{scan_id}",
+        scan_id=scan_id,
+        shared_secret=django_settings.SHARED_SECRET,
+    )
