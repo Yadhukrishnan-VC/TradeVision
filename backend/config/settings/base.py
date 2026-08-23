@@ -266,6 +266,8 @@ CELERY_TIMEZONE = "Asia/Kolkata"
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 60
 CELERY_TASK_SOFT_TIME_LIMIT = 30
+SCAN_ID = config("SCAN_ID", default=0, cast=int)
+
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 
 CELERY_TASK_ROUTES = {
@@ -562,6 +564,12 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.live_drift.infrastructure.tasks.evaluate_live_drift",
         "schedule": 900.0,
         "options": {"queue": "monitoring"},
+    },
+    # Chartink scan — polled on a schedule. Off by default; set SCAN_ID to a real Chartink scan ID to enable polling.
+    "chartink-scan": {
+        "task": "apps.ingestion.infrastructure.tasks.poll_chartink_scans",
+        "schedule": 3600.0,
+        "options": {"queue": "webhooks"}
     },
     # MACRO-CONTEXT-1 — daily FRED/ALFRED vintage ingestion. Runs after US
     # morning releases (~14:00 UTC / 19:30 IST); idempotent on re-run.
