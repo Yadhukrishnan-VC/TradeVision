@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+<h1>Scanner Page</h1>
+<p>Chartink scan results will appear here.</p>
+<div id="scan-results">
+  <p>Loading scan results...</p>
+</div>
+<script>
+  // Fetch scan results from API
+  fetch('/api/v1/dashboard/scan-status/')
+    .then(response => response.json())
+    .then(data => {
+      const resultsDiv = document.getElementById('scan-results');
+      if (data.scanning) {
+        resultsDiv.innerHTML = '<p>Chartink scan in progress...</p>';
+      } else {
+        resultsDiv.innerHTML = '<p>No active scan. Set SCAN_ID to enable.</p>';
+      }
+    })
+    .catch(error => {
+      console.error('Error fetching scan status:', error);
+      document.getElementById('scan-results').innerHTML = '<p>Error loading scan status.</p>';
+    });
+</script>
+{% endblock %}
