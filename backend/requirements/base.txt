@@ -38,3 +38,4 @@ requests==2.34.2
 # previously only channels was present and daphne was never installed.
 # ---------------------------------------------------------------------------
 daphne==4.1.2
+kiteconnect==5.2.1
