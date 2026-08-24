@@ -9,13 +9,21 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.dashboard.application.analytics_risk.services import PnLAnalyticsService, PerformanceService, RiskService
 from apps.dashboard.domain.analytics_risk.value_objects import Period
-from apps.dashboard.interfaces.api.analytics_risk.permissions import (
-    HasDashboardReadPerformanceMetrics,
-    HasDashboardReadPnlAnalytics,
-    HasDashboardReadRisk,
+from apps.dashboard.application.analytics_risk.services import (
+    PnLAnalyticsService,
+    PerformanceService,
+    RiskService,
+    DriftAlertService,
+    EdgeValidationReportService,
 )
+
+from apps.dashboard.interfaces.api.analytics_risk.permissions import (
+    HasDashboardReadRisk,
+    HasDashboardReadPnlAnalytics,
+    HasDashboardReadPerformanceMetrics,
+)
+
 from apps.dashboard.interfaces.api.analytics_risk.serializers import (
     DailyRollupResponseSerializer,
     PerformanceResponseSerializer,
@@ -24,74 +32,19 @@ from apps.dashboard.interfaces.api.analytics_risk.serializers import (
     RiskSummaryResponseSerializer,
 )
 
-class DriftAlertsView(APIView):
-    """List recent DriftAlert records for dashboard visibility."""
-
-    permission_classes = [HasDashboardReadRisk]
-
-    def get(self, request: Request) -> Response:
-        from apps.dashboard.application.analytics_risk.services import DriftAlertService
-
-        service = DriftAlertService()
-        recent = service.list_recent_alerts(limit=50)
-        active_count = service.count_active_alerts()
-
-        return Response({
-            "active_alerts_count": active_count,
-            "recent_alerts": recent,
-        })
-
-
-class RuleExpectationsView(APIView):
-    """Render reconcile_rule_expectations output for dashboard."""
-
-    permission_classes = [HasDashboardReadRisk]
-
-    def get(self, request: Request) -> Response:
-        from uuid import UUID
-        from apps.portfolio_reconciliation.infrastructure.tasks import reconcile_rule_expectations
-
-        account_id_str = request.query_params.get("account_id")
-        account_id = UUID(account_id_str) if account_id_str else None
-
-        expectations = reconcile_rule_expectations(window_hours=24) if not account_id else             {"per_rule": [], "summary_count": 0}
-
-        return Response({
-            "per_rule": expectations.get("per_rule", []),
-            "summary_count": len(expectations.get("per_rule", [])),
-        })
-
-
-class EdgeValidationReportView(APIView):
-    """Read-only render of EDGE_VALIDATION_REPORT_V2.md summary table."""
-
-    permission_classes = [HasDashboardReadRisk]
-
-    def get(self, request: Request) -> Response:
-        from apps.dashboard.application.analytics_risk.services import EdgeValidationReportService
-
-        service = EdgeValidationReportService()
-        summary = service.get_edge_validation_summary()
-
-        return Response(summary)
-
-
-
-
-
 class AccountOwnershipMixin:
-    """Require the URL ``account_id`` to be the caller's own account.
+    """Require the URL account_id to be the caller's own account.
 
     ``request.user`` is the real user for both JWT and API-key auth
     (``APIKeyAuthentication`` resolves the key to its owning user), so a
     single identity check covers both paths. Returns 404 — not 403 — so the
     existence of other accounts is not disclosed.
+    ____________________________________________________________
     """
 
     def _ensure_own_account(self, request: Request, account_id: UUID) -> None:
         if str(request.user.id) != str(account_id):
             raise NotFound()
-
 
 class PnLAnalyticsView(AccountOwnershipMixin, APIView):
     permission_classes = [HasDashboardReadPnlAnalytics]
@@ -129,10 +82,6 @@ class PnLAnalyticsView(AccountOwnershipMixin, APIView):
             }
         )
         return Response(ser.data)
-
-    def post(self, request: Request, account_id: UUID) -> Response:
-        return Response({"error": "Not implemented"}, status=status.HTTP_501_NOT_IMPLEMENTED)
-
 
 class DailyRollupView(AccountOwnershipMixin, APIView):
     permission_classes = [HasDashboardReadPnlAnalytics]
@@ -173,7 +122,6 @@ class DailyRollupView(AccountOwnershipMixin, APIView):
         )
         return Response(ser.data)
 
-
 class PerformanceView(AccountOwnershipMixin, APIView):
     permission_classes = [HasDashboardReadPerformanceMetrics]
 
@@ -205,7 +153,6 @@ class PerformanceView(AccountOwnershipMixin, APIView):
         )
         return Response(ser.data)
 
-
 class RiskSummaryView(AccountOwnershipMixin, APIView):
     permission_classes = [HasDashboardReadRisk]
 
@@ -227,22 +174,91 @@ class RiskSummaryView(AccountOwnershipMixin, APIView):
         )
         return Response(ser.data)
 
+class DriftAlertsView(APIView):
+    permission_classes = [HasDashboardReadRisk]
+
+    def get(self, request: Request) -> Response:
+        from apps.dashboard.application.analytics_risk.services import DriftAlertService
+
+        service = DriftAlertService()
+        recent = service.list_recent_alerts(limit=50)
+        active_count = service.count_active_alerts()
+
+        return Response({
+            "active_alerts_count": active_count,
+            "recent_alerts": recent,
+        })
+
+class RuleExpectationsView(APIView):
+    permission_classes = [HasDashboardReadRisk]
+
+    def get(self, request: Request) -> Response:
+        from uuid import UUID
+        from apps.portfolio_reconciliation.infrastructure.tasks import reconcile_rule_expectations
+
+        account_id_str = request.query_params.get("account_id")
+        account_id = UUID(account_id_str) if account_id_str else None
+
+        expectations = []
+        if account_id:
+            expectations = EdgeValidationReportService().list_rule_expectations_summary(account_id)
+
+        return Response({
+            "per_rule": expectations,
+            "summary_count": len(expectations),
+        })
+
+class EdgeValidationReportView(APIView):
+    permission_classes = [HasDashboardReadRisk]
+
+    def get(self, request: Request) -> Response:
+        from apps.dashboard.application.analytics_risk.services import EdgeValidationReportService
+
+        service = EdgeValidationReportService()
+        summary = service.get_edge_validation_summary()
+
+        return Response(summary)
 
 class ScannerStatusView(APIView):
-    """Basic scanner status for the frontend scanner page.
-
-    Returns whether a Chartink scan is currently active
-    (based on settings.SCAN_ID) and the scan ID value.
-    """
     permission_classes = []
 
     def get(self, request: Request) -> Response:
         from django.conf import settings
-        scan_id = getattr(settings, 'SCAN_ID', 0)
+
+        scan_id = getattr(settings, "SCAN_ID", 0)
         return Response({
             "scanning": bool(scan_id),
             "scan_id": scan_id,
             "message": "Chartink scan active" if scan_id else "Scan disabled. Configure SCAN_ID to enable.",
         })
 
+class ScannerRuleView(APIView):
+    permission_classes = []
 
+    def get(self, request: Request) -> Response:
+        from apps.rule_engine.infrastructure.repositories import RuleConfigRepository
+
+        repo = RuleConfigRepository()
+        rules = repo.list()
+        rule_data = []
+        for rule in rules:
+            regimes = rule.validated_regimes or {}
+            rule_data.append({
+                "rule_id": rule.rule_id,
+                "enabled": rule.enabled,
+                "regime_count": len(regimes),
+                "severity_override": rule.severity_override,
+            })
+        return Response({"rules": rule_data})
+
+__all__ = [
+    "PnLAnalyticsView",
+    "DailyRollupView",
+    "PerformanceView",
+    "RiskSummaryView",
+    "DriftAlertsView",
+    "RuleExpectationsView",
+    "EdgeValidationReportView",
+    "ScannerStatusView",
+    "ScannerRuleView",
+]

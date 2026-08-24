@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+from rest_framework import status
+from rest_framework.exceptions import NotFound
+from rest_framework.request import Request
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
 from django.urls import path
 
 from apps.dashboard.interfaces.api.analytics_risk.views import (
@@ -11,6 +17,7 @@ from apps.dashboard.interfaces.api.analytics_risk.views import (
     RuleExpectationsView,
     EdgeValidationReportView,
     ScannerStatusView,
+    ScannerRuleView,
 )
 
 urlpatterns = [
@@ -53,5 +60,10 @@ urlpatterns = [
         "scan-status",
         ScannerStatusView.as_view(),
         name="scanner-status",
+    ),
+    path(
+        "rules/",
+        ScannerRuleView.as_view(),
+        name="scanner-rules",
     ),
 ]
