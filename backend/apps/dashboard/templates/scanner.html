@@ -2,25 +2,86 @@
 {% load static %}
 {% block content %}
 <h1>Scanner Page</h1>
-<p>Chartink scan results will appear here.</p>
-<div id="scan-results">
-  <p>Loading scan results...</p>
+
+<div class="scanner-container">
+  <div class="rule-picker">
+    <h2>Rule Selector</h2>
+    <select id="rule-select" onchange="loadRegime(this.value)">
+      <option value="">-- Select a rule --</option>
+      {% for rule in rules %}
+      <option value="{{ rule.rule_id }}" data-regimes="{{ rule.validated_regimes|default:'{}' }}">{{ rule.rule_id }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="regime-picker">
+    <h2>Regime Details</h2>
+    <div id="regime-info">
+      <p>Select a rule to view regime details.</p>
+    </div>
+  </div>
+
+  <div class="scan-status">
+    <h2>Chartink Scan Status</h2>
+    <p>Loading scan status...</p>
+    <div id="scan-results">
+      <p>No active scan. Configure SCAN_ID to enable.</p>
+    </div>
+  </div>
 </div>
+
 <script>
-  // Fetch scan results from API
-  fetch('/api/v1/dashboard/scan-status/')
-    .then(response => response.json())
-    .then(data => {
-      const resultsDiv = document.getElementById('scan-results');
-      if (data.scanning) {
-        resultsDiv.innerHTML = '<p>Chartink scan in progress...</p>';
-      } else {
-        resultsDiv.innerHTML = '<p>No active scan. Set SCAN_ID to enable.</p>';
-      }
-    })
-    .catch(error => {
-      console.error('Error fetching scan status:', error);
-      document.getElementById('scan-results').innerHTML = '<p>Error loading scan status.</p>';
-    });
+  // Initialize rule selector
+  document.addEventListener('DOMContentLoaded', function() {
+    fetch('/api/v1/risk-management/rules/')
+      .then(response => response.json())
+      .then(data => {
+        const select = document.getElementById('rule-select');
+        rules = data.rules;
+        rules.forEach(rule => {
+          const option = document.createElement('option');
+          option.value = rule.rule_id;
+          option.setAttribute('data-regimes', rule.validated_regimes || '{}');
+          option.textContent = rule.rule_id;
+          select.appendChild(option);
+        });
+      })
+      .catch(error => console.error('Error loading rules:', error));
+
+    // Load scan status
+    fetch('/api/v1/dashboard/scan-status/')
+      .then(response => response.json())
+      .then(data => {
+        const statusDiv = document.getElementById('scan-results');
+        if (data.scanning) {
+          statusDiv.innerHTML = '<p>Chartink scan in progress...</p>';
+        } else {
+          statusDiv.innerHTML = '<p>No active scan. Set SCAN_ID to enable.</p>';
+        }
+      })
+      .catch(error => console.error('Error fetching scan status:', error));
+  });
+
+  // Load regime details when rule changes
+  function loadRegime(ruleId) {
+    const select = document.getElementById('rule-select');
+    const option = select.options[select.selectedIndex];
+    const regimesData = option.getAttribute('data-regimes');
+    const regimeInfo = document.getElementById('regime-info');
+    
+    if (regimesData) {
+      const regimes = JSON.parse(regimesData);
+      let html = '<h3>Regime: ' + ruleId + '</h3>';
+      html += '<p>Total regimes: ' + Object.keys(regimes).length + '</p>';
+      html += '<ul>';
+      Object.entries(regimes).forEach(([name, info]) => {
+        html += '<li>' + name + ': status=' + info.status + ', expectancy=' + (info.expectancy || 'N/A') + '</li>';
+      });
+      html += '</ul>';
+      regimeInfo.innerHTML = html;
+    } else {
+      regimeInfo.innerHTML = '<p>No regime data available.</p>';
+    }
+  }
 </script>
 {% endblock %}
