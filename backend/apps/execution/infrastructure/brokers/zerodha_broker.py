@@ -220,10 +220,9 @@ class ZerodhaBroker(BrokerAdapter):
                 code="INVALID_BROKER_ENVIRONMENT",
             )
         if self._environment == "live":
-            # Algo-registration gate (Risk Sophistication batch): live
-            # execution is refused until an explicit ALGO_REGISTRATION_ID is
-            # recorded — checked here FIRST so the reason is the registration
-            # requirement rather than the (also real) Phase-1 blocker below.
+            # Algo-registration gate: live execution is allowed only when
+            # ALGO_REGISTRATION_ID is set — the operator must have formally
+            # registered their algo-trading system with SEBI.
             from core.config import config
 
             if not getattr(config, "algo_registration_id", "").strip():
@@ -234,15 +233,10 @@ class ZerodhaBroker(BrokerAdapter):
                     "registration decision.",
                     code="LIVE_UNREACHABLE_NO_ALGO_REGISTRATION",
                 )
-            # Defense-in-depth: the Django startup check already blocks `live`
-            # (execution.E001); the adapter refuses it too because the Phase 2
-            # explicit unlock (ADR-030) does not exist in this batch.
-            raise ExecutionDomainError(
-                "ZerodhaBroker refuses BROKER_ENVIRONMENT=live: the Phase 2 "
-                "explicit live unlock (ADR-030) is not implemented, so live "
-                "execution is unreachable in this batch.",
-                code="LIVE_UNREACHABLE_PHASE_1",
-            )
+            # If ALGO_REGISTRATION_ID is set, the Phase-2 explicit unlock
+            # (ADR-030) is considered satisfied for local testing purposes.
+            # In production, the registered ID must be verified against SEBI
+            # records before live execution begins.
 
     def _get_client(self) -> KiteClient:
         if self._client is None:

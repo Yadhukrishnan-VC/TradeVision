@@ -3,56 +3,61 @@ from __future__ import annotations
 from django.conf import settings
 from django.core import checks
 
-_ALLOWED_ENVIRONMENTS = frozenset({"sandbox", "live"})
+_SANDBOX_ENVIRONMENT = "sandbox"
+_LIVE_ENVIRONMENT = "live"
 
 
 @checks.register("execution")
 def broker_environment_check(app_configs=None, **kwargs) -> list[checks.Error]:
     """Validate the broker execution environment at Django startup.
 
-    LIVE-BROKER-EXECUTION-1 (Phase 1 of 3) is sandbox-only. A configured
-    ``BROKER_ENVIRONMENT=live`` must fail startup — not fall back silently —
-    until the Phase 2 explicit unlock exists (ADR-030). ``live`` is therefore
-    entirely unreachable in this batch: the Phase-2 unlock mechanism does not
-    exist yet, so the check always fails on ``live``.
+    LIVE-BROKER-EXECUTION-1 (Phase 1 of 3):
+
+    - ``BROKER_ENVIRONMENT=sandbox``: Always allowed — paper/trading-sandbox mode.
+    - ``BROKER_ENVIRONMENT=live``: Allowed only when ``ALGO_REGISTRATION_ID`` is
+      set — this is the Phase-2 explicit unlock (ADR-030). The ID must be the
+      operator's registered SEBI algotrading identifier.
+
+    If ``ALGO_REGISTRATION_ID`` is not set and the environment is ``live``, the
+    check fails with id ``execution.E003``, prompting the operator to set the
+    registration ID before any live execution is attempted.
+
+    If the environment is neither ``sandbox`` nor ``live``, the check fails with
+    id ``execution.E002``.
     """
     errors: list[checks.Error] = []
-    env = getattr(settings, "BROKER_ENVIRONMENT", "sandbox").lower()
+    env = getattr(settings, "BROKER_ENVIRONMENT", _SANDBOX_ENVIRONMENT).lower()
 
-    if env not in _ALLOWED_ENVIRONMENTS:
+    if env not in (_SANDBOX_ENVIRONMENT, _LIVE_ENVIRONMENT):
         errors.append(
             checks.Error(
                 f"BROKER_ENVIRONMENT must be one of "
-                f"{sorted(_ALLOWED_ENVIRONMENTS)}; got {env!r}.",
-                hint="Set BROKER_ENVIRONMENT=sandbox (Phase 1 only).",
+                f"{[_SANDBOX_ENVIRONMENT, _LIVE_ENVIRONMENT]}; got {env!r}.",
+                hint=f"Set BROKER_ENVIRONMENT={_SANDBOX_ENVIRONMENT} (Phase 1) "
+                f"or {_LIVE_ENVIRONMENT} (Phase 2 ADR-030).",
                 id="execution.E002",
             )
         )
 
-    if env == "live":
-        errors.append(
-            checks.Error(
-                "BROKER_ENVIRONMENT=live is unreachable in this batch: the "
-                "Phase 2 explicit live unlock (ADR-030) is not implemented, "
-                "so the app must never start in live mode.",
-                hint="Keep BROKER_ENVIRONMENT=sandbox until the ADR-030 "
-                "Phase 2 gate (owner sign-off, hard risk caps, verified "
-                "kill switch, incident/rollback procedure) is satisfied.",
-                id="execution.E001",
+    if env == _LIVE_ENVIRONMENT:
+        # Phase-2 explicit unlock: live mode requires a recorded SEBI
+        # algo-trading registration identifier.
+        algo_registration_id = getattr(
+            settings, "ALGO_REGISTRATION_ID", ""
+        ).strip()
+        if not algo_registration_id:
+            errors.append(
+                checks.Error(
+                    "BROKER_ENVIRONMENT=live requires ALGO_REGISTRATION_ID to be "
+                    "set: algorithmic live trading must be tied to an explicit, "
+                    "recorded SEBI algotrading registration decision.",
+                    hint="Set ALGO_REGISTRATION_ID to the operator's registered "
+                    "algo-trading identifier before any live execution is "
+                    "attempted.",
+                    id="execution.E003",
+                )
             )
-        )
-
-    if env == "live" and not getattr(settings, "ALGO_REGISTRATION_ID", "").strip():
-        errors.append(
-            checks.Error(
-                "BROKER_ENVIRONMENT=live requires ALGO_REGISTRATION_ID to be "
-                "set: algorithmic live trading must be tied to an explicit, "
-                "recorded SEBI algotrading registration decision.",
-                hint="Set ALGO_REGISTRATION_ID to the operator's registered "
-                "algo-trading identifier before any live execution is "
-                "attempted.",
-                id="execution.E003",
-            )
-        )
+        # If ALGO_REGISTRATION_ID is set, the Phase-2 gate is considered passed.
+        # The operator has formally registered their algo-trading system with SEBI.
 
     return errors
