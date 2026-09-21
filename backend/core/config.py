@@ -224,21 +224,8 @@ class TradeVisionConfig:
 
     @property
     def zerodha_api_key(self) -> str:
-        """Zerodha Kite Connect API key.
-
-        Priority: DB credentials (per-user or system) > .env environment variable.
-        """
+        """Zerodha Kite Connect API key."""
         from django.conf import settings
-
-        # Try DB credentials first (user-specific or system-wide)
-        try:
-            from apps.accounts.infrastructure.models import ZerodhaCredentials as DBZerodhaCredentials
-
-            credentials = DBZerodhaCredentials.get_active_credentials(user=None)
-            if credentials and credentials.get("source") == "database":
-                return credentials["api_key"]
-        except Exception:
-            pass  # Fall through to .env fallback
 
         return getattr(settings, "ZERODHA_API_KEY", "")
 
@@ -246,20 +233,8 @@ class TradeVisionConfig:
     def zerodha_access_token(self) -> str:
         """Zerodha Kite Connect access token (short-lived; generated out-of-band
         via the Kite login flow — this batch does not implement that flow).
-
-        Priority: DB credentials (per-user or system) > .env environment variable.
         """
         from django.conf import settings
-
-        # Try DB credentials first (user-specific or system-wide)
-        try:
-            from apps.accounts.infrastructure.models import ZerodhaCredentials as DBZerodhaCredentials
-
-            credentials = DBZerodhaCredentials.get_active_credentials(user=None)
-            if credentials and credentials.get("source") == "database":
-                return credentials["access_token"]
-        except Exception:
-            pass  # Fall through to .env fallback
 
         return getattr(settings, "ZERODHA_ACCESS_TOKEN", "")
 
@@ -299,42 +274,16 @@ class TradeVisionConfig:
     @property
     def zerodha_api_secret(self) -> str:
         """Zerodha Kite Connect API secret (sandbox default is applied by the
-        adapter when empty).
-
-        Priority: DB credentials (per-user or system) > .env environment variable.
-        """
+        adapter when empty)."""
         from django.conf import settings
-
-        # Try DB credentials first (user-specific or system-wide)
-        try:
-            from apps.accounts.infrastructure.models import ZerodhaCredentials as DBZerodhaCredentials
-
-            credentials = DBZerodhaCredentials.get_active_credentials(user=None)
-            if credentials and credentials.get("source") == "database":
-                return credentials["api_secret"]
-        except Exception:
-            pass  # Fall through to .env fallback
 
         return getattr(settings, "ZERODHA_API_SECRET", "")
 
     @property
     def zerodha_request_token(self) -> str:
         """Single-use Kite request token obtained out-of-band via the login
-        flow; exchanged for an access token by the adapter when set.
-
-        Priority: DB credentials (per-user or system) > .env environment variable.
-        """
+        flow; exchanged for an access token by the adapter when set."""
         from django.conf import settings
-
-        # Try DB credentials first (user-specific or system-wide)
-        try:
-            from apps.accounts.infrastructure.models import ZerodhaCredentials as DBZerodhaCredentials
-
-            credentials = DBZerodhaCredentials.get_active_credentials(user=None)
-            if credentials and credentials.get("source") == "database":
-                return credentials.get("request_token", "")
-        except Exception:
-            pass  # Fall through to .env fallback
 
         return getattr(settings, "ZERODHA_REQUEST_TOKEN", "")
 

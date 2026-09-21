@@ -9,7 +9,6 @@ import { useAuth } from "@/auth/AuthContext";
 import { AppShell } from "@/components/AppShell";
 import { Spinner } from "@/components/Spinner";
 import { LoginPage } from "@/pages/Login";
-import { ZerodhaCredentialsPage } from "@/pages/ZerodhaCredentialsPage";
 
 // Lazy-load all page modules so initial bundle stays small.
 const Loading = () => (
@@ -76,8 +75,6 @@ const RawIngestionEvents = lazy(() => import("@/pages/RawIngestionEvents").then(
 export function AppRoutes() {
   return (
     <Routes>
-      {/* Public onboarding route - Zerodha credential input (not RequireAuth-guarded) */}
-      <Route path="/zerodha/credentials" element={<ZerodhaCredentialsPage />} />
       <Route path="/login" element={<LoginPage />} />
 
       {/* Dashboard */}
