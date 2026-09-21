@@ -1,6 +1,11 @@
-from django.core.management.base import BaseCommand, CommandError
-from kiteconnect import KiteConnect
+import os
 
+from django.core.management.base import BaseCommand, CommandError
+
+from apps.execution.application.zerodha_session_service import (
+    active_env_path,
+    exchange_request_token,
+)
 from core.config import config
 
 
@@ -17,52 +22,29 @@ class Command(BaseCommand):
             type=str,
             help="Single-use request_token obtained from the Kite login URL",
         )
+        parser.add_argument(
+            "--env-path",
+            default=None,
+            help="Target .env file to update (defaults to the active env file).",
+        )
 
     def handle(self, *args, **options):
-        request_token = options["request_token"]
-        api_key = config.zerodha_api_key or "sandboxdemo"
+        if options.get("env_path"):
+            os.environ["ZERODHA_ENV_FILE"] = options["env_path"]
 
         try:
-            kite = KiteConnect(api_key=api_key)
-            session = kite.generate_session(request_token)
-            access_token = session["access_token"]
-
-            # Persist the access_token so the running stack picks it up without restart.
-            # Django settings are not editable at runtime via management commands,
-            # so we write to the .env file and also set the in-memory config.
-            import os
-
-            env_path = "/home/yk/Documents/TradeVision/backend/.env"
-            env_lines = []
-            env_updated = False
-
-            # Read existing .env and update/replace ZERODHA_ACCESS_TOKEN
-            with open(env_path, "r") as f:
-                for line in f:
-                    stripped = line.strip()
-                    if stripped.startswith("ZERODHA_ACCESS_TOKEN="):
-                        env_lines.append(f"ZERODHA_ACCESS_TOKEN={access_token}")
-                        env_updated = True
-                    else:
-                        env_lines.append(line)
-
-            if not env_updated:
-                env_lines.append(f"ZERODHA_ACCESS_TOKEN={access_token}")
-
-            with open(env_path, "w") as f:
-                f.write("\n".join(env_lines))
-
-            # Also update the in-memory config so the running stack picks it up
-            config.zerodha_access_token = access_token
-
-            self.stdout.write(
-                self.style.SUCCESS(
-                    f"Zerodha access_token persisted successfully. "
-                    f"Token: {access_token}\n"
-                    f"Reminder: this token expires at the next day's login-window reset. "
-                    f"Run this command again tomorrow."
-                )
-            )
-
+            access_token = exchange_request_token(options["request_token"])
         except Exception as exc:
             raise CommandError(f"Failed to generate session: {exc}")
+
+        env_path = active_env_path()
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"Zerodha access_token obtained (environment={config.broker_environment}).\n"
+                f"ZERODHA_ACCESS_TOKEN={access_token}\n"
+                f"Persisted to: {env_path or '<redis-hot>'}\n"
+                f"Reminder: this token expires at the next day's login-window "
+                f"reset. A container recreate (make up) reads it from the env "
+                f"file; until then the Redis hot override already supplies it."
+            )
+        )

@@ -37,5 +37,9 @@ requests==2.34.2
 # the entrypoint `exec`s it. Declared here so a fresh image build can boot;
 # previously only channels was present and daphne was never installed.
 # ---------------------------------------------------------------------------
-daphne==4.1.2
+# Pinned to 3.0.2 on purpose: kiteconnect (5.2.x broker SDK) hard-pins
+# autobahn==19.11.2, while daphne>=4 requires autobahn>=22.4.2 (an impossible
+# resolver conflict). daphne 3.0.2 accepts autobahn>=0.18 and runs the
+# channels ProtocolTypeRouter fine (this was the working pre-pin runtime combo).
+daphne==3.0.2
 kiteconnect==5.2.1

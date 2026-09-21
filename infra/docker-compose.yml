@@ -96,6 +96,10 @@ services:
       - static-files:/app/staticfiles
       - media-files:/app/mediafiles
       - ../backend:/app
+      # Active env file (infra/.env) mounted so `manage.py zerodha_login`
+      # can persist ZERODHA_ACCESS_TOKEN straight back to the file Compose
+      # loads. Recreate the stack (`make up`) to pick up the new token.
+      - ./.env:/app/.env.active
     networks:
       - app
       - edge

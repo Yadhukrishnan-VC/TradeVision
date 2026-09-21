@@ -231,12 +231,19 @@ class TradeVisionConfig:
 
     @property
     def zerodha_access_token(self) -> str:
-        """Zerodha Kite Connect access token (short-lived; generated out-of-band
-        via the Kite login flow — this batch does not implement that flow).
+        """Zerodha Kite Connect access token (short-lived; generated via the
+        Kite login flow — see ``apps.execution.zerodha_session``).
         """
         from django.conf import settings
 
-        return getattr(settings, "ZERODHA_ACCESS_TOKEN", "")
+        token = getattr(settings, "ZERODHA_ACCESS_TOKEN", "") or ""
+        try:
+            from core.zerodha_runtime import get_hot_access_token
+
+            hot = get_hot_access_token()
+        except Exception:  # noqa: BLE001 - hot path never blocks trading config
+            hot = None
+        return hot or token
 
     # ---------------------------------------------------------------------------
     # Broker execution — LIVE-BROKER-EXECUTION-1 (Phase 1 of 3: sandbox only)

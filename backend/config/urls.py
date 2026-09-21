@@ -74,6 +74,9 @@ urlpatterns = [
     # order/request visibility; submission happens via risk_management).
     path("api/v1/execution/", include("apps.execution.interfaces.api.urls")),
 
+    # Zerodha Kite auth — OAuth-style redirect target for daily token exchange.
+    path("api/v1/zerodha/", include("apps.execution.interfaces.api.zerodha_auth_urls")),
+
     # Backtesting API — Batch M3: Historical Replay & Backtesting Engine.
     path("api/v1/backtesting/", include("apps.backtesting.interfaces.api.urls")),
 
