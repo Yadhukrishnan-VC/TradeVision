@@ -95,6 +95,7 @@ services:
     volumes:
       - static-files:/app/staticfiles
       - media-files:/app/mediafiles
+      - ../backend:/app
     networks:
       - app
       - edge
@@ -245,6 +246,8 @@ services:
   # Frontend — React/Vite app
   # ---------------------------------------------------------------------------
   frontend:
+    volumes:
+      - ./frontend:/app
     build:
       context: ..
       dockerfile: infra/docker/frontend/Dockerfile.dev

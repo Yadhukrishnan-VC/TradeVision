@@ -38,6 +38,7 @@ TradeVision AI is an intelligent algorithmic trading software system built with 
 - PostgreSQL database
 - Redis server
 - Virtual environment (recommended)
+- Docker and Docker Compose (for containerized deployment)
 
 ### Required Software
 ```bash
@@ -90,6 +91,23 @@ npm run build
 ```
 
 ---
+
+
+
+### 3.2 Docker Setup
+
+```bash
+# From project root
+docker-compose -f infra/docker-compose.yml up -d  # Start all services
+
+# Or use make
+make up-d  # Start all services in background
+
+# To access:
+# - Backend API: http://localhost:8000
+# - Frontend: http://localhost (via nginx)
+# - Adminer (DB management): http://localhost:8080
+```
 
 ## 4. Environment Configuration
 
@@ -455,3 +473,71 @@ If you have the "Markdown PDF" extension installed in VS Code:
 
 ---
 *Generated: 2026-09-21*
+
+## 5.3 Running with Docker
+
+
+### 5.2 Running with Docker
+
+#### Using make commands:
+
+```bash
+# Start all services (foreground - shows logs)
+make up
+
+# Start all services (background, detached)
+make up-d
+
+# Stop all services
+make down
+
+# Restart all services
+make restart
+
+# View service status
+make ps
+
+# Access the application:
+# - API: http://localhost:8000
+# - Frontend: http://localhost (nginx reverse proxy on port 80)
+# - Flower (Celery monitor): http://localhost:5555
+# - Adminer (DB): http://localhost:8080
+
+# View logs:
+make logs          # All services
+make logs-backend  # Backend only
+make logs-celery   # Celery workers
+```
+
+#### Manual docker-compose:
+
+```bash
+# Start
+docker-compose -f infra/docker-compose.yml up -d
+
+# Stop
+docker-compose -f infra/docker-compose.yml down
+
+# Restart
+docker-compose -f infra/docker-compose.yml restart
+
+# Rebuild images
+make build
+
+# Rebuild and start
+make up-d
+```
+
+#### Development workflow:
+
+```bash
+# Make changes to source code - they're bind-mounted, so containers pick them up automatically
+
+# To run specific services:
+make bash          # Open bash in backend container
+make shell         # Open Django shell
+
+# Run tests
+make test          # Full test suite
+make test-fast     # Fast tests (exclude slow integration)
+```
