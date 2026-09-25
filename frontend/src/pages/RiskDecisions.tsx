@@ -10,13 +10,17 @@ import type { RiskDecision } from "@/types/secondary";
 export function RiskDecisions() {
   const { data, state, error, refetch } = useFetch(getRiskDecisions);
 
+  const decisionOf = (r: RiskDecision) => r.status || r.decision || r.event_type;
+  const reasonOf = (r: RiskDecision) => r.reason_message || r.reason || r.rejection_code;
+
   const columns: Column<RiskDecision>[] = [
     { key: "id", header: "ID", cell: (r) => <code className="text-[10px]">{r.id.slice(0, 8)}</code>, sortAccessor: (r) => r.id },
-    { key: "rule_id", header: "Rule", cell: (r) => r.rule_id ? <Chip tone="violet">{r.rule_id}</Chip> : "—", sortAccessor: (r) => r.rule_id || "" },
+    { key: "rule_id", header: "Rule", cell: (r) => r.rule_id ? <Chip tone="violet">{r.rule_id.slice(0, 8)}</Chip> : "—", sortAccessor: (r) => r.rule_id || "" },
     { key: "symbol", header: "Symbol", cell: (r) => r.symbol || "—", sortAccessor: (r) => r.symbol || "" },
-    { key: "decision", header: "Decision", cell: (r) => r.decision ? <Chip tone={r.decision === "REJECTED" ? "rose" : r.decision === "APPROVED" ? "emerald" : "amber"}>{r.decision}</Chip> : "—", sortAccessor: (r) => r.decision || "" },
-    { key: "severity", header: "Severity", cell: (r) => r.severity ? <Chip tone="amber">{r.severity}</Chip> : "—" },
-    { key: "reason", header: "Reason", cell: (r) => <span className="text-xs text-slate-600 dark:text-slate-400">{r.reason || "—"}</span> },
+    { key: "event_type", header: "Event", cell: (r) => r.event_type ? <Chip tone="slate">{r.event_type}</Chip> : "—" },
+    { key: "decision", header: "Decision", cell: (r) => decisionOf(r) ? <Chip tone={decisionOf(r) === "REJECTED" ? "rose" : decisionOf(r) === "APPROVED" ? "emerald" : "amber"}>{decisionOf(r)}</Chip> : "—", sortAccessor: (r) => decisionOf(r) || "" },
+    { key: "position_size", header: "Qty", numeric: true, cell: (r) => r.position_size !== undefined && r.position_size !== null ? String(r.position_size) : "—", sortAccessor: (r) => Number(r.position_size) },
+    { key: "reason_message", header: "Reason", cell: (r) => <span className="text-xs text-slate-600 dark:text-slate-400">{reasonOf(r) || "—"}</span> },
     { key: "created_at", header: "Time", cell: (r) => fmtDateTime(r.created_at), sortAccessor: (r) => r.created_at || "" },
   ];
 

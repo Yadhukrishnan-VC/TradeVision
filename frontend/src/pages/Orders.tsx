@@ -17,11 +17,12 @@ export function Orders() {
     { key: "symbol", header: "Symbol", cell: (r) => <span className="font-medium">{r.symbol}</span>, sortAccessor: (r) => r.symbol },
     { key: "side", header: "Side", cell: (r) => <Chip tone={r.side === "LONG" ? "emerald" : "rose"}>{r.side}</Chip> },
     { key: "quantity", header: "Qty", numeric: true, cell: (r) => fmtDecimal(r.quantity || "0", 0), sortAccessor: (r) => toNum(r.quantity) },
-    { key: "entry_price", header: "Entry", numeric: true, cell: (r) => fmtInr(r.entry_price), sortAccessor: (r) => toNum(r.entry_price) },
+    { key: "order_type", header: "Type", cell: (r) => <Chip tone="slate">{r.order_type || "—"}</Chip>, sortAccessor: (r) => r.order_type || "" },
+    { key: "limit_price", header: "Limit", numeric: true, cell: (r) => fmtInr(r.limit_price), sortAccessor: (r) => toNum(r.limit_price) },
     { key: "avg_fill_price", header: "Avg fill", numeric: true, cell: (r) => fmtInr(r.avg_fill_price), sortAccessor: (r) => toNum(r.avg_fill_price) },
     { key: "filled_quantity", header: "Filled", numeric: true, cell: (r) => fmtDecimal(r.filled_quantity || "0", 0), sortAccessor: (r) => toNum(r.filled_quantity) },
     { key: "status", header: "Status", cell: (r) => <Chip tone={r.status === "FILLED" ? "emerald" : r.status === "REJECTED" ? "rose" : "amber"}>{r.status}</Chip>, sortAccessor: (r) => r.status || "" },
-    { key: "created_at", header: "Created", cell: (r) => fmtDateTime(r.created_at), sortAccessor: (r) => r.created_at || "" },
+    { key: "placed_at", header: "Created", cell: (r) => fmtDateTime(r.placed_at), sortAccessor: (r) => r.placed_at || "" },
   ];
 
   return (

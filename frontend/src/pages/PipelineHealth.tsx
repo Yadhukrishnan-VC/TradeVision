@@ -8,7 +8,6 @@ import { Card, Alert, EmptyState, Chip } from "@/components";
 import { useEffect, useState } from "react";
 import type { HealthCheck } from "@/api/system";
 import { fmtDateTime } from "@/lib/time";
-import { toNum, fmtDecimal } from "@/lib/decimal";
 
 export function PipelineHealth() {
   const { data, state, error, refetch } = useFetch(getPipelineHealth);
@@ -73,21 +72,42 @@ export function PipelineHealth() {
         ) : state === "empty" || !data ? (
           <EmptyState title="No pipeline health data" />
         ) : (
-          <dl className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
-            <KV k="Status" v={<Chip tone={data.status === "ok" ? "emerald" : data.status === "degraded" ? "amber" : "rose"}>{data.status || "—"}</Chip>} />
-            <KV k="Last run" v={fmtDateTime(data.last_run_at)} />
-            <KV k="Staleness (s)" v={data.staleness_seconds !== null && data.staleness_seconds !== undefined ? fmtDecimal(data.staleness_seconds, 0) : "—"} />
-            {data.components && (
-              <div className="md:col-span-3">
-                <dt className="text-xs text-slate-500 dark:text-slate-400 mb-1">Components</dt>
-                <dd>
-                  <pre className="text-[10px] text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-950 p-3 rounded-md overflow-x-auto tv-scrollbar">
-                    {JSON.stringify(data.components, null, 2)}
-                  </pre>
-                </dd>
+          <div className="space-y-4">
+            <dl className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+              <KV
+                k="Overall"
+                v={
+                  <Chip tone={(data.snapshot?.overall_status || data.status) === "ok" ? "emerald" : (data.snapshot?.overall_status || data.status) === "degraded" ? "amber" : "rose"}>
+                    {(data.snapshot?.overall_status || data.status) ?? "—"}
+                  </Chip>
+                }
+              />
+              <KV k="Evaluated at" v={fmtDateTime(data.snapshot?.evaluated_at || data.last_run_at)} />
+              {data.snapshot?.stage_statuses && (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
+                  {Object.entries(data.snapshot.stage_statuses).map(([stage, st]) => (
+                    <div key={stage} className="flex items-center justify-between gap-2 rounded-md bg-slate-50 dark:bg-slate-950 px-2 py-1">
+                      <span className="text-slate-500 dark:text-slate-400">{stage}</span>
+                      <Chip tone={st === "ok" ? "emerald" : st === "degraded" ? "amber" : "rose"}>{st}</Chip>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </dl>
+            {data.heartbeats && data.heartbeats.length > 0 && (
+              <div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">Stage heartbeats</p>
+                <ul className="divide-y divide-slate-100 rounded-md border border-slate-200 dark:border-slate-800">
+                  {data.heartbeats.map((hb) => (
+                    <li key={`${hb.stage}-${hb.symbol_scope}`} className="px-3 py-2 flex items-center justify-between gap-3 text-sm">
+                      <span className="font-medium text-slate-900 dark:text-slate-100">{hb.stage}</span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400">{hb.symbol_scope} · {fmtDateTime(hb.last_event_at)}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
-          </dl>
+          </div>
         )}
       </Card>
     </div>
@@ -102,5 +122,3 @@ function KV({ k, v }: { k: string; v: React.ReactNode }) {
     </div>
   );
 }
-
-void toNum;

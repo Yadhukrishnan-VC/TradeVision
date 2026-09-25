@@ -42,6 +42,7 @@ const SECTIONS: NavSection[] = [
     title: "Dashboard",
     items: [
       { to: "/", label: "Home", icon: LayoutDashboard, end: true },
+      { to: "/live", label: "Live Activity", icon: Radio },
       { to: "/portfolio", label: "Portfolio", icon: PieChart },
       { to: "/portfolio/summary", label: "Portfolio Summary", icon: PieChart },
       { to: "/positions", label: "Positions", icon: Wallet },

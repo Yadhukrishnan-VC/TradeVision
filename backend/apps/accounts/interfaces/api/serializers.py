@@ -52,10 +52,22 @@ class APIKeySerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     """Public user profile serializer."""
 
+    default_account_id = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ["id", "username", "role", "date_joined"]
-        read_only_fields = ["id", "username", "role", "date_joined"]
+        fields = ["id", "username", "role", "date_joined", "default_account_id"]
+        read_only_fields = ["id", "username", "role", "date_joined", "default_account_id"]
+
+    def get_default_account_id(self, obj: User) -> str | None:
+        owner_account = obj.accounts.filter(is_default=True).order_by("-created_at").first()
+        if owner_account is not None:
+            return str(owner_account.id)
+        from django.conf import settings
+        configured = getattr(settings, "DEFAULT_ACCOUNT_ID", "") or ""
+        if configured:
+            return str(configured)
+        return str(obj.id)
 
 
 class APIKeyResponseSerializer(serializers.Serializer):

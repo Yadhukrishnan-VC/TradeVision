@@ -46,11 +46,10 @@ export function Trades() {
     { key: "side", header: "Side", cell: (r) => <Chip tone={r.side === "LONG" || r.side === "BUY" ? "emerald" : "rose"}>{r.side}</Chip> },
     { key: "quantity", header: "Qty", numeric: true, cell: (r) => fmtDecimal(r.quantity || "0", 0), sortAccessor: (r) => toNum(r.quantity) },
     { key: "entry_price", header: "Entry", numeric: true, cell: (r) => fmtInr(r.entry_price), sortAccessor: (r) => toNum(r.entry_price) },
-    { key: "avg_fill_price", header: "Fill", numeric: true, cell: (r) => fmtInr(r.avg_fill_price), sortAccessor: (r) => toNum(r.avg_fill_price) },
+    { key: "exit_price", header: "Exit", numeric: true, cell: (r) => fmtInr(r.exit_price), sortAccessor: (r) => toNum(r.exit_price) },
     { key: "realized_pnl", header: "Realized PnL", numeric: true, cell: (r) => <span className={pnlColor(r.realized_pnl)}>{fmtInr(r.realized_pnl)}</span>, sortAccessor: (r) => toNum(r.realized_pnl) },
-    { key: "net_pnl", header: "Net PnL", numeric: true, cell: (r) => <span className={pnlColor(r.net_pnl)}>{fmtInr(r.net_pnl)}</span>, sortAccessor: (r) => toNum(r.net_pnl) },
-    { key: "status", header: "Status", cell: (r) => <Chip tone={r.status === "FILLED" ? "emerald" : r.status === "REJECTED" ? "rose" : "amber"}>{r.status}</Chip>, sortAccessor: (r) => r.status || "" },
-    { key: "created_at", header: "Created", cell: (r) => fmtDateTime(r.created_at), sortAccessor: (r) => r.created_at || "" },
+    { key: "realized_pnl_pct", header: "PnL %", numeric: true, cell: (r) => <span className={pnlColor(r.realized_pnl_pct)}>{fmtDecimal(r.realized_pnl_pct, 2)}%</span>, sortAccessor: (r) => toNum(r.realized_pnl_pct) },
+    { key: "opened_at", header: "Opened", cell: (r) => fmtDateTime(r.opened_at), sortAccessor: (r) => r.opened_at || "" },
   ];
 
   return (

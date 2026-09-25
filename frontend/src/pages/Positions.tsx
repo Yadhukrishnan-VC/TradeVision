@@ -18,8 +18,8 @@ export function Positions() {
     { key: "symbol", header: "Symbol", cell: (r) => <span className="font-medium">{r.symbol}</span>, sortAccessor: (r) => r.symbol },
     { key: "side", header: "Side", cell: (r) => <Chip tone={r.side === "LONG" ? "emerald" : "rose"}>{r.side}</Chip> },
     { key: "quantity", header: "Qty", numeric: true, cell: (r) => fmtDecimal(r.quantity || "0", 0), sortAccessor: (r) => toNum(r.quantity) },
-    { key: "avg_cost", header: "Avg cost", numeric: true, cell: (r) => fmtInr(r.avg_cost), sortAccessor: (r) => toNum(r.avg_cost) },
-    { key: "market_value", header: "Market value", numeric: true, cell: (r) => fmtInr(r.market_value), sortAccessor: (r) => toNum(r.market_value) },
+    { key: "entry_price", header: "Entry", numeric: true, cell: (r) => fmtInr(r.entry_price), sortAccessor: (r) => toNum(r.entry_price) },
+    { key: "current_price", header: "LTP", numeric: true, cell: (r) => fmtInr(r.current_price), sortAccessor: (r) => toNum(r.current_price) },
     { key: "unrealized_pnl", header: "Unrealized PnL", numeric: true, cell: (r) => <span className={toNum(r.unrealized_pnl)! > 0 ? "text-emerald-600" : toNum(r.unrealized_pnl)! < 0 ? "text-rose-600" : "text-slate-500 dark:text-slate-400"}>{fmtInr(r.unrealized_pnl)}</span>, sortAccessor: (r) => toNum(r.unrealized_pnl) },
     { key: "opened_at", header: "Opened", cell: (r) => fmtDateTime(r.opened_at), sortAccessor: (r) => r.opened_at || "" },
   ];

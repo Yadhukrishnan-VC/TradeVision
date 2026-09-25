@@ -106,7 +106,15 @@ def reconcile_all_accounts() -> None:
     """
     from apps.accounts.infrastructure.models import Account
 
-    account_ids = list(Account.objects.values_list("id", flat=True))
+    # Backtest automation creates synthetic accounts with no broker session
+    # (EdgeValidation/WalkForward runs); reconciling them is pointless and
+    # floods the queue with hundreds of no-op tasks each tick.
+    _SYNTHETIC_ACCOUNT_PREFIXES = ("EdgeValidation", "WalkForward")
+    account_ids = list(
+        Account.objects.exclude(name__startswith=_SYNTHETIC_ACCOUNT_PREFIXES[0])
+        .exclude(name__startswith=_SYNTHETIC_ACCOUNT_PREFIXES[1])
+        .values_list("id", flat=True)
+    )
     if not account_ids:
         logger.info("portfolio_reconciliation_no_accounts_to_reconcile")
         return

@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 import redis.asyncio as redis_asyncio
+import redis.exceptions as redis_exceptions
 from celery import shared_task
 from django.conf import settings
 from django.db import transaction
@@ -19,6 +20,34 @@ logger = logging.getLogger(__name__)
 
 RETRY_BACKOFF_SCHEDULE = [1, 5, 30, 120, 600]  # 1s, 5s, 30s, 2m, 10m
 MAX_RETRIES = 5
+
+
+def _resolve_handler(handler_path: str) -> Any:
+    """Resolve a registered handler path to a callable.
+
+    Supports:
+    - ``module.function``
+    - ``module.Class.method`` (instantiated with no args, e.g. projection service
+      instances registered from bound methods)
+    """
+    module_path, attr_path = handler_path.rsplit(".", 1)
+    try:
+        module = importlib.import_module(module_path)
+    except ModuleNotFoundError:
+        module = None
+
+    if module is not None:
+        try:
+            handler = getattr(module, attr_path)
+            if callable(handler):
+                return handler
+        except AttributeError:
+            pass
+
+    module_path, cls_name, method_name = handler_path.rsplit(".", 2)
+    module = importlib.import_module(module_path)
+    cls = getattr(module, cls_name)
+    return getattr(cls(), method_name)
 
 # EVENTBUS-RELIABILITY-1 — pending-entry reclaim tuning.
 # A stream entry is reclaimed when it has been pending (idle) in a consumer
@@ -86,9 +115,7 @@ def dispatch_event_to_handler(
         return
 
     try:
-        module_path, func_name = handler_path.rsplit(".", 1)
-        module = importlib.import_module(module_path)
-        handler = getattr(module, func_name)
+        handler = _resolve_handler(handler_path)
 
         handler(event)
 
@@ -170,46 +197,44 @@ def _create_dead_letter(
     )
 
 
-def _poll_and_dispatch(
+async def _poll_one(
     r: redis_asyncio.Redis,
     stream_key: str,
     handler_path: str,
     consumer_group: str,
 ) -> None:
-    import asyncio
+    """XREADGROUP one (stream, group) pair and enqueue dispatches.
+
+    Runs inside the shared per-task event loop so the redis-asyncio client is
+    only ever bound to a single loop. NOGROUP streams are lazily given their
+    consumer group (mkstream) rather than failing the whole poll tick.
+    """
     try:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            results = loop.run_until_complete(
-                r.xreadgroup(
-                    consumer_group,
-                    f"consumer-{consumer_group}",
-                    {stream_key: ">"},
-                    count=10,
-                    block=1000,
-                )
-            )
-        finally:
-            loop.close()
-
-        if not results:
-            return
-
-        for stream_name, entries in results:
-            for entry_id, data in entries:
-                dispatch_event_to_handler.delay(
-                    event_dict=data,
-                    handler_path=handler_path,
-                    consumer_group=consumer_group,
-                    stream_key=stream_name,
-                    entry_id=entry_id,
-                )
-    except Exception:
-        logger.exception(
-            "Error polling stream",
-            extra={"stream": stream_key, "consumer_group": consumer_group},
+        results = await r.xreadgroup(
+            consumer_group,
+            f"consumer-{consumer_group}",
+            {stream_key: ">"},
+            count=10,
+            block=100,
         )
+    except redis_exceptions.ResponseError as exc:
+        if "NOGROUP" not in str(exc):
+            raise
+        try:
+            await r.xgroup_create(stream_key, consumer_group, mkstream=True)
+        except redis_exceptions.ResponseError:
+            pass
+        return
+
+    for stream_name, entries in results:
+        for entry_id, data in entries:
+            dispatch_event_to_handler.delay(
+                event_dict=data,
+                handler_path=handler_path,
+                consumer_group=consumer_group,
+                stream_key=stream_name,
+                entry_id=entry_id,
+            )
 
 
 @shared_task(soft_time_limit=10, time_limit=15)
@@ -228,14 +253,25 @@ def poll_event_streams() -> None:
     import asyncio
     r = redis_asyncio.from_url(settings.CELERY_BROKER_URL, decode_responses=True)
 
-    for event_type, handler_list in bus._handlers.items():
-        stream_key = f"events:{event_type}"
-        for handler_path, consumer_group in handler_list:
-            _poll_and_dispatch(r, stream_key, handler_path, consumer_group)
+    async def _sweep() -> None:
+        for event_type, handler_list in bus._handlers.items():
+            stream_key = f"events:{event_type}"
+            for handler_path, consumer_group in handler_list:
+                await _poll_one(r, stream_key, handler_path, consumer_group)
 
-        wildcard_groups = getattr(bus, "wildcard_handlers", [])
-        for handler_path, consumer_group in wildcard_groups:
-            _poll_and_dispatch(r, stream_key, handler_path, consumer_group)
+            wildcard_groups = getattr(bus, "wildcard_handlers", [])
+            for handler_path, consumer_group in wildcard_groups:
+                await _poll_one(r, stream_key, handler_path, consumer_group)
+
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(_sweep())
+        finally:
+            loop.close()
+    except Exception:
+        logger.exception("Error polling event streams")
 
 
 def _ack_event(r: redis_asyncio.Redis, stream: str, group: str, entry_id: str) -> None:
@@ -296,56 +332,42 @@ def reclaim_stale_pending_events(
 
     r = redis_asyncio.from_url(settings.CELERY_BROKER_URL, decode_responses=True)
 
-    for event_type, handler_list in bus._handlers.items():
-        stream_key = f"events:{event_type}"
-        for handler_path, consumer_group in handler_list:
-            _reclaim_stream(r, stream_key, handler_path, consumer_group, min_idle_seconds)
-
-        wildcard_groups = getattr(bus, "wildcard_handlers", [])
-        for handler_path, consumer_group in wildcard_groups:
-            _reclaim_stream(r, stream_key, handler_path, consumer_group, min_idle_seconds)
-
-
-def _reclaim_stream(
-    r: redis_asyncio.Redis,
-    stream_key: str,
-    handler_path: str,
-    consumer_group: str,
-    min_idle_seconds: int,
-) -> None:
-    """Reclaim idle pending entries for one (stream, group) pair.
-
-    Redis-only work (lock acquire/release, XAUTOCLAIM, delivery-count
-    inspection) runs inside a dedicated event loop; re-dispatch and
-    dead-lettering are performed synchronously afterwards so no Celery
-    ``.delay()`` call or ORM write ever blocks a running loop.
-    """
     import asyncio
 
-    lock_key = f"eventbus:reclaim_lock:{stream_key}:{consumer_group}"
-    claimed: list[tuple[str, dict[str, Any], int]] = []
-    loop = asyncio.new_event_loop()
+    async def _sweep() -> None:
+        for event_type, handler_list in bus._handlers.items():
+            stream_key = f"events:{event_type}"
+            for handler_path, consumer_group in handler_list:
+                claimed = await _reclaim_one(
+                    r, stream_key, handler_path, consumer_group, min_idle_seconds
+                )
+                _handle_claimed(stream_key, consumer_group, handler_path, claimed)
+
+            wildcard_groups = getattr(bus, "wildcard_handlers", [])
+            for handler_path, consumer_group in wildcard_groups:
+                claimed = await _reclaim_one(
+                    r, stream_key, handler_path, consumer_group, min_idle_seconds
+                )
+                _handle_claimed(stream_key, consumer_group, handler_path, claimed)
+
     try:
+        loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        acquired = loop.run_until_complete(
-            r.set(lock_key, "1", nx=True, ex=RECLAIM_LOCK_TTL_SECONDS)
-        )
-        if not acquired:
-            logger.info(
-                "Reclaim lock already held, skipping",
-                extra={"stream": stream_key, "consumer_group": consumer_group},
-            )
-            return
-
         try:
-            claimed = loop.run_until_complete(
-                _claim_idle_entries(r, stream_key, consumer_group, min_idle_seconds)
-            )
+            loop.run_until_complete(_sweep())
         finally:
-            loop.run_until_complete(r.delete(lock_key))
-    finally:
-        loop.close()
+            loop.close()
+    except Exception:
+        logger.exception("Error reclaiming stale pending events")
 
+
+def _handle_claimed(
+    stream_key: str,
+    consumer_group: str,
+    handler_path: str,
+    claimed: list[tuple[str, dict[str, Any], int]],
+) -> None:
+    """Re-dispatch or dead-letter claimed pending entries (synchronous callers)."""
     for entry_id, data, delivery_count in claimed:
         if delivery_count >= MAX_RETRIES:
             logger.warning(
@@ -368,6 +390,31 @@ def _reclaim_stream(
                 stream_key=stream_key,
                 entry_id=entry_id,
             )
+
+
+async def _reclaim_one(
+    r: redis_asyncio.Redis,
+    stream_key: str,
+    handler_path: str,
+    consumer_group: str,
+    min_idle_seconds: int,
+) -> list[tuple[str, dict[str, Any], int]]:
+    """Claim idle pending entries for one (stream, group) pair under the
+    per-task event loop, guarded by a short-TTL Redis lock."""
+    lock_key = f"eventbus:reclaim_lock:{stream_key}:{consumer_group}"
+
+    acquired = await r.set(lock_key, "1", nx=True, ex=RECLAIM_LOCK_TTL_SECONDS)
+    if not acquired:
+        logger.info(
+            "Reclaim lock already held, skipping",
+            extra={"stream": stream_key, "consumer_group": consumer_group},
+        )
+        return []
+
+    try:
+        return await _claim_idle_entries(r, stream_key, consumer_group, min_idle_seconds)
+    finally:
+        await r.delete(lock_key)
 
 
 async def _claim_idle_entries(

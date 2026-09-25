@@ -99,6 +99,9 @@ urlpatterns = [
     # News Feed API — NEWS-FEED-1: licensed news provider (Marketaux).
     # Read-only ingested headlines + provider sentiment; paginated.
     path("api/v1/news/", include("apps.news_feed.interfaces.api.urls")),
+
+    # Eventbus API — realtime activity feed over the append-only event store.
+    path("api/v1/eventbus/", include("apps.eventbus.interfaces.api.urls")),
 ]
 
 # Django Debug Toolbar (development only) — registers the "djdt" namespace

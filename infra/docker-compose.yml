@@ -184,7 +184,8 @@ services:
       - --concurrency=2
       - --hostname=worker-ai@%h
 
-  # Handles: notifications · analytics · default queues
+  # Handles: notifications · analytics · default · maintenance · monitoring ·
+  # webhooks queues
   celery-worker-default:
     build:
       context: ..
@@ -211,7 +212,7 @@ services:
       - -A
       - config.celery
       - worker
-      - --queues=notifications,analytics,default
+      - --queues=notifications,analytics,default,maintenance,monitoring,webhooks
       - --loglevel=info
       - --concurrency=4
       - --hostname=worker-default@%h

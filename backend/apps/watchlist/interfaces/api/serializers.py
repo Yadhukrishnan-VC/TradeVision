@@ -60,5 +60,6 @@ class WatchlistEntrySerializer(serializers.Serializer):
             "latest_price": _fmt(latest_price) if latest_price is not None else None,
             "price_stale": instance["price_stale"],
             "created_at": instance["created_at"].isoformat(),
+            "added_at": instance["created_at"].isoformat(),
             "updated_at": instance["updated_at"].isoformat(),
         }

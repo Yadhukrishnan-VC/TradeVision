@@ -12,6 +12,39 @@ app.config_from_object("django.conf:settings", namespace="CELERY")
 
 app.autodiscover_tasks()
 
+# Task modules live under app/*/infrastructure/ and other nested packages, which
+# Celery's autodiscover_tasks() does not scan. Import them explicitly so every
+# worker registers all task names; QUEUE_ROUTES + per-worker --queues still
+# decide which worker actually consumes a given task.
+app.conf.update(
+    imports=(
+        "apps.accounts.infrastructure.tasks",
+        "apps.ai_engine.tasks",
+        "apps.backtesting.infrastructure.tasks",
+        "apps.dashboard.tasks.analytics_risk",
+        "apps.dashboard.tasks.trading_core_tasks",
+        "apps.eventbus.infrastructure.tasks",
+        "apps.execution.infrastructure.broker_connection_status",
+        "apps.execution.infrastructure.tasks",
+        "apps.ingestion.infrastructure.tasks",
+        "apps.journal.infrastructure.tasks",
+        "apps.live_drift.infrastructure.tasks",
+        "apps.macro_context.infrastructure.tasks",
+        "apps.market_data.infrastructure.polling_tasks",
+        "apps.market_data.infrastructure.tasks",
+        "apps.news_feed.infrastructure.tasks",
+        "apps.pattern_engine.infrastructure.tasks",
+        "apps.pipeline_health.infrastructure.tasks",
+        "apps.portfolio_reconciliation.infrastructure.tasks",
+        "apps.recommendations.infrastructure.tasks",
+        "apps.recommendations.tasks",
+        "apps.risk_management.infrastructure.tasks",
+        "apps.rule_engine.infrastructure.tasks",
+        "apps.strategy_registry.tasks",
+        "apps.trader_memory.infrastructure.tasks",
+    )
+)
+
 QUEUE_ROUTES: dict[str, str] = {
     "apps.webhooks": "webhooks",
     "apps.signals_engine": "signals",

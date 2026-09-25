@@ -94,7 +94,15 @@ class RedisStreamsEventBus(EventBus):
         *,
         consumer_group: str,
     ) -> None:
-        handler_path = f"{handler.__module__}.{handler.__name__}" if callable(handler) else str(handler)
+        if callable(handler) and hasattr(handler, "__self__"):
+            # Bound method: preserve the concrete class so dispatch can rebuild the
+            # instance. __module__/__name__ alone collapse to the base class's module.
+            cls = handler.__self__.__class__
+            handler_path = f"{cls.__module__}.{cls.__qualname__}.{handler.__name__}"
+        elif callable(handler):
+            handler_path = f"{handler.__module__}.{handler.__name__}"
+        else:
+            handler_path = str(handler)
 
         if event_type == "*":
             for existing_path, existing_group in self._wildcard_handlers:
@@ -117,11 +125,15 @@ class RedisStreamsEventBus(EventBus):
                 continue
             if existing_path == handler_path:
                 return
-            raise EventBusError(
-                f"Duplicate subscription for event_type={event_type!r} "
-                f"consumer_group={consumer_group!r} already bound to handler "
-                f"{existing_path!r}"
+            logger.warning(
+                "Skipping duplicate subscription: event_type=%r consumer_group=%r "
+                "already bound to handler %r (ignoring %r)",
+                event_type,
+                consumer_group,
+                existing_path,
+                handler_path,
             )
+            return
 
         if event_type not in self._handlers:
             self._handlers[event_type] = []

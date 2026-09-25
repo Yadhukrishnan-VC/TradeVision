@@ -12,6 +12,9 @@ import os
 
 from core.zerodha_runtime import clear_hot_access_token, set_hot_access_token
 
+from apps.execution.infrastructure.broker_connection_status import (
+    publish_broker_connection_status,
+)
 from apps.execution.infrastructure.brokers.zerodha_broker import (
     _SANDBOX_PASSTHROUGH_ROUTES,
     _SANDBOX_ROOT,
@@ -108,6 +111,7 @@ def exchange_request_token(request_token: str) -> str:
 
     _persist_access_token(access_token)
     set_hot_access_token(access_token)
+    publish_broker_connection_status("connected")
 
     logger.info(
         "zerodha_access_token_exchanged",
@@ -193,6 +197,7 @@ def clear_persisted_access_token() -> None:
     clear_hot_access_token()
     env_path = active_env_path()
     if not env_path:
+        publish_broker_connection_status("disconnected")
         return
     env_lines = []
     with open(env_path, "r") as f:
@@ -205,3 +210,5 @@ def clear_persisted_access_token() -> None:
                 env_lines.append(line)
     with open(env_path, "w") as f:
         f.write("\n".join(env_lines))
+
+    publish_broker_connection_status("disconnected")

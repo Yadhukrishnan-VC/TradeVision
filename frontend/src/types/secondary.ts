@@ -54,7 +54,19 @@ export interface AuditEntry {
 }
 
 // ---- Pipeline Health ----
+export interface StageHeartbeat {
+  stage: string;
+  symbol_scope: string;
+  last_event_at: string;
+}
+export interface PipelineHealthSnapshot {
+  evaluated_at: string;
+  overall_status: string;
+  stage_statuses: Record<string, string>;
+}
 export interface PipelineHealth {
+  snapshot?: PipelineHealthSnapshot | null;
+  heartbeats?: StageHeartbeat[];
   status?: string;
   last_run_at?: string | null;
   staleness_seconds?: number | null;
@@ -66,10 +78,15 @@ export interface PipelineHealth {
 export interface Recommendation {
   id: string;
   symbol?: string;
-  rule_id?: string;
+  rule_execution_id?: string | null;
+  analysis_event_id?: string | null;
+  strategy_id?: string | null;
+  direction?: string;
   side?: string;
+  confidence_score?: string;
   severity?: string | null;
-  status?: "PENDING" | "ACCEPTED" | "REJECTED" | string;
+  status?: "PUBLISHED" | "ACCEPTED" | "REJECTED" | "EXPIRED" | "DRAFT" | string;
+  published_at?: string | null;
   created_at?: string | null;
   explanation?: string | null;
   [key: string]: unknown;
@@ -78,9 +95,16 @@ export interface Recommendation {
 // ---- Signals ----
 export interface SignalEntry {
   id: string;
+  account_id?: string;
+  instrument_symbol?: string;
   symbol?: string;
+  timeframe?: string;
   rule_id?: string;
+  direction?: string;
   side?: string;
+  confidence_hint?: string | number | null;
+  indicator_snapshot?: unknown;
+  source_alert_id?: string | null;
   severity?: string | null;
   status?: string;
   created_at?: string | null;
@@ -151,20 +175,33 @@ export interface PortfolioPosition {
 // ---- Risk Management ----
 export interface RiskDecision {
   id: string;
+  analysis_event_id?: string;
   rule_id?: string;
   symbol?: string;
+  event_type?: string;
+  status?: string;
   decision?: string;
-  severity?: string | null;
+  rejection_code?: string | null;
+  position_size?: number;
+  risk_amount?: string | null;
+  risk_pct_of_capital?: string | null;
+  risk_reward_ratio?: string | null;
+  portfolio_gateway_impl?: string;
+  reason_message?: string;
   reason?: string | null;
+  severity?: string | null;
+  trigger_data?: unknown;
   created_at?: string | null;
   [key: string]: unknown;
 }
 
 export interface KillSwitchState {
+  scope?: string;
   is_active: boolean;
   activated_at?: string | null;
   deactivated_at?: string | null;
   activated_by?: string | null;
+  actor?: string | null;
   reason?: string | null;
   [key: string]: unknown;
 }
@@ -175,17 +212,25 @@ export interface DriftSummary {
   total_drift_value?: string | null;
   drift_by_symbol?: Record<string, unknown>;
   last_reconciled_at?: string | null;
+  classification_breakdown?: Record<string, number>;
+  total_records?: number;
+  last_run_at?: string | null;
   [key: string]: unknown;
 }
 
+export type DriftClassification = string; // e.g. 'missing' | 'qty_drift' | 'price_drift' | 'extra'
+
 export interface DriftEntry {
   id: string;
-  symbol?: string;
-  expected_quantity?: string | null;
-  actual_quantity?: string | null;
-  drift_quantity?: string | null;
-  drift_value?: string | null;
+  account_id?: string;
+  entity_type?: string;
+  entity_key?: string;
+  classification?: DriftClassification;
+  auto_repaired?: boolean;
   detected_at?: string | null;
+  repaired_at?: string | null;
+  expected_snapshot?: Record<string, unknown> | null;
+  actual_snapshot?: Record<string, unknown> | null;
   [key: string]: unknown;
 }
 

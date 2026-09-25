@@ -36,21 +36,6 @@ class EventLog(models.Model):
         return f"EventLog({self.event_id}/{self.projector})"
 
 
-from django.db import models
-
-
-class EventLogManager(models.Manager):
-    def has_been_applied(self, event_id: UUID, projector: str) -> bool:
-        return self.filter(event_id=event_id, projector=projector).exists()
-
-    def mark_applied(self, event_id: UUID, projector: str) -> EventLog:
-        return self.create(event_id=event_id, projector=projector)
-
-
-class EventLog(models.Model):
-    event_id = models.UUIDField(db_index=True)
-
-
 class DriftAlertRepository:
     """Repository for querying DriftAlert records from the live_drift app."""
 

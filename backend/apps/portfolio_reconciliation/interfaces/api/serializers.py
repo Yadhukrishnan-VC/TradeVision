@@ -16,6 +16,7 @@ class DriftRecordSerializer(serializers.ModelSerializer):
     class Meta:
         model = DriftRecord
         fields = [
+            "id",
             "account_id",
             "entity_type",
             "entity_key",

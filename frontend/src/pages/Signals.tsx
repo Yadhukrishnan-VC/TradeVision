@@ -10,12 +10,15 @@ import type { SignalEntry } from "@/types/secondary";
 export function Signals() {
   const { data, state, error, refetch } = useFetch(getSignals);
 
+  const dir = (r: SignalEntry) => r.direction || r.side;
+
   const columns: Column<SignalEntry>[] = [
     { key: "id", header: "ID", cell: (r) => <code className="text-[10px]">{r.id.slice(0, 8)}</code>, sortAccessor: (r) => r.id },
-    { key: "symbol", header: "Symbol", cell: (r) => r.symbol || "—", sortAccessor: (r) => r.symbol || "" },
-    { key: "rule_id", header: "Rule", cell: (r) => r.rule_id ? <Chip tone="violet">{r.rule_id}</Chip> : "—", sortAccessor: (r) => r.rule_id || "" },
-    { key: "side", header: "Side", cell: (r) => r.side ? <Chip tone={r.side === "LONG" || r.side === "BUY" ? "emerald" : "rose"}>{r.side}</Chip> : "—" },
-    { key: "status", header: "Status", cell: (r) => r.status ? <Chip tone="amber">{r.status}</Chip> : "—" },
+    { key: "instrument_symbol", header: "Symbol", cell: (r) => r.instrument_symbol || r.symbol || "—", sortAccessor: (r) => r.instrument_symbol || r.symbol || "" },
+    { key: "timeframe", header: "TF", cell: (r) => r.timeframe ? <Chip tone="slate">{r.timeframe}</Chip> : "—" },
+    { key: "direction", header: "Side", cell: (r) => dir(r) ? <Chip tone={dir(r) === "LONG" || dir(r) === "BUY" ? "emerald" : "rose"}>{dir(r)}</Chip> : "—" },
+    { key: "confidence_hint", header: "Confidence", numeric: true, cell: (r) => (r.confidence_hint !== undefined && r.confidence_hint !== null) ? String(r.confidence_hint) : "—", sortAccessor: (r) => Number(r.confidence_hint) },
+    { key: "source_alert_id", header: "Source alert", cell: (r) => r.source_alert_id ? <code className="text-[10px]">{r.source_alert_id.slice(0, 8)}</code> : "—", sortAccessor: (r) => r.source_alert_id || "" },
     { key: "created_at", header: "Created", cell: (r) => fmtDateTime(r.created_at), sortAccessor: (r) => r.created_at || "" },
   ];
 

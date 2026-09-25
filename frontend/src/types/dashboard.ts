@@ -43,37 +43,45 @@ export interface Holding {
   [key: string]: unknown;
 }
 
-/** PositionSnapshotSerializer — ⚠ partial field list. */
+/** PositionSnapshotSerializer — field list verified against backend. */
 export interface PositionSnapshot {
   position_id: string;
   account_id: string;
   symbol: string;
   side: "LONG" | "SHORT" | string;
   quantity?: string;
+  entry_price?: string | null;
+  current_price?: string | null;
+  unrealized_pnl?: string | null;
+  unrealized_pnl_pct?: string | null;
+  is_open?: boolean;
+  opened_at?: string | null;
+  closed_at?: string | null;
   avg_cost?: string | null;
   market_value?: string | null;
-  unrealized_pnl?: string | null;
-  opened_at?: string | null;
   [key: string]: unknown;
 }
 
-/** OrderSnapshotSerializer — ⚠ partial field list. */
+/** OrderSnapshotSerializer — field list verified against backend. */
 export interface OrderSnapshot {
   order_id: string;
   account_id?: string;
   symbol: string;
   side?: "LONG" | "SHORT" | string;
   quantity?: string;
-  entry_price?: string | null;
-  avg_fill_price?: string | null;
-  filled_quantity?: string;
+  order_type?: string;
   status?: string;
-  correlation_id?: string | null;
+  filled_quantity?: string;
+  avg_fill_price?: string | null;
+  limit_price?: string | null;
+  placed_at?: string | null;
+  entry_price?: string | null;
   created_at?: string | null;
+  correlation_id?: string | null;
   [key: string]: unknown;
 }
 
-/** TradeRecordSerializer — ⚠ partial field list. */
+/** TradeRecordSerializer — field list verified against backend. */
 export interface TradeRecord {
   trade_id?: string;
   order_id?: string;
@@ -82,15 +90,19 @@ export interface TradeRecord {
   side?: string;
   quantity?: string;
   entry_price?: string | null;
+  exit_price?: string | null;
+  realized_pnl?: string | null;
+  realized_pnl_pct?: string | null;
+  opened_at?: string | null;
+  closed_at?: string | null;
+  holding_period_seconds?: number;
   avg_fill_price?: string | null;
   filled_quantity?: string;
-  realized_pnl?: string | null;
+  status?: string;
   net_pnl?: string | null;
   transaction_cost?: string | null;
-  status?: string;
-  correlation_id?: string | null;
+  unrealized_pnl?: string | null;
   created_at?: string | null;
-  closed_at?: string | null;
   [key: string]: unknown;
 }
 

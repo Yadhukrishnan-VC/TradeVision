@@ -24,7 +24,11 @@ class RiskDecisionSerializer(serializers.Serializer):
 
 
 class KillSwitchToggleSerializer(serializers.Serializer):
-    scope = serializers.ChoiceField(choices=[s.value for s in KillSwitchScope])
+    scope = serializers.ChoiceField(
+        choices=[s.value for s in KillSwitchScope],
+        required=False,
+        default=KillSwitchScope.GLOBAL.value,
+    )
     symbol = serializers.CharField(required=False, allow_null=True, allow_blank=True)
     reason = serializers.CharField(required=False, allow_blank=True, default="")
 
@@ -34,6 +38,10 @@ class KillSwitchStateSerializer(serializers.Serializer):
     symbol = serializers.CharField(allow_null=True, allow_blank=True)
     is_active = serializers.BooleanField()
     actor = serializers.CharField()
+    activated_by = serializers.SerializerMethodField()
     reason = serializers.CharField(allow_blank=True)
     activated_at = serializers.DateTimeField()
     deactivated_at = serializers.DateTimeField(allow_null=True)
+
+    def get_activated_by(self, obj: object) -> str:
+        return str(getattr(obj, "actor", ""))

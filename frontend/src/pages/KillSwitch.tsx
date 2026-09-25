@@ -12,22 +12,26 @@ import type { NormalizedApiError } from "@/types/common";
 export function KillSwitch() {
   const { user } = useAuth();
   const canControl = user?.role === "owner" || user?.role === "staff";
-  const { data, state, error, refetch, setData } = useFetch(getKillSwitch);
+  const { data, state, error, refetch } = useFetch(getKillSwitch);
   const [pending, setPending] = useState<"activate" | "deactivate" | null>(null);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<NormalizedApiError | null>(null);
+
+  const rows = Array.isArray(data) ? data : [];
+  const activeGlobal = rows.find((r) => r.scope === "GLOBAL" && r.is_active) || rows.find((r) => r.is_active) || null;
 
   async function confirm() {
     if (!pending) return;
     setBusy(true);
     setActionError(null);
     try {
-      const updated =
-        pending === "activate"
-          ? await activateKillSwitch(reason || undefined)
-          : await deactivateKillSwitch(reason || undefined);
-      setData(updated);
+      if (pending === "activate") {
+        await activateKillSwitch(reason || undefined);
+      } else {
+        await deactivateKillSwitch(reason || undefined);
+      }
+      refetch();
     } catch (err) {
       setActionError(err as NormalizedApiError);
     } finally {
@@ -52,34 +56,39 @@ export function KillSwitch() {
       )}
       {state === "loading" && <Card><div className="h-24 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" /></Card>}
       {state === "error" && error && <Alert tone="error" code={error.code} onRetry={refetch}>{error.message}</Alert>}
-      {state === "success" && data && (
+      {state === "success" && (
         <Card title="Current state">
           <div className="flex items-center gap-3">
-            <Chip tone={data.is_active ? "rose" : "emerald"}>
-              {data.is_active ? "ACTIVE — trading halted" : "INACTIVE — trading enabled"}
+            <Chip tone={activeGlobal?.is_active ? "rose" : "emerald"}>
+              {activeGlobal?.is_active ? "ACTIVE — trading halted" : "INACTIVE — trading enabled"}
             </Chip>
+            {activeGlobal?.scope && <Chip tone="slate">scope: {activeGlobal.scope}</Chip>}
           </div>
-          <dl className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm mt-4">
-            <KV k="Activated at" v={fmtDateTime(data.activated_at)} />
-            <KV k="Deactivated at" v={fmtDateTime(data.deactivated_at)} />
-            <KV k="Activated by" v={data.activated_by || "—"} />
-            <KV k="Reason" v={data.reason || "—"} />
-          </dl>
+          {activeGlobal ? (
+            <dl className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm mt-4">
+              <KV k="Activated at" v={fmtDateTime(activeGlobal.activated_at)} />
+              <KV k="Deactivated at" v={fmtDateTime(activeGlobal.deactivated_at)} />
+              <KV k="Activated by" v={activeGlobal.activated_by || activeGlobal.actor || "—"} />
+              <KV k="Reason" v={activeGlobal.reason || "—"} />
+            </dl>
+          ) : (
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">No active kill switch.</p>
+          )}
         </Card>
       )}
-      {canControl && data && (
+      {canControl && (
         <Card title="Controls">
           <div className="flex gap-2">
             <Button
               variant="danger"
-              disabled={data.is_active}
+              disabled={!!activeGlobal?.is_active}
               onClick={() => setPending("activate")}
             >
               Activate kill switch
             </Button>
             <Button
               variant="primary"
-              disabled={!data.is_active}
+              disabled={!activeGlobal?.is_active}
               onClick={() => setPending("deactivate")}
             >
               Deactivate

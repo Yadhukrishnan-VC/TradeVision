@@ -97,14 +97,14 @@ export function getPortfolioPositions(): Promise<PortfolioPosition[]> {
 export function getRiskDecisions(): Promise<Paginated<RiskDecision>> {
   return apiGetPaged<RiskDecision>("/risk-management/decisions/");
 }
-export function getKillSwitch(): Promise<KillSwitchState> {
-  return apiGet<KillSwitchState>("/risk-management/kill-switch/");
+export function getKillSwitch(): Promise<KillSwitchState[]> {
+  return apiGet<KillSwitchState[]>("/risk-management/kill-switch/");
 }
 export function activateKillSwitch(reason?: string): Promise<KillSwitchState> {
-  return apiPost<KillSwitchState>("/risk-management/kill-switch/activate/", { reason });
+  return apiPost<KillSwitchState>("/risk-management/kill-switch/activate/", { scope: "GLOBAL", reason: reason || "" });
 }
-export function deactivateKillSwitch(reason?: string): Promise<KillSwitchState> {
-  return apiPost<KillSwitchState>("/risk-management/kill-switch/deactivate/", { reason });
+export function deactivateKillSwitch(reason?: string): Promise<void> {
+  return apiPost<void>("/risk-management/kill-switch/deactivate/", { scope: "GLOBAL", reason: reason || "" });
 }
 
 // ---- Portfolio Reconciliation ----

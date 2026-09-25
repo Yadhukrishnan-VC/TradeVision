@@ -210,7 +210,10 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 REST_FRAMEWORK = {
-    "DEFAULT_RENDERER_CLASSES": ("rest_framework.renderers.JSONRenderer",),
+    "DEFAULT_RENDERER_CLASSES": (
+        "rest_framework.renderers.JSONRenderer",
+        "rest_framework.renderers.BrowsableAPIRenderer",
+    ),
     # JWT Bearer — interactive user/session authentication (login/refresh).
     # API Key — scoped data authorization (Authorization: Api-Key <raw_key>).
     # Both are registered so the existing API contracts work: session/identity
@@ -476,6 +479,14 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": 30.0,
         "options": {"queue": "market_data"},
     },
+    # Broker connectivity monitor. Publishes broker.ConnectionStatusChanged on
+    # any transition (connect on token acquisition, disconnect on expiry/
+    # logout) so the dashboard summary stays truthful.
+    "monitor-broker-connection": {
+        "task": "apps.execution.infrastructure.broker_connection_status.monitor_broker_connection",
+        "schedule": 60.0,
+        "options": {"queue": "default"},
+    },
     # Batch M4 — REST polling bridge. Fetches the latest bars for the
     # configured MARKET_DATA_POLL_WATCHLIST during market hours and drives the
     # existing TA ingestion seam. No-ops when the watchlist is empty (the
@@ -705,6 +716,11 @@ BROKER_ENVIRONMENT: str = config("BROKER_ENVIRONMENT", default="sandbox")
 ZERODHA_API_SECRET: str = config("ZERODHA_API_SECRET", default="")
 ZERODHA_REQUEST_TOKEN: str = config("ZERODHA_REQUEST_TOKEN", default="")
 ZERODHA_PRODUCT: str = config("ZERODHA_PRODUCT", default="MIS")
+
+# Account owning the broker session for cross-app event payloads (dashboard
+# summaries read ``payload.account_id``). Leave empty in single-operator runs
+# to fall back to the first active superuser.
+DEFAULT_ACCOUNT_ID: str = config("DEFAULT_ACCOUNT_ID", default="")
 
 # ---------------------------------------------------------------------------
 # Algo-registration gate (Risk Sophistication batch)

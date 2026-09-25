@@ -38,6 +38,29 @@ def _problem_detail(
     }
 
 
+def _resolve_watchlist_account(request: Request) -> str:
+    """Return the ``account_id`` for the request.
+
+    An explicit ``account_id`` query parameter wins; otherwise fall back to
+    the caller's default account (creating a clean default Account on first
+    use) so the read-only and delete UI work without client-side bookkeeping.
+    """
+    account_id = request.query_params.get("account_id")
+    if account_id:
+        return account_id
+
+    from apps.accounts.infrastructure.models import Account
+
+    account = Account.objects.filter(owner=request.user, is_default=True).first()
+    if account is None:
+        account = Account.objects.create(
+            owner=request.user,
+            name="Default Account",
+            is_default=True,
+        )
+    return str(account.id)
+
+
 class WatchlistListView(GenericAPIView):
     """List or add watchlist entries for an account (WATCH-1).
 
@@ -59,17 +82,7 @@ class WatchlistListView(GenericAPIView):
         return [HasReadWatchlist(), *base]
 
     def get(self, request: Request, *args: Any, **kwargs: Any) -> Response:
-        account_id = request.query_params.get("account_id")
-        if account_id is None:
-            return Response(
-                _problem_detail(
-                    "missing-account-id",
-                    "account_id query parameter is required",
-                    status.HTTP_400_BAD_REQUEST,
-                    request.path,
-                ),
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        account_id = _resolve_watchlist_account(request)
         entries = self._service.list(account_id)
         rows = [self._enrich(entry) for entry in entries]
         serializer = WatchlistEntrySerializer(rows, many=True)
@@ -142,17 +155,7 @@ class WatchlistItemView(GenericAPIView):
         self._service = WatchlistService()
 
     def delete(self, request: Request, instrument_token: int, *args: Any, **kwargs: Any) -> Response:
-        account_id = request.query_params.get("account_id")
-        if account_id is None:
-            return Response(
-                _problem_detail(
-                    "missing-account-id",
-                    "account_id query parameter is required",
-                    status.HTTP_400_BAD_REQUEST,
-                    request.path,
-                ),
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        account_id = _resolve_watchlist_account(request)
         self._service.remove(account_id, instrument_token)
         return Response(status=status.HTTP_204_NO_CONTENT)
 

@@ -45,15 +45,16 @@ export function Recommendations() {
   const columns: Column<Recommendation>[] = [
     { key: "id", header: "ID", cell: (r) => <code className="text-[10px]">{r.id.slice(0, 8)}</code>, sortAccessor: (r) => r.id },
     { key: "symbol", header: "Symbol", cell: (r) => r.symbol || "—", sortAccessor: (r) => r.symbol || "" },
-    { key: "rule_id", header: "Rule", cell: (r) => r.rule_id ? <Chip tone="violet">{r.rule_id}</Chip> : "—", sortAccessor: (r) => r.rule_id || "" },
-    { key: "side", header: "Side", cell: (r) => r.side ? <Chip tone={r.side === "LONG" || r.side === "BUY" ? "emerald" : "rose"}>{r.side}</Chip> : "—" },
-    { key: "status", header: "Status", cell: (r) => r.status ? <Chip tone={r.status === "ACCEPTED" ? "emerald" : r.status === "REJECTED" ? "rose" : "amber"}>{r.status}</Chip> : "—", sortAccessor: (r) => r.status || "" },
-    { key: "created_at", header: "Created", cell: (r) => fmtDateTime(r.created_at), sortAccessor: (r) => r.created_at || "" },
+    { key: "strategy_id", header: "Strategy", cell: (r) => r.strategy_id ? <code className="text-[10px]">{r.strategy_id.slice(0, 8)}</code> : "—", sortAccessor: (r) => r.strategy_id || "" },
+    { key: "direction", header: "Side", cell: (r) => (r.direction || r.side) ? <Chip tone={(r.direction || r.side) === "LONG" || (r.direction || r.side) === "BUY" ? "emerald" : "rose"}>{(r.direction || r.side)}</Chip> : "—" },
+    { key: "confidence_score", header: "Confidence", numeric: true, cell: (r) => r.confidence_score ? `${r.confidence_score}` : "—", sortAccessor: (r) => Number(r.confidence_score) },
+    { key: "status", header: "Status", cell: (r) => r.status ? <Chip tone={r.status === "ACCEPTED" ? "emerald" : r.status === "REJECTED" ? "rose" : r.status === "PUBLISHED" ? "blue" : "amber"}>{r.status}</Chip> : "—", sortAccessor: (r) => r.status || "" },
+    { key: "published_at", header: "Published", cell: (r) => fmtDateTime(r.published_at || r.created_at), sortAccessor: (r) => r.published_at || r.created_at || "" },
     {
       key: "actions",
       header: "Actions",
       cell: (r) =>
-        r.status === "PENDING" || !r.status ? (
+        r.status === "PUBLISHED" || r.status === "DRAFT" || !r.status ? (
           <div className="flex gap-1">
             <Button variant="secondary" onClick={() => { setPending(r); setAction("accept"); }}>Accept</Button>
             <Button variant="danger" onClick={() => { setPending(r); setAction("reject"); }}>Reject</Button>

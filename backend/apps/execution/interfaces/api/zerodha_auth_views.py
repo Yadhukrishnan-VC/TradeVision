@@ -63,11 +63,12 @@ class ZerodhaLoginURLView(APIView):
 
     def get(self, request):
         login_url = build_login_url()
+        callback_url = request.build_absolute_uri("/api/v1/zerodha/auth/callback/")
         return Response(
             {
                 "login_url": login_url,
                 "environment": config.broker_environment,
-                "callback_url": request.build_absolute_uri("/api/v1/zerodha/auth/callback/"),
+                "callback_url": callback_url,
             }
         )
 

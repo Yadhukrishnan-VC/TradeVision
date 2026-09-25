@@ -25,6 +25,7 @@ const withShell = (el: React.ReactNode) => (
 
 // Dashboard
 const DashboardHome = lazy(() => import("@/pages/DashboardHome").then((m) => ({ default: m.DashboardHome })));
+const LiveActivity = lazy(() => import("@/pages/LiveActivity").then((m) => ({ default: m.LiveActivity })));
 const Portfolio = lazy(() => import("@/pages/Portfolio").then((m) => ({ default: m.Portfolio })));
 const PortfolioSummary = lazy(() => import("@/pages/PortfolioSummary").then((m) => ({ default: m.PortfolioSummary })));
 const HoldingDetail = lazy(() => import("@/pages/HoldingDetail").then((m) => ({ default: m.HoldingDetail })));
@@ -79,6 +80,7 @@ export function AppRoutes() {
 
       {/* Dashboard */}
       <Route path="/" element={withShell(<Suspense fallback={<Loading />}><DashboardHome /></Suspense>)} />
+      <Route path="/live" element={withShell(<Suspense fallback={<Loading />}><LiveActivity /></Suspense>)} />
       <Route path="/portfolio" element={withShell(<Suspense fallback={<Loading />}><Portfolio /></Suspense>)} />
       <Route path="/portfolio/summary" element={withShell(<Suspense fallback={<Loading />}><PortfolioSummary /></Suspense>)} />
       <Route path="/portfolio/holdings/:symbol" element={withShell(<Suspense fallback={<Loading />}><HoldingDetail /></Suspense>)} />

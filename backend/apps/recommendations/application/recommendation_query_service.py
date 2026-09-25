@@ -47,7 +47,7 @@ class RecommendationQueryService(BaseService):
             confidence_score=rec.confidence_score,
             status=rec.status,
             analysis_event_id=rec.analysis_event_id,
-            rule_execution_id=rec.rule_execution_id_id if rec.rule_execution_id_id else None,
+            rule_execution_id=rec.rule_execution_id if rec.rule_execution_id else None,
             strategy_id=rec.strategy_id,
             confidence_evaluation_id=rec.confidence_evaluation_id,
             published_at=rec.published_at,

@@ -81,9 +81,11 @@ EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 CORS_ALLOW_ALL_ORIGINS = True
 
 # ---------------------------------------------------------------------------
-# Market data provider — use mock in development
+# Market data provider — mock by default, but honor MARKET_DATA_PROVIDER so
+# .env changes (e.g. switch to "zerodha" for live data) take effect without a
+# settings-module swap.
 # ---------------------------------------------------------------------------
-MARKET_DATA_PROVIDER = "mock"
+MARKET_DATA_PROVIDER = config("MARKET_DATA_PROVIDER", default="mock", cast=str).lower()
 
 # ---------------------------------------------------------------------------
 # Logging — verbose in development

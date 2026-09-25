@@ -3,7 +3,7 @@ from __future__ import annotations
 from uuid import UUID
 
 from apps.dashboard.application.analytics_risk.services import PnLAnalyticsService, PerformanceService, RiskService
-from core.celery import app
+from config.celery import app
 
 
 @app.task(bind=True, max_retries=3, default_retry_delay=60)
