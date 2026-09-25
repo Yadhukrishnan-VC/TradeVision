@@ -71,7 +71,6 @@ export function Recommendations() {
         <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Recommendations</h1>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">GET /recommendations/ · accept/reject require confirmation</p>
       </div>
-      <Alert tone="warning" title="⚠ Contract not verified">Body shape not verified.</Alert>
       {state === "error" && error && <Alert tone="error" code={error.code} onRetry={refetch}>{error.message}</Alert>}
       <Card>
         {state === "loading" ? (

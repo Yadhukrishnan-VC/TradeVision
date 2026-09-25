@@ -64,10 +64,9 @@ export function Watchlist() {
           <span className="text-amber-700">PATCH deferred (contract not verified)</span>
         </p>
       </div>
-      <Alert tone="warning" title="⚠ Body + PATCH not verified">
-        Body shape not verified. Watchlist item PATCH contract is unverified;
-        the UI supports only GET/DELETE for now. PATCH will be added once the
-        request schema is confirmed.
+      <Alert tone="info" title="PATCH deferred">
+        GET/DELETE are wired to the backend contract; PATCH (add note / reorder)
+        is deferred until its request schema is confirmed.
       </Alert>
       {state === "error" && error && <Alert tone="error" code={error.code} onRetry={refetch}>{error.message}</Alert>}
       <Card>
