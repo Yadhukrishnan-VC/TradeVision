@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>TradeVision — Operating &amp; User Manual</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm; }
+  body { font-family: "DejaVu Sans", Arial, sans-serif; font-size: 10.5pt; line-height: 1.5; color: #1a202c; }
+  h1 { font-size: 19pt; color: #1e3a8a; border-bottom: 2px solid #1e3a8a; padding-bottom: 4px; margin-top: 24px; }
+  h2 { font-size: 14.5pt; color: #1e40af; margin-top: 20px; border-left: 4px solid #1e40af; padding-left: 8px; page-break-after: avoid; }
+  h3 { font-size: 12.5pt; color: #1d4ed8; margin-top: 14px; page-break-after: avoid; }
+  h4 { font-size: 11pt; color: #3730a3; margin-top: 10px; page-break-after: avoid; }
+  table { border-collapse: collapse; width: 100%; margin: 8px 0 12px; font-size: 8.8pt; }
+  th { background: #1e40af; color: #fff; text-align: left; padding: 4px 7px; border: 1px solid #1e3a8a; }
+  td { border: 1px solid #cbd5e1; padding: 3px 7px; vertical-align: top; }
+  tr:nth-child(even) td { background: #f1f5f9; }
+  code { font-family: "DejaVu Sans Mono", monospace; font-size: 8.2pt; background: #f1f5f9; padding: 0 3px; border-radius: 3px; }
+  .cover { text-align: center; margin-top: 110px; }
+  .cover h1 { font-size: 28pt; border: none; color: #1e3a8a; }
+  .cover .sub { font-size: 12.5pt; color: #64748b; }
+  .toc { font-size: 9.5pt; }
+  .toc a { text-decoration: none; color: #1d4ed8; }
+  .callout { border: 1px solid #f59e0b; background: #fffbeb; padding: 8px 12px; border-radius: 6px; margin: 10px 0; font-size: 9.5pt; }
+  .warn { border: 1px solid #ef4444; background: #fef2f2; padding: 8px 12px; border-radius: 6px; margin: 10px 0; font-size: 9.5pt; }
+  .good { border: 1px solid #10b981; background: #ecfdf5; padding: 8px 12px; border-radius: 6px; margin: 10px 0; font-size: 9.5pt; }
+  .flow { background: #f0f9ff; border: 1px solid #7dd3fc; padding: 9px 13px; border-radius: 6px; font-size: 8.8pt; font-family: "DejaVu Sans Mono", monospace; white-space: pre-line; margin: 10px 0; }
+  .step { background: #f8fafc; border-left: 4px solid #3b82f6; padding: 8px 12px; border-radius: 0 6px 6px 0; margin: 10px 0; font-size: 10pt; }
+  .step b { color: #1d4ed8; }
+  .pagebreak { page-break-before: always; }
+  ul, ol { margin: 6px 0 10px; padding-left: 20px; }
+  li { margin: 2px 0; }
+  .small { font-size: 8.2pt; color: #64748b; }
+  .mono { font-family: "DejaVu Sans Mono", monospace; }
+</style>
+</head>
+<body>
+
+<!-- ================= COVER ================= -->
+<div class="cover">
+  <h1>TradeVision</h1>
+  <p class="sub">Operating &amp; User Manual</p>
+  <p class="sub">Everything you need to configure, run, and use the software —<br>credentials, procedural workflow, architecture running guide, and expected outputs</p>
+  <p class="sub small">Version 2.0 &middot; September 2026</p>
+</div>
+
+<!-- ================= TOC ================= -->
+<h1 class="pagebreak">Table of Contents</h1>
+<div class="toc">
+<ol>
+  <li><a href="#p1">Part A — Before You Start (Prerequisites)</a></li>
+  <li><a href="#p2">Part B — Installation &amp; First Boot</a></li>
+  <li><a href="#p3">Part C — Credentials &amp; All API Keys</a></li>
+  <li><a href="#p4">Part D — Running Procedure of the Architecture</a></li>
+  <li><a href="#p5">Part E — User Workflow: Step-by-Step Procedure</a></li>
+  <li><a href="#p6">Part F — Expected Output (What You Will See)</a></li>
+  <li><a href="#p7">Part G — Full UI Options Reference</a></li>
+  <li><a href="#p8">Part H — Operator Runbook &amp; Safety</a></li>
+  <li><a href="#p9">Part I — Troubleshooting &amp; Known Limits</a></li>
+</ol>
+</div>
+
+<!-- ================= A ================= -->
+<h1 class="pagebreak" id="p1">Part A — Before You Start</h1>
+<h2>A.1 What TradeVision is</h2>
+<p>TradeVision is an Indian-equity (NSE/BSE) decision-support and <strong>paper-trading</strong> platform. It ingests market data and trading-view alerts, builds a deterministic intelligence packet per symbol, evaluates 8 deterministic trading rules, pushes every firing through an auditable fail-closed risk gate, and — only when you explicitly enable it — simulates fills through a paper broker. It also runs nightly per-symbol backtests and ranks strategies by demonstrated per-stock evidence.</p>
+<div class="warn"><strong>Design fact worth repeating:</strong> by default the system acts on nothing. Rule firing, execution and pattern analysis are all off until an operator turns them on. On a fresh install you will see <em>an empty, quiet system</em> until you complete Part E.</div>
+
+<h2>A.2 System requirements</h2>
+<table>
+  <tr><th>Component</th><th>Requirement</th></tr>
+  <tr><td>OS</td><td>Linux (Ubuntu/Debian recommended) with Docker + Docker Compose v2</td></tr>
+  <tr><td>Host</td><td>8 GB RAM minimum (Postgres + Redis + 3–4 workers + backend), 20 GB free disk for images/data</td></tr>
+  <tr><td>Python</td><td>3.11+ (only needed if you run manage.py outside Docker)</td></tr>
+  <tr><td>Browser</td><td>Any modern browser (Chrome/Firefox/Edge); WebSockets for Live Activity</td></tr>
+  <tr><td>Time zone</td><td>Everything runs on IST (Asia/Kolkata); schedules assume India market hours</td></tr>
+  <tr><td>Accounts you should have ready</td><td>See below — create them before setup so keys are ready</td></tr>
+</table>
+
+<h2>A.3 Accounts you may need (create before setup)</h2>
+<table>
+  <tr><th>Provider</th><th>Purpose</th><th>Create at</th><th>Required?</th></tr>
+  <tr><td>Zerodha Kite (or other broker adapter)</td><td>Market data + broker (paper uses none)</td><td>zerodha.com / developers.kite.trade</td><td>Only for real data/fills</td></tr>
+  <tr><td>Google Gemini</td><td>AI provider (default)</td><td>aistudio.google.com/apikey</td><td>For AI features only</td></tr>
+  <tr><td>OpenAI</td><td>AI provider (fallback)</td><td>platform.openai.com/api-keys</td><td>Optional</td></tr>
+  <tr><td>Anthropic</td><td>AI provider (fallback)</td><td>console.anthropic.com</td><td>Optional</td></tr>
+  <tr><td>DeepSeek</td><td>AI provider (fallback)</td><td>platform.deepseek.com</td><td>Optional</td></tr>
+  <tr><td>Ollama</td><td>Local AI (no cloud key)</td><td>ollama.com (self-host)</td><td>Optional</td></tr>
+  <tr><td>Marketaux</td><td>News headlines + sentiment</td><td>marketaux.com (free tier: 100 calls/day)</td><td>For news</td></tr>
+  <tr><td>FRED (St. Louis Fed)</td><td>Macro series ingestion</td><td>fred.stlouisfed.org/docs/api/api_key.html</td><td>For macro</td></tr>
+  <tr><td>Alpha Vantage / NSE API</td><td>Alternate quote/scans data</td><td>alphavantage.co / (NSE feed)</td><td>Optional</td></tr>
+  <tr><td>TradingView</td><td>Webhook alerts (Pine)</td><td>tradingview.com alert webhook URL</td><td>For alert ingestion</td></tr>
+  <tr><td>Chartink</td><td>Scan-result webhook</td><td>chartink.com scan webhook</td><td>Optional</td></tr>
+  <tr><td>Telegram BotFather</td><td>Drift / alert notifications</td><td>t.me/BotFather</td><td>Optional</td></tr>
+  <tr><td>Email (SMTP)</td><td>Transactional email</td><td>your provider (e.g. Gmail app password, SES)</td><td>Optional</td></tr>
+</table>
+
+<!-- ================= B ================= -->
+<h1 class="pagebreak" id="p2">Part B — Installation &amp; First Boot</h1>
+<h2>B.1 Get the code</h2>
+<div class="flow">git clone &lt;your-remote&gt; TradeVision
+cd TradeVision</div>
+
+<h2>B.2 Configure the environment files</h2>
+<p>Two files matter.</p>
+<table>
+  <tr><th>File</th><th>Purpose</th><th>Copy from</th></tr>
+  <tr><td><code>backend/.env</code> <span class="small">(dev only)</span></td><td>Settings when running <code>manage.py</code> directly (bind-mounted into the backend container in dev)</td><td><code>backend/.env.example</code></td></tr>
+  <tr><td><code>infra/.env</code></td><td><strong>Deployment source of truth</strong> — used by docker-compose for every container</td><td><code>infra/.env.example</code></td></tr>
+</table>
+<div class="step"><b>Step 1.</b> Edit <code>infra/.env</code> and set the non-secret essentials first:
+<div class="flow">DJANGO_SETTINGS_MODULE=config.settings.development   # or .production for prod
+DJANGO_DEBUG=True                                       # NEVER True in production
+DJANGO_SECRET_KEY=&lt;random-50-char-string&gt;            # generate: python -c "import secrets;print(secrets.token_urlsafe(50))"
+POSTGRES_DB=tradevision_db
+POSTGRES_USER=tradevision
+POSTGRES_PASSWORD=&lt;strong-db-password&gt;
+DATABASE_URL=postgres://tradevision:&lt;password&gt;@pgbouncer:6432/tradevision_db
+REDIS_URL=redis://redis:6379/0
+MARKET_DATA_PROVIDER=zerodha            # or mock for a dry run</div></div>
+<div class="step"><b>Step 2.</b> Add every API key you own from <a href="#p3">Part C</a>. Keys left empty simply disable that feature.</div>
+
+<h2>B.3 Start the stack</h2>
+<div class="flow">cd infra
+docker compose -f docker-compose.yml -f docker-compose.dev.yml build
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+# watch it come up
+docker compose -f docker-compose.yml -f docker-compose.dev.yml ps</div>
+<table>
+  <tr><th>Container (dev profile)</th><th>Role</th></tr>
+  <tr><td><code>infra-backend-1</code></td><td>Django + Channels (ASGI on :8000) — the REST/WS API</td></tr>
+  <tr><td><code>infra-frontend-1</code></td><td>Vite dev server (HMR) — the web UI</td></tr>
+  <tr><td><code>infra-postgres-1</code>, <code>infra-pgbouncer-1</code></td><td>PostgreSQL + connection pooler</td></tr>
+  <tr><td><code>infra-redis-1</code></td><td>Redis — broker, cache, event streams</td></tr>
+  <tr><td><code>celery-worker-market</code></td><td>Queues: market_data, processing, intelligence, rule_engine</td></tr>
+  <tr><td><code>celery-worker-ai</code></td><td>Queue: ai (AI + recommendations)</td></tr>
+  <tr><td><code>celery-worker-default</code></td><td>Queues: notifications, analytics, default, maintenance, monitoring, webhooks (runs backtests/nightly jobs too)</td></tr>
+  <tr><td><code>celery-beat</code></td><td>Single scheduler instance — owns all recurring jobs</td></tr>
+</table>
+
+<h2>B.4 First-boot migrations &amp; seed</h2>
+<div class="flow"># Apply schema + create the default account
+docker exec infra-backend-1 python manage.py migrate
+docker exec infra-backend-1 python manage.py seed_demo_environment   # optional demo data
+docker exec infra-backend-1 python manage.py seed_trading_defaults  # creates the 8 default strategies + rule configs</div>
+<div class="step"><b>Step 3.</b> Create your login account via the UI (<code>/login</code> → “Create an account”) or a superuser:
+<div class="flow">docker exec -it infra-backend-1 python manage.py createsuperuser
+docker exec infra-backend-1 python manage.py ensure_default_account  # ensures a default trading account exists for the owner</div></div>
+<div class="warn">The nightly backtest job requires a Django user named exactly <code>admin</code>. Create one:
+<div class="flow">docker exec infra-backend-1 python manage.py create_user admin --email admin@local --password &lt;pw&gt; --role owner</div>
+(Use the actual helper exposed by your install; otherwise <code>createsuperuser</code> with username <code>admin</code>.)</div>
+
+<h2>B.5 Health check after boot</h2>
+<ol>
+  <li>Open <code>http://localhost:5173</code> (dev) — you should see the TradeVision login screen.</li>
+  <li>The top-bar live dot must be <strong>green</strong> (connected).</li>
+  <li>Open <code>/pipeline-health</code> — stages should show <em>Healthy</em> once data flows.</li>
+  <li>Run <code>docker compose ps</code> — all workers <em>healthy</em>, beat <em>up</em>.</li>
+</ol>
+
+<!-- ================= C ================= -->
+<h1 class="pagebreak" id="p3">Part C — Credentials &amp; All API Keys</h1>
+<p>All secrets live in <code>infra/.env</code> (and <code>backend/.env</code> in dev). They are never hard-coded and never committed — add the file to your git ignore. Values shown are <em>placeholders</em>; replace with your own keys. A key left empty disables the connected feature safely.</p>
+
+<h2>C.1 Core platform</h2>
+<table>
+  <tr><th>Variable</th><th>Placeholder / how to get it</th><th>Effect when set</th></tr>
+  <tr><td><code>DJANGO_SECRET_KEY</code></td><td>Random 50 chars: <code>secrets.token_urlsafe(50)</code></td><td>Signing sessions/JWTs. <strong>Required.</strong></td></tr>
+  <tr><td><code>JWT_SECRET_KEY</code></td><td>Leave empty to inherit <code>DJANGO_SECRET_KEY</code></td><td>JWT signing.</td></tr>
+  <tr><td><code>POSTGRES_PASSWORD</code></td><td>Strong DB password</td><td>DB auth. <strong>Required.</strong></td></tr>
+  <tr><td><code>DEFAULT_ACCOUNT_ID</code></td><td>Leave empty → first active superuser</td><td>Default trading account.</td></tr>
+</table>
+
+<h2>C.2 Market data &amp; broker</h2>
+<table>
+  <tr><th>Variable</th><th>Where to get it</th><th>Notes</th></tr>
+  <tr><td><code>MARKET_DATA_PROVIDER</code></td><td>—</td><td><code>mock</code> (synthetic) or <code>zerodha</code>.</td></tr>
+  <tr><td><code>ZERODHA_API_KEY</code></td><td>developers.kite.trade (Kite Connect app)</td><td>Sandbox can use the shared demo app.</td></tr>
+  <tr><td><code>ZERODHA_API_SECRET</code></td><td>Same app page</td><td>Pair with the key.</td></tr>
+  <tr><td><code>ZERODHA_ACCESS_TOKEN</code></td><td>After Kite login (or Redis hot token)</td><td>Session token; hot token in Redis overrides.</td></tr>
+  <tr><td><code>ZERODHA_REQUEST_TOKEN</code></td><td>One-time login exchange</td><td>Only during handshake.</td></tr>
+  <tr><td><code>ZERODHA_PRODUCT</code></td><td>—</td><td><code>MIS</code> (intraday) or <code>CNC</code>.</td></tr>
+  <tr><td><code>NSE_API_KEY</code> / <code>NSE_API_BASE_URL</code></td><td>NSE data vendor agreement</td><td>Alternate quote/scan feed.</td></tr>
+  <tr><td><code>ALPHA_VANTAGE_API_KEY</code></td><td>alphavantage.co/support/#api-key (free)</td><td>Alternate quotes.</td></tr>
+</table>
+
+<h2>C.3 AI providers</h2>
+<table>
+  <tr><th>Variable</th><th>Where to get it</th><th>Default model</th></tr>
+  <tr><td><code>AI_PROVIDER</code></td><td>—</td><td><code>gemini</code> (priority order: claude, gemini, openai, deepseek, ollama)</td></tr>
+  <tr><td><code>GEMINI_API_KEY</code></td><td>aistudio.google.com/apikey</td><td><code>gemini-1.5-pro</code></td></tr>
+  <tr><td><code>OPENAI_API_KEY</code></td><td>platform.openai.com/api-keys</td><td><code>gpt-4o</code></td></tr>
+  <tr><td><code>ANTHROPIC_API_KEY</code></td><td>console.anthropic.com</td><td><code>claude-3-5-sonnet-20241022</code></td></tr>
+  <tr><td><code>DEEPSEEK_API_KEY</code></td><td>platform.deepseek.com</td><td><code>deepseek-chat</code></td></tr>
+  <tr><td><code>OLLAMA_BASE_URL</code> / <code>OLLAMA_MODEL</code></td><td>Legacy: <code>http://localhost:11434</code> / <code>llama3.2</code></td><td>Local, no key.</td></tr>
+</table>
+<table>
+  <tr><th>Tuning</th><th>Default</th><th>Meaning</th></tr>
+  <tr><td><code>AI_CONFIDENCE_FLOOR</code></td><td>0.55</td><td>Drop AI below this confidence.</td></tr>
+  <tr><td><code>AI_DAILY_BUDGET_USD</code></td><td>10.00</td><td>Daily spend ceiling.</td></tr>
+  <tr><td><code>AI_DEDUP_WINDOW_SECONDS</code></td><td>300</td><td>Ignore duplicate prompts within window.</td></tr>
+</table>
+
+<h2>C.4 News, macro, alerts, notifications</h2>
+<table>
+  <tr><th>Variable</th><th>Where to get it</th><th>Effect</th></tr>
+  <tr><td><code>NEWS_API_KEY</code></td><td>marketaux.com (free: 100 calls/day)</td><td>News + sentiment (provider <code>marketaux</code>).</td></tr>
+  <tr><td><code>FRED_API_KEY</code></td><td>fred.stlouisfed.org/docs/api</td><td>Macro series ingestion.</td></tr>
+  <tr><td><code>TRADINGVIEW_WEBHOOK_TOKEN</code></td><td>Any strong token you choose</td><td>Authenticates Pine alert webhooks (unset ⇒ 501).</td></tr>
+  <tr><td><code>CHARTINK_WEBHOOK_TOKEN</code> / <code>CHARTINK_SHARED_SECRET</code></td><td>Choose strong values</td><td>Chartink webhook auth + HMAC.</td></tr>
+  <tr><td><code>TELEGRAM_BOT_TOKEN</code> / <code>TELEGRAM_CHAT_ID</code></td><td>t.me/BotFather</td><td>Drift/alert notifications (both required).</td></tr>
+  <tr><td><code>EMAIL_HOST*</code> / <code>EMAIL_HOST_USER</code> / <code>EMAIL_HOST_PASSWORD</code></td><td>SMTP provider (Gmail app password, SES, etc.)</td><td>Transactional email.</td></tr>
+  <tr><td><code>SENTRY_DSN</code></td><td>sentry.io project</td><td>Error monitoring (optional).</td></tr>
+</table>
+
+<h2>C.5 Feature switches in the same file</h2>
+<table>
+  <tr><th>Switch</th><th>Default</th><th>Notes</th></tr>
+  <tr><td><code>EXECUTION_ENGINE_ENABLED</code></td><td>False</td><td>False ⇒ no orders are ever created.</td></tr>
+  <tr><td><code>BROKER_ADAPTER</code> / <code>BROKER_ENVIRONMENT</code></td><td>paper / sandbox</td><td><code>live</code> fails Django startup until unlocked.</td></tr>
+  <tr><td><code>ALGO_REGISTRATION_ID</code></td><td>"</td><td>Live execution refused while empty.</td></tr>
+  <tr><td><code>PATTERN_ENGINE_ENABLED</code></td><td>False</td><td>Pattern detection.</td></tr>
+  <tr><td><code>MARKET_CONTEXT_SCORING_ENABLED</code></td><td>False</td><td>Market-context cache.</td></tr>
+  <tr><td><code>AI_ENGINE_ENABLED</code></td><td>False</td><td>AI recommendations path.</td></tr>
+</table>
+
+<!-- ================= D ================= -->
+<h1 class="pagebreak" id="p4">Part D — Running Procedure of the Architecture</h1>
+
+<h2>D.1 Component map</h2>
+<div class="flow">[TradingView / Chartink webhooks]──┐
+[Market-data poller (Beat 60s)]──┤──▶ Postgres (source of truth)
+                                     │      │
+                                   Redis ◀─┘ (broker + event streams)
+                                     │
+                    Celery workers (market/ai/default) + Beat
+                                     │
+                    Backend API (Django ASGI :8000)
+                                     │
+                    Frontend (Vite :5173) ── user</div>
+
+<h2>D.2 The event pipeline (what runs, in order)</h2>
+<table>
+  <tr><th>#</th><th>Stage</th><th>Trigger</th><th>Output you can observe</th></tr>
+  <tr><td>1</td><td>Ingestion</td><td>Beat poller (market hours) or webhooks</td><td>Rows in DB; Raw Ingestion Events page</td></tr>
+  <tr><td>2</td><td>Technical analysis</td><td>Each fresh candle (warm-up gated)</td><td><code>technical_analysis.TechnicalAnalysisCompleted</code></td></tr>
+  <tr><td>3</td><td>Intelligence packet</td><td>TA completed handler</td><td><code>intelligence.PacketBuilt</code>; regime + quality score</td></tr>
+  <tr><td>4</td><td>Rule engine</td><td>Packet built → 8 rules evaluated</td><td><code>rule_engine.RuleFired</code> (if gate allows)</td></tr>
+  <tr><td>5</td><td>Risk gate</td><td>Each firing → 10 fail-closed checks</td><td><code>RiskApproved</code> / <code>RiskRejected</code>; Risk Decisions page</td></tr>
+  <tr><td>6</td><td>Execution</td><td>RiskApproved (only if execution enabled)</td><td>Order → Fill; Orders/Positions/Trades pages</td></tr>
+  <tr><td>7</td><td>Observability</td><td>Every event</td><td>Audit log, Journal, dashboards, event streams</td></tr>
+</table>
+
+<h2>D.3 The event bus (reliability machinery)</h2>
+<ul>
+  <li><strong>Publish:</strong> durable DB row first → mirror to Redis stream (<code>events:{type}</code>, cap 10,000) → flag mirrored. A 30s beat re-mirrors any orphans, so Redis outages lose nothing.</li>
+  <li><strong>Consume:</strong> a 2s beat drains consumer groups and dispatches handlers; per-(event, group) idempotency.</li>
+  <li><strong>Retries:</strong> 5 attempts, backoff [1,5,30,120,600]s; acked only on terminal outcome; dead-letters are persisted and shown on Pipeline Health.</li>
+  <li><strong>Reclaim:</strong> stale pending entries auto-reclaimed after 120s (crashed workers don't lose events).</li>
+  <li><strong>Audit:</strong> a wildcard subscriber records every domain event append-only, reconstructable by correlation id.</li>
+</ul>
+
+<h2>D.4 Celery Beat schedule (nightly and recurring jobs)</h2>
+<table>
+  <tr><th>Job</th><th>Cadence</th><th>What it does</th></tr>
+  <tr><td>Poll market-data watchlist</td><td>60s (market hours)</td><td>Fetches bars → TA ingestion</td></tr>
+  <tr><td>Detect session transitions</td><td>30s</td><td>Market-open/close events</td></tr>
+  <tr><td>Poll event streams</td><td>2s</td><td>Drains Redis streams</td></tr>
+  <tr><td>Reconcile all accounts</td><td>300s</td><td>Broker vs ledger breaks</td></tr>
+  <tr><td>Evaluate pipeline health</td><td>30s</td><td>Stage heartbeats</td></tr>
+  <tr><td>Evaluate drawdown kill-switch</td><td>60s</td><td>Auto-arm on daily/weekly loss (off by default)</td></tr>
+  <tr><td>Sync instrument master</td><td>22:30 IST</td><td>Nightly symbol sync</td></tr>
+  <tr><td><strong>Run watchlist per-symbol backtests</strong></td><td><strong>03:00 IST</strong></td><td>Backtests every watchlist stock + ranks strategies</td></tr>
+  <tr><td>Reconcile rule expectations</td><td>04:00 IST</td><td>Validates rule verdicts vs backtests</td></tr>
+  <tr><td>Evaluate calibration drift</td><td>10:30 IST</td><td>Backtest-vs-live drift verdict</td></tr>
+  <tr><td>Ingest macro / news / chartink</td><td>configurable</td><td>Macro (14:05), news (900s), scans (3600s)</td></tr>
+</table>
+
+<h2>D.5 Queues &amp; workers (running procedure)</h2>
+<p>Tasks route by name to queues; workers consume explicit queue lists. <strong>If a queue has no worker, its tasks never run.</strong> Declared queues: <code>webhooks, signals, analysis, ai_reasoning, decisions, execution, monitoring, portfolio, analytics, notifications, maintenance, market_data</code>.</p>
+<table>
+  <tr><th>Worker</th><th>Consumes</th><th>Missing queue symptoms</th></tr>
+  <tr><td>worker-market</td><td>market_data, processing, intelligence, rule_engine</td><td>No packets/rules</td></tr>
+  <tr><td>worker-ai</td><td>ai</td><td>No recommendations</td></tr>
+  <tr><td>worker-default</td><td>notifications, analytics, default, maintenance, monitoring, webhooks</td><td>No nightly backtests, audit replay, health</td></tr>
+</table>
+<div class="warn">Two routing caveats verified in source: rule-engine tasks route to <code>rule_engine</code> and <code>monitor-broker-connection</code> routes to <code>default</code> — confirm a worker actually consumes them, or these stages stay silent.</div>
+
+<h2>D.6 How to run a manual job</h2>
+<div class="flow"># Backtest one symbol for evidence (needs the 'admin' user)
+docker exec infra-backend-1 python manage.py per_symbol_backtests --symbols SBIN --days 730
+# Backtest everything in the watchlist
+docker exec infra-backend-1 python manage.py per_symbol_backtests
+# Seed the default strategies/rules after a fresh migrate
+docker exec infra-backend-1 python manage.py seed_trading_defaults
+# Inspect DB quickly
+docker exec infra-postgres-1 psql -U tradevision -d tradevision_db -c "select count(*) from backtesting_backtestrun;"</div>
+
+<!-- ================= E ================= -->
+<h1 class="pagebreak" id="p5">Part E — User Workflow: Step-by-Step Procedure</h1>
+<p>This is the exact procedure a user follows to go from a fresh login to a running, evidence-ranked trading system.</p>
+
+<div class="step"><b>Step 1 — Create your account and sign in.</b>
+Open <code>/login</code>, choose “Create an account”, enter Full name, Email, Password. You land on the Dashboard. The top bar shows your role badge (owner/staff/viewer).</div>
+
+<div class="step"><b>Step 2 — Set up the symbol watchlist (drives nightly backtests).</b>
+Open <code>/watchlist</code> → “Add symbol” → type a ticker (e.g. <code>SBIN</code>) → Add. Set a group and optional price alerts (above/below). Add all stocks you care about. <em>Expected:</em> rows appear with last price/change; “Your watchlist is empty” disappears.
+<div class="warn">This watchlist feeds <em>backtests only</em>. To also get live signals you must add the same symbols to <code>MARKET_DATA_POLL_WATCHLIST</code> in <code>infra/.env</code> as <code>NSE:SYMBOL,NSE:SYMBOL2</code> (equals <code>EXCHANGE:SYMBOL</code>) and restart the poller: <code>docker compose -f … restart celery-beat celery-worker-market</code>.</div></div>
+
+<div class="step"><b>Step 3 — Generate per-stock evidence (nightly or manual).</b>
+Either wait for the 03:00 IST job, or run now: <code>docker exec infra-backend-1 python manage.py per_symbol_backtests --days 730</code>. The runner skips completed combos and resumes interrupted ones. Expect each symbol to eventually show one run per ACTIVE strategy. <em>Expected output:</em> rows in <code>/backtests</code> with status → progress → Complete, then <code>StrategySymbolAffinity</code> rows appear for gate-clearing strategies.</div>
+
+<div class="step"><b>Step 4 — Review the per-symbol rankings.</b>
+Open <code>/strategies</code> → use the affinities panel filter to pick a symbol (e.g. SBIN). You will see which strategy earned rank 1 for that stock and its expectancy, profit factor, max drawdown and trade count. A stock with no passing strategy shows an empty table — that is correct (no fabricated evidence).</div>
+
+<div class="step"><b>Step 5 — Create the automation rules you want.</b>
+Open <code>/rules</code> → “New rule”. Configure: Name, Strategy, Symbols, Condition (Price/Volume/Indicator/News/Time), Comparison, Threshold, Action (Buy/Sell/Close/Alert/Hold), Sizing (fixed/% equity/% risk), Cooldown, max executions/day. Or use the pre-seeded rule configs from <code>seed_trading_defaults</code> and enable the specific (rule, regime) combinations you accept.
+<div class="warn">Rules created by backtesting start <code>enabled=False</code>. A GO verdict never flips a rule live — you must explicitly enable it.</div></div>
+
+<div class="step"><b>Step 6 — Watch signals and recommendations.</b>
+Open <code>/signals</code> (rule/model signals with Accept/Reject) and <code>/strategies/recommendations</code> (AI recommendations with Accept/Dismiss/Backtest). Accepting is how a signal becomes executable in downstream flows.</div>
+
+<div class="step"><b>Step 7 — Decide whether to execute (paper).</b>
+Set <code>EXECUTION_ENGINE_ENABLED=True</code> in <code>infra/.env</code> and restart the backend+default worker. Keep <code>BROKER_ENVIRONMENT=sandbox</code> and <code>ALGO_REGISTRATION_ID=""</code> for paper. <em>Expected afterwards:</em> RiskApproved decisions start producing Orders (CREATED→FILLED) on the Orders page; fills appear on Positions and Trades.</div>
+
+<div class="step"><b>Step 8 — Monitor and stay safe.</b>
+Daily: <code>/pipeline-health</code> (all stages Healthy), <code>/risk/decisions</code> (approvals/rejections &amp; reasons), <code>/reconciliation</code> (broker vs ledger breaks), <code>/audit</code> (trail). Emergency: <code>/kill-switch</code> to halt everything or flatten positions.</div>
+
+<div class="step"><b>Step 9 — Learn from outcomes.</b>
+Optionally keep <code>/journal</code> entries, review Trader Memory (<code>/memory</code>) which records recommendations and their outcomes, and re-run backtests whenever you add a symbol.</div>
+
+<h2>E.1 What the nightly automation does for you</h2>
+<div class="flow">03:00 Beat → run_watchlist_per_symbol_backtests(days=730)
+  → per_symbol_backtests (subprocess, isolated)
+  → symbols = your Watchlist entries
+  → for each symbol × ACTIVE strategy: skip if COMPLETED, else create isolated account + run
+  → SymbolRankingService.rank_symbols() → StrategySymbolAffinity rows
+Automatically covers NEW watchlist symbols on the next tick.</div>
+
+<!-- ================= F ================= -->
+<h1 class="pagebreak" id="p6">Part F — Expected Output (What You Will See)</h1>
+
+<h2>F.1 The healthy running system</h2>
+<table>
+  <tr><th>Page / surface</th><th>Expected content when working</th></tr>
+  <tr><td>Top bar dot</td><td>Green pulsing “connected”</td></tr>
+  <tr><td>Dashboard <code>/</code></td><td>Equity/P&L/win-rate cards populated, recent trades &amp; signals tables, exposure chart</td></tr>
+  <tr><td>Live Activity <code>/live</code></td><td>Ticks/orders/fills rolling in during market hours</td></tr>
+  <tr><td>Portfolio</td><td>Holdings with market value + unrealized P&amp;L (after fills)</td></tr>
+  <tr><td>Orders <code>/orders</code></td><td>Orders with lifecycle status (CREATED→FILLED), cancel/amend working</td></tr>
+  <tr><td>Trades</td><td>Open + closed blotter with P&amp;L, fees, strategy attribution</td></tr>
+  <tr><td>Analytics</td><td>Realized/unrealized P&amp;L, daily ledger, performance vs benchmark, VaR</td></tr>
+  <tr><td>Backtests <code>/backtests</code></td><td>Completed runs with return %, max drawdown, Sharpe, trades; detail page shows equity curve + monthly heatmap</td></tr>
+  <tr><td>Strategies → affinities</td><td>Per-symbol rank list (rank, score, expectancy, PF, maxDD, trades) for gate-clearing combos</td></tr>
+  <tr><td>Signals</td><td>Pending signals with confidence; Accept/Reject</td></tr>
+  <tr><td>Recommendations</td><td>AI cards with expected return/Sharpe/maxDD; accept → config</td></tr>
+  <tr><td>News</td><td>Headlines with sentiment + relevance; Link to trade / Create rule</td></tr>
+  <tr><td>Risk Decisions</td><td>Rows APPROVED or REJECTED with rejection code (e.g. MISSING_STOP_LOSS)</td></tr>
+  <tr><td>Pipeline Health</td><td>All stages Healthy; no backlog ages beyond thresholds</td></tr>
+  <tr><td>Reconciliation</td><td>Matched ≥ broken; net difference 0</td></tr>
+  <tr><td>Audit</td><td>Append-only trail of every state change with actor + duration</td></tr>
+  <tr><td>Journal</td><td>Entries finalized per trade/correlation with decision + outcome</td></tr>
+  <tr><td>Raw Ingestion Events</td><td>Incoming webhook/poll payloads marked Processed</td></tr>
+</table>
+
+<h2>F.2 Expected output of a backtest run</h2>
+<ul>
+  <li><strong>Status</strong> PENDING → RUNNING (progress bar) → COMPLETED (or FAILED with reason).</li>
+  <li><strong>Result cards:</strong> Total Return %, Net P&amp;L, Max Drawdown, Sharpe, Profit Factor, Trades, Win Rate, Avg Trade, final equity.</li>
+  <li><strong>Drill-downs:</strong> trades table, per-symbol breakdown, parameters used.</li>
+  <li><strong>Validation views:</strong> walk-forward OOS stats, edge-validation verdicts (Pass/Marginal/Fail), cost-sensitivity breakeven.</li>
+  <li>When 30+ trades, expectancy &gt; 0, PF &gt; 1.3 and maxDD &lt; 20% are all met, the strategy earns a rank for that symbol.</li>
+</ul>
+
+<h2>F.3 Expected output a stock with no fires</h2>
+<p>Some rules legitimately never fire on certain stocks (e.g. Long Momentum on a given bank stock). You will see a COMPLETED backtest with <strong>0 trades</strong> and no affinity row — that is correct behaviour, not a bug.</p>
+
+<h2>F.4 Edge-case outputs to recognise</h2>
+<table>
+  <tr><th>You see…</th><th>Meaning</th></tr>
+  <tr><td><code>MISSING_STOP_LOSS</code> on Risk Decisions</td><td>The firing had no stop for a rule that requires one — risk fails closed by design.</td></tr>
+  <tr><td>0 fills but orders created</td><td>Paper broker hasn't matched yet, or execution disabled so no orders at all.</td></tr>
+  <tr><td>Pipeline stage Down</td><td>No heartbeat within its silence budget — check that stage's worker/queue.</td></tr>
+  <tr><td>Dead-lettered handler on Pipeline Health</td><td>A handler failed 5×; look at the audit/event trace.</td></tr>
+  <tr><td>Backtest still RUNNING for a long time</td><td>Large 730-day window; resume is cursor-based so safe to interrupt.</td></tr>
+</table>
+
+<!-- ================= G ================= -->
+<h1 class="pagebreak" id="p7">Part G — Full UI Options Reference</h1>
+<p>Every page, every option. Organized by navigation group.</p>
+
+<h2>G.1 Overview</h2>
+<h3>Dashboard — <code>/</code></h3>
+<p><strong>Controls:</strong> date-range Select (Today/7D/30D/90D/YTD) · “Refresh” · “New Backtest” · “View Signals”. <strong>Cards:</strong> Total Equity, Day P&amp;L, Open Positions, Win Rate, Total Trades, Profit Factor, Max Drawdown, Net Exposure (each with delta + sparkline). <strong>Panels:</strong> equity line chart · exposure bar chart · Recent Trades table (time, symbol, side, size, entry, exit, P&amp;L, status) · Recent Signals table.</p>
+<h3>Live Activity — <code>/live</code></h3>
+<p><strong>Controls:</strong> symbol input (datalist) · feed tabs (All/Ticks/Orders/Fills) · Pause/Resume · Auto-scroll checkbox · Reconnect. Rows: timestamp, source, symbol, message, severity; fills add qty + price.</p>
+<h3>Portfolio — <code>/portfolio</code></h3>
+<p><strong>Controls:</strong> account select · Group-by tabs (Asset/Account/Sector) · search · “Export CSV”. <strong>Columns:</strong> Symbol, Name, Quantity, Avg Cost, Last Price, Market Value, Unrealized P&amp;L, Unrealized %, Day P&amp;L, Weight %, Allocation bar. Footer totals + “View summary”.</p>
+<h3>Portfolio Summary — <code>/portfolio/summary</code></h3>
+<p><strong>Controls:</strong> period Select (1D/7D/30D/90D/YTD/All) · account select · “Export”. <strong>Cards:</strong> Net Value, Total Return, Realized/Unrealized P&amp;L, Fees, Cash, Buying Power, Margin Usage. <strong>Panels:</strong> allocation pie, Top Holdings, Top Winners/Losers, daily return chart.</p>
+<h3>Holding Detail — <code>/portfolio/holding/:id</code></h3>
+<p><strong>“Close position”</strong> modal: quantity, exit type (Market/Limit), limit price, “cannot be undone” checkbox. Cards: qty, avg cost, last, market value, unrealized P&amp;L, holding period, stop distance. Panels: price chart, position history, related orders, related trades.</p>
+
+<h2>G.2 Orders &amp; Trading</h2>
+<h3>Orders — <code>/orders</code></h3>
+<p><strong>Controls:</strong> status tabs (All/Pending/Partially Filled/Filled/Cancelled/Rejected) · symbol · side (All/Buy/Sell) · type (All/Market/Limit/Stop/Stop-Limit) · date range · Clear filters · “New order”. <strong>New order modal:</strong> Symbol, Side (Buy/Sell), Order type, Quantity, Limit price (Limit/Stop-Limit), Stop price (Stop/Stop-Limit), Time in force (Day/GTC/IOC/FOK), optional note, live notional readout. <strong>Columns:</strong> Order ID, Time, Symbol, Side, Type, Quantity, Filled, Limit/Stop price, Status, Filled %, Actions (Cancel/View). Footer: status counts + total notional.</p>
+<h3>Order Detail — <code>/orders/:id</code></h3>
+<p>“Cancel order” · “Amend order” (qty + limit) · cards (all order fields + average fill) · Executions table · Status timeline.</p>
+<h3>Trades — <code>/trades</code></h3>
+<p>Status tabs (All/Open/Closed) · symbol · strategy · date range · shortcuts Open/Closed/Export. Columns: Trade ID, Opened/Closed At, Symbol, Side, Quantity, Entry/Exit price, Fees, Net P&amp;L, P&amp;L %, Holding Period, Strategy, Status. Footer: net P&amp;L, fees, count, win/loss split.</p>
+<h3>Trade Detail — <code>/trades/:id</code></h3>
+<p>“Close trade” modal (exit price, optional date/note) · cards incl. R-Multiple, Return on Capital, Strategy · Legs table · Strategy Context.</p>
+<h3>Trades Open — <code>/trades/open</code> &amp; Trades Closed — <code>/trades/closed</code></h3>
+<p>Open: symbol, strategy, min unrealized P&amp;L, “Close all” with per-row include checkboxes. Closed: date range, strategy, side, min net P&amp;L, Export CSV; win/loss chart, performance-by-strategy, best/worst.</p>
+<h3>Trade Export Status — <code>/trades/exports</code></h3>
+<p>Format (CSV/JSON/XLSX) · date range · “Start export” · per-row Download · progress bars · Retry on failure.</p>
+
+<h2>G.3 Analytics</h2>
+<h3>P&amp;L Analytics — <code>/analytics/pnl</code></h3>
+<p>Period tabs (Daily/Weekly/Monthly) · dimension (Account/Strategy/Symbol/Asset Class) · account · “Realized only” · Export. Cards: Realized, Unrealized, Total, Fees, Win Rate, PF, Avg Win, Avg Loss. Panels: cumulative chart, per-period bars, breakdown table, biggest moves.</p>
+<h3>P&amp;L Daily — <code>/analytics/pnl/daily</code></h3>
+<p>Date range · account · tabs Cumulative/Daily · Download CSV. Table: Date, Trades, Wins, Losses, Gross/Net P&amp;L, Cumulative, Return %, Max Drawdown.</p>
+<h3>Performance — <code>/analytics/performance</code></h3>
+<p>Compare multi-select · benchmark (None/SPY/QQQ/BTC-USD/custom) · period · “Show risk metrics” · Rebalance basis (Time/Return). Cards: CAGR, Sharpe, Sortino, Calmar, Volatility, Max DD, Beta, Alpha, Info Ratio, Treynor. Panels: normalized returns, underwater drawdown, monthly heatmap, correlations.</p>
+<h3>Risk Analytics — <code>/analytics/risk</code></h3>
+<p>Horizon (1D/10D/30D) · method (Historical/Parametric/Monte Carlo) · confidence (90/95/99%) · account · “Recalculate”. Cards: VaR, CVaR, Gross/Net Exposure, Leverage, Concentration, Beta, Drawdown, Limit Utilization. Panels: exposure chart, top concentrations, stress scenarios, limit breaches.</p>
+
+<h2>G.4 Backtesting &amp; Research</h2>
+<h3>Backtests — <code>/backtests</code></h3>
+<p>Status tabs · strategy · symbol · date range · “New backtest” · “Recently viewed” toggle. Columns: Run ID, Name, Strategy, Symbols, Range, Status, Progress, Created, Duration, Trades, Return %, Max DD, Sharpe, Actions (View/Walk-forward/Edge/Cost).</p>
+<h3>New Backtest — <code>/backtests/new</code></h3>
+<p>Name · Strategy · Symbols (chips) · Date range + “Use max available” · Timeframe (1m/5m/15m/1h/4h/1D) · Initial capital (100000) · Commission/Slippage + “Include fees” · Risks (max position size, stop %, take-profit %, max concurrent) · Optimization tabs (None/Grid/Random) · “Start backtest”.</p>
+<h3>Backtest Detail — <code>/backtests/:id</code></h3>
+<p>Download report · Rerun · Delete · links to validation views. Cards: all metrics. Panels: equity curve, drawdown, monthly heatmap, trades table, per-symbol breakdown, parameters.</p>
+<h3>Walk-Forward — <code>/backtests/:id/walk-forward</code></h3>
+<p>Window size (5/10/20/50) · step (1/5/10) · anchor windows · window count · Run. IS/OOS stats, consistency summary.</p>
+<h3>Edge Validation — <code>/backtests/:id/edge-validation</code></h3>
+<p>Perturbation (None/Price/Delay/Slippage/Partial) · magnitude (Low/Med/High) · regime · OOS fraction slider · Run. Scenario verdicts (Pass/Marginal/Fail), degradation list.</p>
+<h3>Cost Sensitivity — <code>/backtests/:id/cost-sensitivity</code></h3>
+<p>Commission slider (0–50bps) · slippage (0–50bps) · spread (0–20bps) · borrow costs checkbox · Recalculate. Sortable table, breakeven stat, cost composition.</p>
+
+<h2>G.5 Automation</h2>
+<h3>News — <code>/news</code></h3>
+<p>Search · source multi-select · symbol · sentiment tabs · time window (1h/24h/7d/30d) · Refresh · Unread-only. Rows + “Link to trade” / “Create rule”.</p>
+<h3>Rules — <code>/rules</code> &amp; Rule Detail</h3>
+<p>List: status tabs, strategy, symbol, auto-refresh (5/15/30/60s), per-row enable toggle, New rule; columns incl. 24h trigger count. Detail options: condition tab (Price/Volume/Indicator/News/Time), comparison (Greater/Less/Crosses above/below), threshold, lookback, action (Buy/Sell/Close/Alert/Hold), sizing (Fixed/% equity/% risk), cooldown (None/1m/5m/15m/1h/1D), max executions/day, notes, Test run, Diagnostics, Recent Triggers, Version History.</p>
+<h3>Rule Executions — <code>/rules/:id/executions</code></h3>
+<p>Result tabs · date range · symbol · auto-refresh · Export CSV. Success-rate stat, outcomes chart, top errors.</p>
+<h3>Strategies — <code>/strategies</code></h3>
+<p>Category tabs (All/Trend/Mean Reversion/Momentum/Value/ML) · status · search · New/Duplicate/Pause/Resume/Delete. <strong>Affinities panel:</strong> filter by symbol to see per-stock ranking (rank, score, expectancy, PF, maxDD, trades).</p>
+<h3>Signals — <code>/signals</code></h3>
+<p>Status tabs · source (Rule/Model/Manual) · direction · symbol · min-confidence slider · auto-refresh · Accept/Reject/View source. Expiring-soon panel.</p>
+<h3>Recommendations — <code>/strategies/recommendations</code></h3>
+<p>Horizon tabs · risk level · category · Refresh · Show dismissed · per-card Accept/Dismiss/Backtest.</p>
+<h3>Patterns — <code>/patterns</code></h3>
+<p>Type tabs (Chart/Candlestick/Volume/Harmonic/All) · symbol · timeframe · lookback · min-confidence · Refresh · Watch/Dismiss · Chart modal.</p>
+<h3>Trader Memory — <code>/memory</code></h3>
+<p>Type tabs (Preferences/Lessons/Patterns/All) · Edit profile (risk appetite, holding period, max positions, sizing, symbols, blackouts, notes) · Forget · Clear all. Outcomes table (followed vs not).</p>
+
+<h2>G.6 Trading Operations &amp; System</h2>
+<h3>Watchlist — <code>/watchlist</code></h3>
+<p>Add symbol · group · search · sort (Symbol/Price/Change %/Volume) · per-row alert (above/below) · Remove. Top movers chart + alerts list.</p>
+<h3>Journal — <code>/journal</code></h3>
+<p>Date range · mood (Confident/Neutral/Anxious/Frustrated/Regretful) · symbol · Favorites-only · New entry (date, time, symbols, trade id, well/improve/lessons, mood, confidence 1–5, tags) · Edit/Delete/Pin.</p>
+<h3>Audit — <code>/audit</code></h3>
+<p>Actor · action type (Order/Trade/Rule/Strategy/Settings/Risk/Auth) · resource type · date range · search · Export CSV · row Details. Append-only.</p>
+<h3>Kill Switch — <code>/kill-switch</code></h3>
+<p>Arm (typed <code>KILL</code>) · mode (Halt new entries/Halt all activity/Flatten all positions) · Resume (typed <code>RESUME</code>) · Flatten all. Scopes SYMBOL→ACCOUNT→GLOBAL. Activation history.</p>
+<h3>Pipeline Health — <code>/pipeline-health</code></h3>
+<p>Env select · component tabs · auto-refresh (5s/15s/30s/1m) · Pause alerts. Per-component status/uptime/latency/throughput/error rate. Pipeline flow diagram, job backlog with Retry.</p>
+<h3>Risk Decisions — <code>/risk/decisions</code></h3>
+<p>Decision tabs (All/Approved/Rejected/Reduced/Escalated) · rule · symbol · date range · Only-overrides · per-row Override/View. Override modal: reason, justification, size.</p>
+<h3>Reconciliation — <code>/reconciliation</code></h3>
+<p>Account · date · status tabs · auto-refresh · Run · per-row Investigate/Auto-fix/Mark resolved. Breaks by type, history.</p>
+<h3>Raw Ingestion Events — <code>/ingest/events</code></h3>
+<p>Symbol · source · stream (Quotes/Trades/Orders/News/Signals/All) · window (15m/1h/6h/24h) · search · auto-refresh · Load more · Copy JSON. Payload expansion.</p>
+
+<!-- ================= H ================= -->
+<h1 class="pagebreak" id="p8">Part H — Operator Runbook &amp; Safety</h1>
+<h2>H.1 “Nothing is happening” — diagnostic order</h2>
+<ol>
+  <li>Empty <code>MARKET_DATA_POLL_WATCHLIST</code>? → the poller no-ops forever. Add symbols.</li>
+  <li>Is it market hours (IST)? Outside market/pre-market the poller pauses.</li>
+  <li>Provider = <code>mock</code>? → data is synthetic.</li>
+  <li>Is a worker consuming the stage's queue?</li>
+  <li>Do rules pass the gate? Check <code>RuleConfig.enabled</code> + <code>validated_regimes[regime].status=="GO"</code>.</li>
+  <li><code>EXECUTION_ENGINE_ENABLED=True</code>? Otherwise no orders — by design.</li>
+  <li>Check Pipeline Health, Journal, Audit for the trail.</li>
+</ol>
+<h2>H.2 Cold start checklist</h2>
+<ul>
+  <li>~60 candles per symbol before EMA/ATR/Supertrend rules fire (~1 trading day of 1-min bars). VWAP needs 09:15 IST opening candle.</li>
+  <li>Backtest evidence first, review affinities, then enable the specific rules you accept.</li>
+</ul>
+<h2>H.3 Safety posture</h2>
+<ul>
+  <li>Live execution is triple-blocked: <code>BROKER_ENVIRONMENT=live</code> fails startup · <code>ALGO_REGISTRATION_ID=""</code> refuses live · paper bypass refuses when live. Paper is the only certified mode.</li>
+  <li>Risk is fail-closed: kill switches, concentration, freshness, capital, stops.</li>
+  <li>Kill Switch page = emergency stop + flatten positions.</li>
+</ul>
+
+<!-- ================= I ================= -->
+<h1 class="pagebreak" id="p9">Part I — Troubleshooting &amp; Known Limits</h1>
+<table>
+  <tr><th>Issue</th><th>Fix</th></tr>
+  <tr><td>“Why isn't my stock doing anything?”</td><td>Symbol is on the user Watchlist (backtests) but not in <code>MARKET_DATA_POLL_WATCHLIST</code> (live data) nor <code>NEWS_POLL_SYMBOLS</code> (news). Add to the right list.</td></tr>
+  <tr><td>Backtest job returns ERROR silently</td><td><code>admin</code> user missing/renamed — create it. Check worker log for <code>Owner user 'admin' not found.</code></td></tr>
+  <tr><td>Rules never evaluate</td><td>Confirm a worker consumes the <code>rule_engine</code> queue.</td></tr>
+  <tr><td>No broker-connection events</td><td><code>monitor-broker-connection</code> routes to <code>default</code> — ensure consumed.</td></tr>
+  <tr><td>Webhooks return 501</td><td>Set <code>TRADINGVIEW_WEBHOOK_TOKEN</code> / <code>CHARTINK_WEBHOOK_TOKEN</code>.</td></tr>
+  <tr><td>Rejected orders, code <code>MISSING_STOP_LOSS</code></td><td>By design for rules that don't emit stops; add a stop via risk config or accept the fail-closed block.</td></tr>
+  <tr><td>Disk fills up (Postgres recovery failures)</td><td>Keep ≥15–20% free; prune docker images, clear build caches; back up DB before touching volumes.</td></tr>
+  <tr><td>Backtest runs very long</td><td>Normal for 730-day + heavy-rule combos; safe to interrupt — resumes from cursor.</td></tr>
+  <tr><td>Affinity panel empty for a symbol</td><td>No strategy passed the gate (≥30 trades, expectancy&gt;0, PF&gt;1.3, maxDD&lt;20%). Correct.</td></tr>
+  <tr><td>Frontend shows blank/unauthorized after deploy</td><td>Check <code>VITE_API_BASE_URL</code> and JWT expiry; the client auto-refreshes tokens, else re-login.</td></tr>
+</table>
+
+<p class="small">End of manual. TradeVision runs paper trading only as the certified mode. Keep <code>infra/.env</code> and <code>backend/.env</code> secret and out of git. For environment variables not listed, see <code>config/settings/base.py</code> and <code>infra/.env.example</code>.</p>
+
+</body>
+</html>

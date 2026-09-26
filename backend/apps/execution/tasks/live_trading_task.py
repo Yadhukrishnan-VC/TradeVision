@@ -5,6 +5,7 @@ import logging
 import time
 from typing import Any, Dict, List
 
+from asgiref.sync import sync_to_async
 from celery import shared_task
 
 from django.conf import settings
@@ -101,8 +102,10 @@ def run_live_trading_session(
 
                     correlation_id, causation_id = generate_correlation_ids()
 
-                    with transaction.atomic():
-                        exec_req = ExecutionRequest.objects.create(
+                    async def _create_exec_req():
+                        return await sync_to_async(
+                            ExecutionRequest.objects.create,
+                        )(
                             idempotency_key=f"live_{int(time.time())}_{executed_count}",
                             account_id=getattr(config, "default_account_id", "account_1"),
                             symbol=signal.instrument_symbol,
@@ -117,6 +120,8 @@ def run_live_trading_session(
                             event_type="live_signal",
                             status="CREATED",
                         )
+
+                    exec_req = await _create_exec_req()
 
                     # Process through existing execution engine
                     try:

@@ -77,12 +77,14 @@ def broker_environment_check(app_configs=None, **kwargs) -> list[checks.Error]:
                 )
 
         # 2. Risk cap enforcement
-        risk_max_position_size = getattr(settings, "RISK_MAX_POSITION_SIZE", 0)
-        if not isinstance(risk_max_position_size, (int, float)) or risk_max_position_size <= 0:
+        # Read the real value from the RISK_MANAGEMENT dict (the canonical source),
+        # not the bare env-var attribute that may not be configured.
+        risk_max_position_size = settings.RISK_MANAGEMENT.get("max_position_size", 0)
+        if not isinstance(risk_max_position_size, int) or risk_max_position_size <= 0:
             errors.append(
                 checks.Error(
-                    "RISK_MAX_POSITION_SIZE must be set to a positive integer.",
-                    hint="Configure the maximum position size for the execution engine.",
+                    "RISK_MAX_POSITION_SIZE must be set to a positive integer in RISK_MANAGEMENT.",
+                    hint="Configure RISK_MANAGEMENT['max_position_size'] in the Django settings.",
                     id="execution.E005",
                 )
             )
