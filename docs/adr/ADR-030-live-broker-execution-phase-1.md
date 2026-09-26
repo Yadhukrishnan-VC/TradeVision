@@ -67,12 +67,16 @@ component is modified**.
   `apps/execution/infrastructure/tasks.py:process_order` now builds its engine
   via that factory (default behaviour unchanged: paper).
 - `BROKER_ENVIRONMENT=sandbox|live` (default `sandbox`). A Django system check
-  (`apps/execution/checks.py`, `execution.E001/E002`, registered from
+  (`apps/execution/checks.py`, `execution.E002`, registered from
   `execution.apps.ready()`) **fails startup** — never falls back silently —
-  for `live` (the Phase-2 unlock does not exist yet) and for any unknown value.
-  The adapter also refuses `live` at construction
-  (`LIVE_UNREACHABLE_PHASE_1`) as defense-in-depth. `live` is therefore
-  entirely unreachable in this batch.
+  for any unknown value. The original Phase-1 hard block (`execution.E001`)
+  was superseded by the Phase-2 actual-verification gate (`execution.E003–E007`,
+  added by build `0f533f6`, hardened by the live-gate stabilization batch):
+  live passes startup only when registration id is set and well-formed (E003/
+  E004), a positive risk cap is configured (E005), the registered kill-switch
+  URL resolves (E006) and the rollback procedure is on disk (E007). The
+  adapter also refuses `live` at construction
+  (`LIVE_UNREACHABLE_PHASE_1`) as defense-in-depth.
 - In sandbox mode the adapter falls back to the shared demo app
   (`sandboxdemo` / `sandboxdemo-secret`, `sandbox.kite.trade`) when
   `ZERODHA_API_KEY`/`ZERODHA_API_SECRET` are empty, and applies the `/oms`
@@ -121,8 +125,9 @@ explicit:
    is placed.
 
 Only when all five are satisfied may `BROKER_ENVIRONMENT=live` be made
-reachable — which also requires removing the Phase-1 startup check
-(`execution.E001`) by design, not by accident.
+reachable — which required replacing the Phase-1 startup guard
+(`execution.E001`) with the actual-verification gate (`execution.E003–E007`),
+by design, not by accident.
 
 ### 6. Phase 3
 

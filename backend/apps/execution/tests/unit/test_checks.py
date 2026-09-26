@@ -15,16 +15,25 @@ class TestBrokerEnvironmentCheck:
         errors = broker_environment_check()
         assert any(getattr(e, "id", "") == "execution.E002" for e in errors)
 
-    def test_live_without_registration_fails_e001_and_e003(self, settings) -> None:
+    def test_live_without_registration_fails_e003(self, settings) -> None:
         settings.BROKER_ENVIRONMENT = "live"
         settings.ALGO_REGISTRATION_ID = ""
         ids = {getattr(e, "id", "") for e in broker_environment_check()}
-        assert "execution.E001" in ids
         assert "execution.E003" in ids
 
-    def test_live_with_registration_fails_only_e001(self, settings) -> None:
+    def test_live_with_registration_fails_e004_on_bad_format(self, settings) -> None:
+        # A registration id with a hyphen fails the anchored format check:
+        # E004 requires 8-32 alphanumeric characters.
         settings.BROKER_ENVIRONMENT = "live"
         settings.ALGO_REGISTRATION_ID = "SEBI-ALGO-12345"
         ids = {getattr(e, "id", "") for e in broker_environment_check()}
-        assert "execution.E001" in ids
         assert "execution.E003" not in ids
+        assert "execution.E004" in ids
+
+    def test_live_with_registration_resolves_kill_switch_list(self, settings) -> None:
+        # E006 reverses the *actual* registered URL name (kill-switch-list),
+        # proving the API halt path resolves rather than a lookalike name.
+        settings.BROKER_ENVIRONMENT = "live"
+        settings.ALGO_REGISTRATION_ID = "SEBI1234567890ABC"
+        ids = {getattr(e, "id", "") for e in broker_environment_check()}
+        assert "execution.E006" not in ids

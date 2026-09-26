@@ -6,11 +6,24 @@ All notable changes to TradeVision AI will be documented in this file.
 
 ## [Unreleased]
 
-
-## [Unreleased]
-
 **Fixed:**
 - Reverted Zerodha credentials UI + DB-integrated config (commit ee2f930) in 390eaab; system returns to .env-only credential management. No DB credential storage or per-user onboarding is currently active. Production credentials are set via infra/.env (and backend/.env for overrides). Development overrides use the untracked backend/.env.active.
+- **Live pipeline stabilization (ADR-030 §5 gate hardening):**
+  - Deleted the ad-hoc `apps/execution/application/live_execution_engine.py`; live order submission now routes exclusively through the existing `ExecutionEngine.execute_order()` (no two divergent order-submission paths).
+  - `apps/execution/tasks/live_trading_task.py`: added `import time`, `from typing import ...` imports (`Dict`/`List`/`Any`/future annotations), fixed the undefined `exec_count` (renamed `executed_count`), and wrapped the `ExecutionRequest.objects.create` ORM call originating from async `on_tick_callback` in `sync_to_async` (no more `SynchronousOnlyOperation`).
+  - `apps/execution/checks.py` ADR-030 live gate now verifies for real instead of only resolving names:
+    - E005 reads the canonical `settings.RISK_MANAGEMENT["max_position_size"]` (env-configurable `RISK_MAX_POSITION_SIZE`) rather than a non-existent bare attribute.
+    - E006 reverses the actual registered URL name `kill-switch-list` (was the non-existent `kill-switch`), proving the API halt path resolves.
+    - E007 requires an on-disk `docs/rollback_procedure.md` (mirrored in `backend/docs/` for container visibility) — the written incident/rollback procedure ADR-030 §5.3 item 4 mandates.
+  - New `docs/rollback_procedure.md` (+`backend/docs/` mirror) — short-form incident/rollback procedure; the full runbook remains `docs/PHASE2_ROLLBACK_RUNBOOK.md`.
+- Updated the ADR-030 gate regression tests from the removed Phase-1 guard
+  (`execution.E001`) to the current actual-verification semantics
+  (`execution.E003–E007`): unit tests assert per-check behaviour, and the
+  integration test proves live startup is blocked only while a real
+  precondition is unmet and permitted once all are verifiably satisfied.
+- Updated live-gate docs (`PHASE2_GATE_STATUS.md`, `PHASE2_ROLLBACK_RUNBOOK.md`,
+  `ADR-030`, `LOCAL-LIVE-PAPER-AUTOMATION-1.md`) to describe the
+  actual-verification gate instead of the removed E001 hard block.
 
 
 ### Local Bring-Up Fixes (2026-08-19)

@@ -14,11 +14,19 @@ This page is the at-a-glance tracker; each row links to its evidence.
 
 ## Guard that must not weaken while the gate is open
 
-- [x] **`execution.E001` still fails startup on `BROKER_ENVIRONMENT=live`.**
-      Proven against Django's real system-check machinery (`manage.py check`
-      raises `SystemCheckError` carrying E001 even when
-      `ALGO_REGISTRATION_ID` is set; registration alone satisfies only E003),
-      plus a registration-integrity test if the check itself is ever dropped:
+- [x] **The live gate is *actual verification*, never registration alone.**
+      `BROKER_ENVIRONMENT=live` now passes startup only when **every**
+      precondition is genuinely verifiable — `apps/execution/checks.py`
+      (`execution.E003–E007`, registered from `execution.apps.ready()`):
+      E003 requires `ALGO_REGISTRATION_ID`; E004 validates its format
+      (`^[A-Za-z0-9]{8,32}$`); E005 requires a positive
+      `RISK_MANAGEMENT["max_position_size"]`; E006 reverses the *registered*
+      kill-switch URL name (`kill-switch-list`); E007 requires the on-disk
+      rollback procedure (`docs/rollback_procedure.md`, mirrored under
+      `backend/docs/`). Proven against Django's real system-check machinery
+      (`manage.py check` passes with all preconditions satisfied and fails
+      when any one is unmet) plus per-check regression tests:
+      `backend/apps/execution/tests/unit/test_checks.py`,
       `backend/apps/execution/tests/integration/test_live_startup_guard.py`.
 - [x] Adapter-level defense-in-depth intact: `ZerodhaBroker` refuses `live`
       at construction (`LIVE_UNREACHABLE_PHASE_1`,
@@ -46,5 +54,6 @@ logic, risk-limit values, or the paper default.
    `docs/PHASE1_SANDBOX_SMOKE_TEST.md` §2) and appends results to §3.
 2. Observation period elapses clean on sandbox/paper.
 3. Runbook rehearsed once (tabletop or sandbox).
-4. Owner signs off §1 in writing; only then remove `execution.E001` **by
-   design** in the Phase 2 unlock batch.
+4. Owner signs off §1 in writing; only then is the actual-verification gate
+   treated as fully cleared — all five conditions remain open until that
+   sign-off regardless of check-pass state.

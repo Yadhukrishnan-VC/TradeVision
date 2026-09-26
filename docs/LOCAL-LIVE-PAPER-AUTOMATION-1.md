@@ -4,6 +4,16 @@
 **Generated:** 2026-09-19  
 **Governance:** BROKER_ENVIRONMENT=sandbox maintained throughout. No BROKER_ENVIRONMENT=live changes. No ADR-030 Phase 2 implementation. No live order execution. Phase 2 gate requires separate owner sign-off per `docs/PHASE2_GATE_STATUS.md`.
 
+> **Status note (2026-09-26):** the `execution.E001` hard-boot-block referenced
+> below was superseded by the ADR-030 actual-verification gate
+> (`execution.E003–E007`) in build `0f533f6` and hardened by the live-gate
+> stabilization batch. `BROKER_ENVIRONMENT=live` now boots only when every
+> precondition is verifiably met (registration id format E003/E004, risk caps
+> E005, registered kill-switch URL E006, on-disk rollback procedure E007). The
+> governance boundary is unchanged: live remains owner-gated (§5 of ADR-030),
+> `ZerodhaBroker` still refuses `live` at construction, and the paper default
+> is preserved. See `docs/PHASE2_GATE_STATUS.md` / `docs/rollback_procedure.md`.
+
 ---
 
 ## 1. Audit context (verified against the repo tree)

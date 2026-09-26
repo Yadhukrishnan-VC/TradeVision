@@ -89,14 +89,17 @@ def broker_environment_check(app_configs=None, **kwargs) -> list[checks.Error]:
                 )
             )
 
-        # 3. Kill switch verified end-to-end
+        # 3. Kill switch verified end-to-end (ADR-030 §5.3 item 3)
+        #    Reverse the *actual* registered URL name (apps/risk_management
+        #    interfaces/api/urls.py registers "kill-switch-list"), proving the
+        #    API halt path resolves, not just that a similar-looking name exists.
         try:
-            reverse("kill-switch")
+            reverse("kill-switch-list")
         except Exception:
             errors.append(
                 checks.Error(
                     "Kill switch URL must be resolvable (registered in urls.py).",
-                    hint="Ensure the kill-switch path is wired in the URL configuration.",
+                    hint="Ensure the kill-switch-list path is wired in the URL configuration.",
                     id="execution.E006",
                 )
             )

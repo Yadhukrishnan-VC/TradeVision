@@ -5,8 +5,10 @@
 one of the five ADR-030 §5 gate conditions; it is written *before* Phase 2
 starts and must be rehearsed on sandbox before any real-capital order.
 
-**Status:** procedure defined; `live` remains unreachable (execution.E001) until
-the owner signs off all five gate conditions — see
+**Status:** procedure defined; written short-form copy exists at
+`docs/rollback_procedure.md` (mirrored under `backend/docs/`), satisfying the
+`execution.E007` verification gate. `live` remains owner-gated (§5 of ADR-030)
+until the project owner signs off all five gate conditions — see
 `docs/PHASE2_GATE_STATUS.md`.
 
 ---

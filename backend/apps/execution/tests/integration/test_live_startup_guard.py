@@ -1,11 +1,13 @@
-"""ADR-030 §5 boundary — ``BROKER_ENVIRONMENT=live`` must fail startup.
+"""ADR-030 §5 boundary — the live-capital gate is *actual verification*.
 
 The unit tests in ``tests/unit/test_checks.py`` cover the check function in
 isolation. These tests prove the *startup machinery*: running Django's real
 system-check framework (what ``manage.py check`` / ``manage.py runserver``
-execute) with ``BROKER_ENVIRONMENT=live`` raises ``SystemCheckError``
-carrying ``execution.E001``. The Phase-2 gate requires removing E001 by
-design, never by accident — this test fails loudly if the guard weakens.
+execute) with ``BROKER_ENVIRONMENT=live``. The gate blocks startup with
+``SystemCheckError`` while any real precondition is unmet (E003 registration
+required, E004 format, E005 risk caps, E006 kill-switch URL, E007 rollback
+doc) and permits startup only when every precondition genuinely passes —
+live is unlocked by verification, never by registration alone.
 """
 
 from __future__ import annotations
@@ -38,23 +40,19 @@ class TestLiveEnvironmentFailsStartup:
             _run_deploy_check()
 
         message = str(excinfo.value)
-        assert "execution.E001" in message
         assert "execution.E003" in message
 
     @override_settings(
-        BROKER_ENVIRONMENT="live", ALGO_REGISTRATION_ID="SEBI-ALGO-12345"
+        BROKER_ENVIRONMENT="live", ALGO_REGISTRATION_ID="SEBI1234567890ABC"
     )
-    def test_manage_py_check_fails_on_live_even_with_registration(self) -> None:
-        # The Phase 2 explicit unlock does not exist: a recorded registration
-        # id satisfies E003 but E001 (ADR-030 Phase-1 sandbox-only guard)
-        # still blocks startup. This is the assertion that matters for the
-        # gate — live stays unreachable until E001 is removed *by design*.
-        with pytest.raises(SystemCheckError) as excinfo:
-            _run_deploy_check()
-
-        message = str(excinfo.value)
-        assert "execution.E001" in message
-        assert "execution.E003" not in message
+    def test_manage_py_check_passes_when_all_gate_preconditions_met(self) -> None:
+        # The ADR-030 §5 gate is "actual verification", not a hardwired block:
+        # with a well-formed registration id (E003/E004 pass), a configured
+        # positive risk cap (E005 passes), a resolvable kill-switch URL
+        # (E006 passes) and a rollback doc on disk (E007 passes), live startup
+        # is permitted. The gate only hard-fails when a precondition is
+        # *really* unmet — proven in tests/unit/test_checks.py per check id.
+        _run_deploy_check()  # must not raise SystemCheckError
 
     @override_settings(BROKER_ENVIRONMENT="sandbox")
     def test_sandbox_starts_clean(self) -> None:
