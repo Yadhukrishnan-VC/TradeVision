@@ -68,6 +68,16 @@ DEFAULT_STRATEGIES: list[dict[str, object]] = [
         "priority": 6,
         "status": TradingStrategyStatus.ACTIVE.value,
     },
+    {
+        "name": "Price Momentum (Setup 7)",
+        "priority": 7,
+        "status": TradingStrategyStatus.ACTIVE.value,
+    },
+    {
+        "name": "Volume Spike (Setup 8)",
+        "priority": 8,
+        "status": TradingStrategyStatus.ACTIVE.value,
+    },
 ]
 
 

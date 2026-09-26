@@ -19,6 +19,8 @@ STRATEGY_RULES: dict[str, list[str]] = {
     "High Beta Breakout (Setup 4)": ["high_beta_breakout_v1"],
     "Short Breakdown (Setup 6)": ["short_breakdown_v1"],
     "Breakout (Default)": ["breakout_v1"],
+    "Price Momentum (Setup 7)": ["price_movement_v1"],
+    "Volume Spike (Setup 8)": ["volume_spike_v1"],
 }
 
 
