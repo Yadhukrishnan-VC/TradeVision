@@ -505,8 +505,18 @@ CELERY_BEAT_SCHEDULE = {
     # Nightly instrument master sync after market close (IST ~22:30).
     "sync-instrument-master": {
         "task": "apps.market_data.infrastructure.tasks.sync_instrument_master",
-        "schedule": "crontab(hour=22, minute=30)",
+        "schedule": crontab(hour=22, minute=30),
         "options": {"queue": "maintenance"},
+    },
+    # Nightly per-symbol strategy backtests for every watchlist stock.
+    # Shells out to `per_symbol_backtests` in an isolated process so the
+    # command's force-eager / no-redis-mirror flags never leak into the
+    # worker. Resumes existing runs from cursors (incremental after the
+    # first backfill); new watchlist symbols are picked up automatically.
+    "run-watchlist-per-symbol-backtests": {
+        "task": "tradevision.strategy_registry.run_watchlist_per_symbol_backtests",
+        "schedule": crontab(hour=3, minute=0),
+        "options": {"queue": "analytics"},
     },
     # Event bus poller — reads mirrored domain events back off Redis Streams
     # and dispatches them to registered handlers. Scheduled every 2s, well
