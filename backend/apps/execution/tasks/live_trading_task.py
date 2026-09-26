@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import asyncio
 import logging
-from typing import List
+import time
+from typing import Any, Dict, List
 
 from celery import shared_task
 
@@ -100,7 +103,7 @@ def run_live_trading_session(
 
                     with transaction.atomic():
                         exec_req = ExecutionRequest.objects.create(
-                            idempotency_key=f"live_{int(time.time())}_{exec_count}",
+                            idempotency_key=f"live_{int(time.time())}_{executed_count}",
                             account_id=getattr(config, "default_account_id", "account_1"),
                             symbol=signal.instrument_symbol,
                             side="BUY",
@@ -117,7 +120,7 @@ def run_live_trading_session(
 
                     # Process through existing execution engine
                     try:
-                        result = execution_engine.process_order(str(exec_req.id))
+                        result = execution_engine.execute_order(str(exec_req.id))
                         executed_count += 1
                         logger.info(
                             f"Order executed: {exec_req.id} status={result.get('status')}"

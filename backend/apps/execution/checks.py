@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+import os
+import re
+
 from django.conf import settings
 from django.core import checks
+from django.urls import reverse
 
 _SANDBOX_ENVIRONMENT = "sandbox"
 _LIVE_ENVIRONMENT = "live"
@@ -59,5 +63,51 @@ def broker_environment_check(app_configs=None, **kwargs) -> list[checks.Error]:
             )
         # If ALGO_REGISTRATION_ID is set, the Phase-2 gate is considered passed.
         # The operator has formally registered their algo-trading system with SEBI.
+
+        # 1. Format validation of ALGO_REGISTRATION_ID
+        algo_registration_id = getattr(settings, "ALGO_REGISTRATION_ID", "").strip()
+        if algo_registration_id:
+            if not re.match(r"^[A-Za-z0-9]{8,32}$", algo_registration_id):
+                errors.append(
+                    checks.Error(
+                        "ALGO_REGISTRATION_ID must be alphanumeric and 8–32 characters long.",
+                        hint="Set a valid SEBI algotrading registration identifier.",
+                        id="execution.E004",
+                    )
+                )
+
+        # 2. Risk cap enforcement
+        risk_max_position_size = getattr(settings, "RISK_MAX_POSITION_SIZE", 0)
+        if not isinstance(risk_max_position_size, (int, float)) or risk_max_position_size <= 0:
+            errors.append(
+                checks.Error(
+                    "RISK_MAX_POSITION_SIZE must be set to a positive integer.",
+                    hint="Configure the maximum position size for the execution engine.",
+                    id="execution.E005",
+                )
+            )
+
+        # 3. Kill switch verified end-to-end
+        try:
+            reverse("kill-switch")
+        except Exception:
+            errors.append(
+                checks.Error(
+                    "Kill switch URL must be resolvable (registered in urls.py).",
+                    hint="Ensure the kill-switch path is wired in the URL configuration.",
+                    id="execution.E006",
+                )
+            )
+
+        # 4. Written incident/rollback procedure documentation
+        rollback_path = os.path.join(settings.BASE_DIR, "docs", "rollback_procedure.md")
+        if not os.path.exists(rollback_path):
+            errors.append(
+                checks.Error(
+                    "Rollback procedure documentation not found.",
+                    hint="Place a rollback procedure doc at docs/rollback_procedure.md.",
+                    id="execution.E007",
+                )
+            )
 
     return errors

@@ -6,6 +6,13 @@ All notable changes to TradeVision AI will be documented in this file.
 
 ## [Unreleased]
 
+
+## [Unreleased]
+
+**Fixed:**
+- Reverted Zerodha credentials UI + DB-integrated config (commit ee2f930) in 390eaab; system returns to .env-only credential management. No DB credential storage or per-user onboarding is currently active. Production credentials are set via infra/.env (and backend/.env for overrides). Development overrides use the untracked backend/.env.active.
+
+
 ### Local Bring-Up Fixes (2026-08-19)
 
 **Fixed (the full Docker stack now comes up healthy end-to-end):**
