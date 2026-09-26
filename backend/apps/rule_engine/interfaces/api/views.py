@@ -88,7 +88,16 @@ class RuleConfigDetailView(GenericAPIView):
             )
 
         for attr, value in update_serializer.validated_data.items():
-            setattr(config, attr, value)
+            if attr == "validated_regimes" and isinstance(value, dict):
+                merged = dict(config.validated_regimes or {})
+                for regime, verdict in value.items():
+                    if isinstance(verdict, dict) and verdict:
+                        merged[regime] = verdict
+                    elif verdict is None or (isinstance(verdict, str) and not verdict):
+                        merged.pop(regime, None)
+                setattr(config, attr, merged)
+            else:
+                setattr(config, attr, value)
         repo.update(config)
 
         serializer = self.get_serializer(config)

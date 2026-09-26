@@ -6,7 +6,7 @@ import uuid
 from core.events.event_types import EnrichedIntelligencePacket
 from django.db import models, transaction
 
-from core.execution_context import get_account_override
+from core.execution_context import get_account_override, get_backtest_rule_allowlist
 from core.rules.base_rule import RuleResult
 from core.rules.rule_registry import RuleRegistry
 from core.services import BaseService
@@ -61,6 +61,14 @@ class RuleEvaluationService(BaseService):
             return []
 
         results = self._registry.evaluate_all(packet)
+
+        # Strategy-isolated replay: a backtest run pinned to one strategy only
+        # fires that strategy's designed rules (never live — the allowlist is
+        # only ever bound inside BacktestRunnerService replay contexts).
+        allowlist = get_backtest_rule_allowlist()
+        if allowlist is not None:
+            results = [r for r in results if r.rule_id in allowlist]
+
         firings: list[RuleFiring] = []
         regime = getattr(packet, "regime", None)
         # ADR-029: live firing must clear the go/no-go validation gate.

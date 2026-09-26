@@ -7,11 +7,10 @@ from typing import Any
 
 import redis.asyncio as redis_asyncio
 from django.conf import settings
-from django.db import transaction
 
 from apps.eventbus.application.ports import EventBus
 from apps.eventbus.domain.events import DomainEvent
-from apps.eventbus.domain.exceptions import EventBusError, EventPublishError
+from apps.eventbus.domain.exceptions import EventBusError
 from apps.eventbus.infrastructure.models import StoredEvent
 
 logger = logging.getLogger(__name__)
@@ -52,6 +51,12 @@ class RedisStreamsEventBus(EventBus):
             mirrored_to_stream=False,
         )
         stored.save()
+
+        # Backtest inline replay drains handlers directly from StoredEvent and
+        # has no external consumer; skip the Redis mirror to avoid per-event
+        # asyncio loop churn (the mirror is optional in that path).
+        if getattr(settings, "BACKTEST_NO_REDIS_MIRROR", False):
+            return
 
         try:
             stream_key = f"events:{event.event_type}"

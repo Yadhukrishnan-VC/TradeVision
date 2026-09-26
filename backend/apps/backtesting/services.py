@@ -47,6 +47,9 @@ from core.clock import bind_simulated_time, get_clock
 from core.execution_context import (
     bind_account_override,
     bind_backtest_execution,
+    bind_backtest_rules,
+    bind_forced_strategy,
+    get_account_override,
 )
 from core.services import BaseService
 
@@ -116,7 +119,17 @@ class BacktestRunnerService(BaseService):
                     slippage_bps=run.slippage_bps,
                     defer_fills=True,
                 ):
-                    self._ingest(snapshot.raw_payload, correlation_id)
+                    strategy_id = run.strategy_id if run.strategy_id else None
+                    allowlist = None
+                    if run.strategy is not None and run.strategy.name:
+                        from apps.strategy_registry.application.strategy_rule_map import (
+                            rules_for_strategy_name,
+                        )
+
+                        mapped = rules_for_strategy_name(run.strategy.name)
+                        if mapped:
+                            allowlist = frozenset(mapped)
+                    self._ingest(snapshot.raw_payload, correlation_id, strategy_id, allowlist)
 
                 self._runs.update_cursor(run_id, snapshot.id)
 
@@ -163,13 +176,171 @@ class BacktestRunnerService(BaseService):
                 return snapshots[index + 1 :]
         return snapshots
 
-    def _ingest(self, raw_payload: dict[str, Any], correlation_id: uuid.UUID) -> None:
-        """Replay one historical payload through the real ingestion service."""
+    def _ingest(
+        self,
+        raw_payload: dict[str, Any],
+        correlation_id: uuid.UUID,
+        strategy_id: Any = None,
+        rule_allowlist: frozenset[str] | None = None,
+    ) -> None:
+        """Replay one historical payload through the real ingestion service.
+
+        The ``RedisStreamsEventBus`` mirrors every published event into
+        ``StoredEvent`` (and Redis). In production the periodic
+        ``poll_event_streams`` Beat task drains Redis; here that external
+        transport may be unavailable or head-of-line blocked, so we drain
+        the correlation's events *synchronously in-process* — running the
+        registered handlers eagerly inside the same simulation contextvars
+        (forced strategy + rule allowlist + account override + simulated
+        clock) so rule evaluation, risk approval, execution and fills all
+        reproduce during replay.
+        """
         service = TechnicalAnalysisIngestionService(
             repository=TASnapshotRepository(),
             event_bus=get_event_bus(),
         )
-        service.ingest(raw_payload, correlation_id=correlation_id)
+        with bind_forced_strategy(strategy_id), bind_backtest_rules(rule_allowlist):
+            service.ingest(raw_payload, correlation_id=correlation_id)
+            self._drain_run_events(correlation_id)
+
+    _DRAIN_MAX_DEPTH = 20
+
+    def _drain_run_events(self, correlation_id: uuid.UUID) -> tuple[int, int]:
+        """Dispatch all events published for one bar, eager + in-process.
+
+        Returns ``(handlers_dispatched, handler_failures)`` for the bar.
+
+        The bus mirrors every published event into ``StoredEvent``. The
+        downstream chain (RuleFired -> RiskApproved -> order) republishes
+        under *new* correlation ids (``analysis_event_id``/packet event ids),
+        so the drain floods the whole correlation *graph*: it drains every
+        StoredEvent whose ``correlation_id`` is the bar's correlation or the
+        ``event_id`` of any event already drained in this bar's chain, then
+        recurses until quiescent.
+        """
+        from apps.eventbus.domain.events import DomainEvent
+        from apps.eventbus.infrastructure.event_bus_factory import get_event_bus
+        from apps.eventbus.infrastructure.models import ProcessedEvent, StoredEvent
+        from apps.eventbus.infrastructure.tasks import _resolve_handler
+
+        bus = get_event_bus()
+        handlers = bus.handlers
+        dispatched = 0
+        failures = 0
+
+        # Replay chain whitelist: only the consumers needed to turn a bar into
+        # an order. Pattern Engine, AI oracle, telemetry, audit and graders are
+        # irrelevant to scoring and dominate per-bar latency, so replayed bars
+        # dispatch ONLY this sub-chain (keys = event types we route at all).
+        _chain_consumers: dict[str, frozenset[str]] = {}
+        if getattr(settings, "REPLAY_DRAIN_CHAIN_ONLY", True):
+            _chain_consumers = {
+                "technical_analysis.TechnicalAnalysisCompleted": frozenset(
+                    {"intelligence"}
+                ),
+                "intelligence.PacketBuilt": frozenset({"rule_engine"}),
+            }
+
+        def _dispatch(
+            roots: set[uuid.UUID], seen: set[uuid.UUID], depth: int
+        ) -> None:
+            nonlocal dispatched, failures
+            if depth >= self._DRAIN_MAX_DEPTH:
+                return
+            rows = list(
+                StoredEvent.objects.filter(correlation_id__in=roots).order_by(
+                    "occurred_at"
+                )
+            )
+            fresh = 0
+            for row in rows:
+                if row.event_id in seen:
+                    continue
+                seen.add(row.event_id)
+                fresh += 1
+                event = DomainEvent(
+                    event_id=row.event_id,
+                    event_type=row.event_type,
+                    occurred_at=row.occurred_at,
+                    payload=row.payload,
+                    version=row.version,
+                    correlation_id=row.correlation_id,
+                    causation_id=row.causation_id,
+                )
+                pairs = handlers.get(row.event_type, [])
+                if _chain_consumers:
+                    pairs = [
+                        pair
+                        for pair in pairs
+                        if pair[1] in _chain_consumers.get(row.event_type, ())
+                    ]
+                if (
+                    row.event_type == "rule_engine.RuleFired"
+                    and get_account_override() is not None
+                ):
+                    # Backtest replay: execute rule verdicts deterministically
+                    # (strategy-rule side + trigger-data entry/stop) instead of
+                    # the external AI/risk chain, which emits no orders in
+                    # replay. Orders are filled on the next bar's real open.
+                    from apps.backtesting.replay_signal_execution import (
+                        ReplaySignalExecutionService,
+                    )
+
+                    event_for_replay = DomainEvent(
+                        event_id=row.event_id,
+                        event_type=row.event_type,
+                        occurred_at=row.occurred_at,
+                        payload=row.payload,
+                        version=row.version,
+                        correlation_id=row.correlation_id,
+                        causation_id=row.causation_id,
+                    )
+                    try:
+                        ReplaySignalExecutionService().handle_rule_fired(
+                            event_for_replay
+                        )
+                        ProcessedEvent.objects.create(
+                            event_id=row.event_id, consumer_group="backtesting.replay"
+                        )
+                        dispatched += 1
+                    except Exception as exc:
+                        failures += 1
+                        logger.warning(
+                            "backtest_replay_order_failed",
+                            extra={"event_id": str(row.event_id), "error": str(exc)},
+                        )
+                    continue
+                for path, group in pairs:
+                    if ProcessedEvent.objects.filter(
+                        event_id=row.event_id, consumer_group=group
+                    ).exists():
+                        continue
+                    try:
+                        handler = _resolve_handler(path)
+                        handler(event)
+                        ProcessedEvent.objects.create(
+                            event_id=row.event_id, consumer_group=group
+                        )
+                        dispatched += 1
+                    except Exception as exc:
+                        failures += 1
+                        logger.warning(
+                            "backtest_inline_handler_failed",
+                            extra={
+                                "event_id": str(row.event_id),
+                                "event_type": row.event_type,
+                                "handler": path,
+                                "consumer_group": group,
+                                "error": str(exc),
+                            },
+                        )
+            if fresh:
+                new_roots = {uuid.UUID(str(row.event_id)) for row in rows}
+                new_roots.update(roots)
+                _dispatch(new_roots, seen, depth + 1)
+
+        _dispatch({uuid.UUID(str(correlation_id))}, set(), 0)
+        return dispatched, failures
 
     def _fill_pending_orders(
         self,

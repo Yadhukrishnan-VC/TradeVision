@@ -17,11 +17,24 @@ export type Severity = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL" | string;
 /** ADR-029 gate status — stored in RuleConfig.validated_regimes per regime. */
 export type GateStatus = "GO" | "NO_GO" | "INSUFFICIENT_DATA" | string;
 
+/** Per-regime ADR-029 verdict (RuleConfig.validated_regimes[regime]). */
+export interface RegimeVerdict {
+  status: GateStatus;
+  expectancy: string;
+  profit_factor: string;
+  sharpe_ratio: string | null;
+  max_drawdown_pct: string;
+  trade_count: number;
+  backtest_run_id: string;
+  evaluated_at: string;
+  [key: string]: unknown;
+}
+
+export type ValidatedRegimes = Record<string, RegimeVerdict>;
+
 /**
- * RuleConfig — VERIFIED against backend (2026-08-17).
- * `validated_regimes` is stored on the model but NOT serialized by the API
- * (configs response: id, rule_id, enabled, parameters, severity_override,
- * created_at, updated_at). Field kept optional; only populated from DB/ORM reads.
+ * RuleConfig — VERIFIED against backend (2026-09-25).
+ * validated_regimes IS now serialized (per-regime RegimeVerdict objects).
  */
 export interface RuleConfig {
   id: string;
@@ -31,8 +44,17 @@ export interface RuleConfig {
   severity_override: Severity | null;
   created_at: string;
   updated_at: string;
-  validated_regimes?: Record<string, GateStatus>;
+  validated_regimes: ValidatedRegimes;
   [key: string]: unknown;
+}
+
+/** PATCH body for /rule-engine/configs/:ruleId/ — partial, all optional. */
+export interface RuleConfigUpdate {
+  enabled?: boolean;
+  parameters?: Record<string, unknown>;
+  severity_override?: Severity | null;
+  /** Merge semantic: keys present are upserted; null/"" removes that regime. */
+  validated_regimes?: Record<string, RegimeVerdict | null>;
 }
 
 /** RuleExecution — VERIFIED against backend (2026-08-17). */

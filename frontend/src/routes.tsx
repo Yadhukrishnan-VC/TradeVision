@@ -56,6 +56,7 @@ const News = lazy(() => import("@/pages/News").then((m) => ({ default: m.News })
 const Rules = lazy(() => import("@/pages/Rules").then((m) => ({ default: m.Rules })));
 const RuleDetail = lazy(() => import("@/pages/RuleDetail").then((m) => ({ default: m.RuleDetail })));
 const RuleExecutions = lazy(() => import("@/pages/RuleExecutions").then((m) => ({ default: m.RuleExecutions })));
+const Strategies = lazy(() => import("@/pages/Strategies").then((m) => ({ default: m.Strategies })));
 const Signals = lazy(() => import("@/pages/Signals").then((m) => ({ default: m.Signals })));
 const Recommendations = lazy(() => import("@/pages/Recommendations").then((m) => ({ default: m.Recommendations })));
 const Patterns = lazy(() => import("@/pages/Patterns").then((m) => ({ default: m.Patterns })));
@@ -113,6 +114,7 @@ export function AppRoutes() {
       <Route path="/rules" element={withShell(<Suspense fallback={<Loading />}><Rules /></Suspense>)} />
       <Route path="/rules/:ruleId" element={withShell(<Suspense fallback={<Loading />}><RuleDetail /></Suspense>)} />
       <Route path="/rules/executions" element={withShell(<Suspense fallback={<Loading />}><RuleExecutions /></Suspense>)} />
+      <Route path="/strategies" element={withShell(<Suspense fallback={<Loading />}><Strategies /></Suspense>)} />
       <Route path="/signals" element={withShell(<Suspense fallback={<Loading />}><Signals /></Suspense>)} />
       <Route path="/recommendations" element={withShell(<Suspense fallback={<Loading />}><Recommendations /></Suspense>)} />
       <Route path="/patterns" element={withShell(<Suspense fallback={<Loading />}><Patterns /></Suspense>)} />

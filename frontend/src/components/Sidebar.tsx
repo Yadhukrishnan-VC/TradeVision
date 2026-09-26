@@ -75,6 +75,7 @@ const SECTIONS: NavSection[] = [
     items: [
       { to: "/rules", label: "Rule Configs", icon: ListChecks },
       { to: "/rules/executions", label: "Rule Executions", icon: Radio },
+      { to: "/strategies", label: "Strategies", icon: Sparkles },
       { to: "/signals", label: "Signals", icon: Signal },
       { to: "/recommendations", label: "Recommendations", icon: Sparkles },
       { to: "/patterns", label: "Patterns", icon: MemoryStick },

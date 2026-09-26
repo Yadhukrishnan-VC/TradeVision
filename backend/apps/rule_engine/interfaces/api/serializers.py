@@ -9,6 +9,7 @@ class RuleConfigSerializer(serializers.Serializer):
     enabled = serializers.BooleanField()
     parameters = serializers.JSONField()
     severity_override = serializers.CharField(allow_null=True, allow_blank=True)
+    validated_regimes = serializers.JSONField()
     created_at = serializers.DateTimeField()
     updated_at = serializers.DateTimeField()
 
@@ -17,6 +18,7 @@ class RuleConfigUpdateSerializer(serializers.Serializer):
     enabled = serializers.BooleanField(required=False)
     parameters = serializers.JSONField(required=False)
     severity_override = serializers.CharField(allow_null=True, allow_blank=True, required=False)
+    validated_regimes = serializers.JSONField(required=False)
 
 
 class RuleExecutionSerializer(serializers.Serializer):

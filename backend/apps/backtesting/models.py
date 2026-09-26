@@ -37,6 +37,17 @@ class BacktestRun(BaseModel):
 
     symbol = models.CharField(max_length=100, db_index=True)
     timeframe = models.CharField(max_length=20, blank=True, default="")
+    strategy = models.ForeignKey(
+        "strategy_registry.TradingStrategy",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="backtest_runs",
+        help_text=(
+            "Strategy this run backtests. When set, replay is isolated to the "
+            "strategy's designed rules (see strategy-registry rule map)."
+        ),
+    )
     range_start = models.DateTimeField()
     range_end = models.DateTimeField()
     account = models.OneToOneField(

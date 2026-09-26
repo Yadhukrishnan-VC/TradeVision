@@ -45,6 +45,9 @@ urlpatterns = [
     # Rule Engine API
     path("api/v1/rule-engine/", include("apps.rule_engine.interfaces.api.urls")),
 
+    # Strategy Registry API — default strategies + owner configuration
+    path("api/v1/strategies/", include("apps.strategy_registry.interfaces.api.urls")),
+
     # Recommendations API
     path("api/v1/recommendations/", include("apps.recommendations.interfaces.api.urls")),
 

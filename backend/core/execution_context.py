@@ -36,6 +36,12 @@ _defer_fills: contextvars.ContextVar[bool] = contextvars.ContextVar(
 _next_bar_open: contextvars.ContextVar[Decimal | None] = contextvars.ContextVar(
     "tradevision_execution_next_bar_open", default=None
 )
+_forced_strategy: contextvars.ContextVar[UUID | None] = contextvars.ContextVar(
+    "tradevision_execution_forced_strategy", default=None
+)
+_backtest_rule_allowlist: contextvars.ContextVar[frozenset[str] | None] = (
+    contextvars.ContextVar("tradevision_backtest_rule_allowlist", default=None)
+)
 
 
 def get_account_override() -> UUID | None:
@@ -57,6 +63,16 @@ def get_backtest_defer_fills() -> bool:
 
 def get_next_bar_open() -> Decimal | None:
     return _next_bar_open.get()
+
+
+def get_forced_strategy_id() -> UUID | None:
+    """Strategy id pinned by a backtest run (strategy-isolated replay)."""
+    return _forced_strategy.get()
+
+
+def get_backtest_rule_allowlist() -> frozenset[str] | None:
+    """Rule ids a backtest run is restricted to, or ``None`` for all rules."""
+    return _backtest_rule_allowlist.get()
 
 
 @contextmanager
@@ -88,3 +104,27 @@ def bind_backtest_execution(
         _slippage_bps.reset(token_slip)
         _defer_fills.reset(token_defer)
         _next_bar_open.reset(token_open)
+
+
+@contextmanager
+def bind_forced_strategy(strategy_id: UUID | None) -> None:
+    """Pin ``strategy_id`` for strategy-isolated backtest replay.
+
+    While bound, ``StrategyMatcher`` returns this strategy (if still ACTIVE)
+    instead of ranking candidates. ``None`` binds the default (no pinning).
+    """
+    token = _forced_strategy.set(strategy_id)
+    try:
+        yield
+    finally:
+        _forced_strategy.reset(token)
+
+
+@contextmanager
+def bind_backtest_rules(rule_ids: frozenset[str] | None) -> None:
+    """Restrict rule firing during replay to ``rule_ids`` (or ``None`` = all)."""
+    token = _backtest_rule_allowlist.set(rule_ids)
+    try:
+        yield
+    finally:
+        _backtest_rule_allowlist.reset(token)
