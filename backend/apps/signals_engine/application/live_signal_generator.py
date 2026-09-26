@@ -1,13 +1,15 @@
 import asyncio
 import time
 import logging
+import uuid
 from typing import Optional, Dict, Any, List
 
 from django.db import transaction
 
 from apps.signals_engine.infrastructure.models import Signal
 from apps.rule_engine.infrastructure.models import RuleConfig
-from apps.eventbus.application.services import event_bus
+from apps.eventbus.domain.events import DomainEvent
+from apps.eventbus.infrastructure.event_bus_factory import get_event_bus
 
 logger = logging.getLogger(__name__)
 
@@ -123,18 +125,21 @@ class LiveSignalGenerator:
                     )
 
                     # Publish signal event to event bus
-                    await event_bus.publish(
-                        topic="signals_engine.signals",
-                        message={
-                            "signal_id": str(signal.id),
-                            "symbol": symbol,
-                            "direction": direction,
-                            "confidence": signal.confidence_hint,
-                            "rule_id": rule.rule_id,
-                            "price": ltp,
-                            "timestamp": time.time(),
-                            "source": "live_signal_generator",
-                        },
+                    get_event_bus().publish(
+                        DomainEvent.create(
+                            event_type="signals_engine.signal_generated",
+                            payload={
+                                "signal_id": str(signal.id),
+                                "symbol": symbol,
+                                "direction": direction,
+                                "confidence": signal.confidence_hint,
+                                "rule_id": rule.rule_id,
+                                "price": ltp,
+                                "timestamp": time.time(),
+                                "source": "live_signal_generator",
+                            },
+                            correlation_id=uuid.uuid4(),
+                        )
                     )
 
                     logger.info(

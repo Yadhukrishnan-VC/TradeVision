@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+import uuid
 from typing import Any, Dict, List
 
 from asgiref.sync import sync_to_async
@@ -97,25 +98,39 @@ def run_live_trading_session(
                 if signal.direction == "BUY" and signal.confidence_hint > 0.6:
                     # Create ExecutionRequest and process through existing engine
                     from apps.execution.infrastructure.models import ExecutionRequest
-                    from core.context_processing import generate_correlation_ids
                     from django.db import transaction
+                    from decimal import Decimal
 
-                    correlation_id, causation_id = generate_correlation_ids()
+                    correlation_id = uuid.uuid4()
+                    causation_id = uuid.uuid4()
+                    account_id = uuid.UUID(
+                        getattr(settings, "DEFAULT_ACCOUNT_ID", "") or str(uuid.uuid4())
+                    )
+                    risk_approved_event_id = uuid.uuid4()
+                    quantity = Decimal(
+                        getattr(settings, "LIVE_TRADING_QUANTITY", 10)
+                    )
+                    stop_loss = Decimal(
+                        getattr(settings, "LIVE_TRADING_STOP_LOSS", 0)
+                    )
+                    entry_price = Decimal(
+                        getattr(signal, "last_price", 0)
+                    )
 
                     async def _create_exec_req():
                         return await sync_to_async(
                             ExecutionRequest.objects.create,
                         )(
                             idempotency_key=f"live_{int(time.time())}_{executed_count}",
-                            account_id=getattr(config, "default_account_id", "account_1"),
+                            account_id=account_id,
                             symbol=signal.instrument_symbol,
                             side="BUY",
-                            quantity=config.live_trading_quantity or 10,
-                            entry_price=signal.last_price if hasattr(signal, "last_price") else None,
-                            stop_loss=config.live_trading_stop_loss,
+                            quantity=quantity,
+                            entry_price=entry_price,
+                            stop_loss=stop_loss,
                             correlation_id=correlation_id,
                             causation_id=causation_id,
-                            risk_approved_event_id=f"live_approval_{int(time.time())}",
+                            risk_approved_event_id=risk_approved_event_id,
                             rule_id=rule_id,
                             event_type="live_signal",
                             status="CREATED",
