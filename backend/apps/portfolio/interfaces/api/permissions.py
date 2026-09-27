@@ -24,3 +24,12 @@ class HasManageExecution(BasePermission):
         from apps.accounts.infrastructure.permissions import HasAPIKeyScope
 
         return HasAPIKeyScope.with_scope(Scope.MANAGE_EXECUTION).has_permission(request, view)
+
+
+class HasManageCapital(BasePermission):
+    """Grants access to the daily capital set endpoint (``manage:capital``)."""
+
+    def has_permission(self, request: Request, view: Any) -> bool:
+        from apps.accounts.infrastructure.permissions import HasAPIKeyScope
+
+        return HasAPIKeyScope.with_scope(Scope.MANAGE_CAPITAL).has_permission(request, view)

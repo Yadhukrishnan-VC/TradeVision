@@ -1,13 +1,44 @@
-// PortfolioSummary — GET /portfolio/.
+// PortfolioSummary — GET /portfolio/ + POST /portfolio/capital/daily/.
 
+import { useState } from "react";
 import { useFetch } from "@/hooks/useFetch";
-import { getPortfolioPositions, getPortfolioSummary } from "@/api/secondary";
-import { Card, Alert, EmptyState, StatCard } from "@/components";
+import {
+  getPortfolioPositions,
+  getPortfolioSummary,
+  setDailyCapital,
+} from "@/api/secondary";
+import { Card, Alert, EmptyState, StatCard, Button } from "@/components";
 import { fmtInr, toNum } from "@/lib/decimal";
+import { useAuth } from "@/auth/AuthContext";
+import type { NormalizedApiError } from "@/types/common";
 
 export function PortfolioSummary() {
+  const { user } = useAuth();
+  const canControl = user?.role === "owner" || user?.role === "staff";
   const summary = useFetch(getPortfolioSummary);
   const positions = useFetch(getPortfolioPositions);
+  const [target, setTarget] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState<NormalizedApiError | null>(null);
+
+  async function applyDailyCapital() {
+    const amount = Number(target);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setActionError({ isEnvelope: false, code: null, message: "Enter a positive amount", status: null, isNetwork: false });
+      return;
+    }
+    setBusy(true);
+    setActionError(null);
+    try {
+      await setDailyCapital(amount);
+      setTarget("");
+      summary.refetch();
+    } catch (err) {
+      setActionError(err as NormalizedApiError);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -28,6 +59,46 @@ export function PortfolioSummary() {
             <StatCard label="Realized PnL today" value={fmtInr(summary.data.realized_pnl_today)} />
             <StatCard label="Unrealized PnL today" value={fmtInr(summary.data.unrealized_pnl_today)} />
           </div>
+          <Card title="Daily capital">
+            {!canControl && (
+              <Alert tone="warning" title="Permission required">
+                Only <code>owner</code> or <code>staff</code> roles can set the
+                daily capital. Your role is <code>{user?.role || "viewer"}</code>.
+              </Alert>
+            )}
+            {canControl && (
+              <div className="flex flex-wrap items-end gap-3">
+                <label className="block">
+                  <span className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Target cash (INR)
+                  </span>
+                  <input
+                    className="tv-input"
+                    type="number"
+                    min="0"
+                    step="any"
+                    placeholder="e.g. 2000"
+                    value={target}
+                    onChange={(e) => setTarget(e.target.value)}
+                    disabled={busy}
+                  />
+                </label>
+                <Button variant="primary" loading={busy} onClick={applyDailyCapital}>
+                  Set daily capital
+                </Button>
+              </div>
+            )}
+            {actionError && (
+              <Alert tone="error" code={actionError.code}>
+                {actionError.message}
+              </Alert>
+            )}
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-3">
+              Sets cash to the target as today's allocation (reason{" "}
+              <code>DAILY_ALLOCATION</code>). A 400 means the amount is below
+              margin in use.
+            </p>
+          </Card>
         </div>
       )}
       <Card title="Open positions">

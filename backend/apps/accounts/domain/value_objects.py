@@ -35,3 +35,4 @@ class Scope(enum.Enum):
     DASHBOARD_READ_RISK = "dashboard:read:risk"
     READ_WATCHLIST = "read:watchlist"
     MANAGE_WATCHLIST = "manage:watchlist"
+    MANAGE_CAPITAL = "manage:capital"

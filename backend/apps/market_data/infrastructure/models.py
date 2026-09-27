@@ -155,6 +155,94 @@ class Candle(TimestampedModel):
         return f"Candle({self.instrument_id}, {self.timeframe}, {self.timestamp})"
 
 
+class IndexConstituent(TimestampedModel):
+    """Source-of-truth universe membership for a market index.
+
+    Replaces the scattered ``MARKET_DATA_POLL_WATCHLIST`` /
+    ``NEWS_POLL_SYMBOLS`` / ``DEFAULT_LIVE_SYMBOLS`` lists as the canonical
+    definition of "what to poll". Populated weekly from the official
+    NIFTY index CSV (e.g. ``ind_nifty200list.csv``) by the
+    ``sync_nifty200_constituents`` command/task; the env lists remain only
+    as a bootstrap fallback until the table is first populated.
+
+    Indexes:
+        - ``(index_name, exchange, tradingsymbol)``: unique together,
+          the primary lookup for universe resolution.
+        - ``is_active``: filtered queries for currently-listed members.
+        - ``sort_order``: preserves the CSV's published ordering.
+    """
+
+    id = models.BigAutoField(primary_key=True)
+    index_name = models.CharField(
+        max_length=20,
+        default="NIFTY200",
+        db_index=True,
+        help_text="Index this row belongs to (e.g. NIFTY200).",
+    )
+    exchange = models.CharField(
+        max_length=10,
+        default="NSE",
+        help_text="Exchange code the constituent trades on.",
+    )
+    tradingsymbol = models.CharField(
+        max_length=100,
+        help_text="Exchange-listed trading symbol (e.g. RELIANCE).",
+    )
+    company_name = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Human-readable company name from the index CSV.",
+    )
+    industry = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="Industry classification from the index CSV.",
+    )
+    series = models.CharField(
+        max_length=10,
+        blank=True,
+        default="EQ",
+        help_text="Security series (e.g. EQ).",
+    )
+    isin_code = models.CharField(
+        max_length=20,
+        blank=True,
+        default="",
+        help_text="ISIN code from the index CSV.",
+    )
+    sort_order = models.IntegerField(
+        default=0,
+        help_text="Position in the published CSV (0-based).",
+    )
+    is_active = models.BooleanField(
+        default=True,
+        db_index=True,
+        help_text="Whether this symbol is currently a member of the index.",
+    )
+
+    class Meta:
+        app_label = "market_data"
+        db_table = "market_data_indexconstituent"
+        verbose_name = "Index Constituent"
+        verbose_name_plural = "Index Constituents"
+        unique_together = [("index_name", "exchange", "tradingsymbol")]
+        indexes = [
+            models.Index(
+                fields=["index_name", "is_active"],
+                name="idx_indexconstituent_active",
+            ),
+            models.Index(
+                fields=["index_name", "is_active", "sort_order"],
+                name="idx_indexconstituent_universe",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.index_name}:{self.exchange}:{self.tradingsymbol}"
+
+
 class SyncRun(TimestampedModel):
     """Audit model for tracking historical data backfill/sync runs.
 

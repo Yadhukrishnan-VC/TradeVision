@@ -387,3 +387,49 @@ def sync_instrument_master(self: Any) -> dict[str, int]:
             extra={"error": str(exc)},
         )
         raise self.retry(exc=exc)
+
+
+@shared_task(
+    bind=True,
+    max_retries=3,
+    default_retry_delay=300,
+    acks_late=True,
+    queue="maintenance",
+    time_limit=300,
+)
+def sync_nifty200_constituents(self: Any) -> dict[str, int]:
+    """Weekly NIFTY index constituents refresh (source-of-truth universe).
+
+    Called by Celery Beat once per week (``sync-nifty200-constituents``
+    entry). Fetches the official index CSV and upserts it into
+    ``IndexConstituent``; symbols no longer in the CSV are deactivated.
+    """
+    from django.conf import settings as dj_settings
+
+    from apps.market_data.application.universe_service import upsert_constituents
+
+    def _fetch_rows(source_url: str) -> list[dict[str, Any]]:
+        import csv
+        import io
+        from urllib.request import urlopen
+
+        with urlopen(source_url, timeout=60) as response:
+            raw = response.read().decode("utf-8-sig")
+        return list(csv.DictReader(io.StringIO(raw)))
+
+    try:
+        source_url = getattr(dj_settings, "NIFTY200_CSV_URL", "")
+        rows = _fetch_rows(source_url) if source_url else []
+        result = upsert_constituents(
+            rows,
+            index_name=getattr(dj_settings, "NIFTY200_INDEX_NAME", "NIFTY200"),
+            exchange=getattr(dj_settings, "NIFTY200_INDEX_EXCHANGE", "NSE"),
+        )
+        logger.info("nifty200_constituents_sync_complete", extra=result)
+        return result
+    except Exception as exc:
+        logger.error(
+            "nifty200_constituents_sync_failed",
+            extra={"error": str(exc)},
+        )
+        raise self.retry(exc=exc)

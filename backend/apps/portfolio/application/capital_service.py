@@ -53,13 +53,20 @@ class CapitalService(BaseService):
         *,
         correlation_id: uuid.UUID | None = None,
         causation_id: uuid.UUID | None = None,
+        reason: CapitalAdjustmentReason | None = None,
     ) -> AccountCapitalState:
-        """Increase cash by *amount*."""
+        """Increase cash by *amount*.
+
+        ``reason`` overrides the default ``DEPOSIT`` — used by
+        :meth:`set_daily_capital` to tag the ledger event.
+        """
         self._validate_positive_amount(amount)
         state = self._state(account_id)
         state.cash += amount
         return self._save_adjustment(
-            state, reason=CapitalAdjustmentReason.DEPOSIT, correlation_id=correlation_id,
+            state,
+            reason=reason or CapitalAdjustmentReason.DEPOSIT,
+            correlation_id=correlation_id,
             causation_id=causation_id,
         )
 
@@ -70,8 +77,13 @@ class CapitalService(BaseService):
         *,
         correlation_id: uuid.UUID | None = None,
         causation_id: uuid.UUID | None = None,
+        reason: CapitalAdjustmentReason | None = None,
     ) -> AccountCapitalState:
-        """Decrease cash by *amount*; reject a withdrawal beyond cash."""
+        """Decrease cash by *amount*; reject a withdrawal beyond cash.
+
+        ``reason`` overrides the default ``WITHDRAWAL`` — used by
+        :meth:`set_daily_capital` to tag the ledger event.
+        """
         self._validate_positive_amount(amount)
         state = self._state(account_id)
         if amount > state.cash:
@@ -82,7 +94,9 @@ class CapitalService(BaseService):
             )
         state.cash -= amount
         return self._save_adjustment(
-            state, reason=CapitalAdjustmentReason.WITHDRAWAL, correlation_id=correlation_id,
+            state,
+            reason=reason or CapitalAdjustmentReason.WITHDRAWAL,
+            correlation_id=correlation_id,
             causation_id=causation_id,
         )
 
@@ -237,3 +251,53 @@ class CapitalService(BaseService):
                 code="INVALID_AMOUNT",
                 details={"amount": str(amount) if amount is not None else None},
             )
+
+    def set_daily_capital(
+        self,
+        account_id: uuid.UUID,
+        target_cash: Decimal,
+        *,
+        correlation_id: uuid.UUID | None = None,
+    ) -> AccountCapitalState:
+        """Set the account's cash to *target_cash* by computing a delta.
+
+        ``delta = target_cash - state.cash``.
+        - ``delta > 0`` → :meth:`deposit` (always succeeds).
+        - ``delta < 0`` → :meth:`withdraw` with ``-delta``, rejected if the
+          resulting ``available_capital = cash - margin_used`` would be negative
+          (i.e. ``target_cash < margin_used``).
+        - ``delta == 0`` → no-op, returns the current state unchanged.
+
+        Raises:
+            ``InsufficientAvailableCapitalError`` if ``target_cash < margin_used``.
+        """
+        state = self._state(account_id)
+        delta = target_cash - state.cash
+        if delta > 0:
+            return self.deposit(
+                account_id,
+                delta,
+                correlation_id=correlation_id,
+                reason=CapitalAdjustmentReason.DAILY_ALLOCATION,
+            )
+        if delta < 0:
+            withdrawal_amount = -delta  # positive
+            if target_cash < state.margin_used:
+                raise InsufficientAvailableCapitalError(
+                    f"Setting cash to {target_cash} would make available capital negative "
+                    f"(margin_used={state.margin_used})",
+                    code="INSUFFICIENT_AVAILABLE_CAPITAL",
+                    details={
+                        "available_capital": str(state.available_capital),
+                        "target_cash": str(target_cash),
+                        "margin_used": str(state.margin_used),
+                    },
+                )
+            return self.withdraw(
+                account_id,
+                withdrawal_amount,
+                correlation_id=correlation_id,
+                reason=CapitalAdjustmentReason.DAILY_ALLOCATION,
+            )
+        # delta == 0: no-op
+        return state

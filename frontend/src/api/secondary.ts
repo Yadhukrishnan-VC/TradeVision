@@ -92,6 +92,9 @@ export function getPortfolioSummary(): Promise<PortfolioSummary> {
 export function getPortfolioPositions(): Promise<PortfolioPosition[]> {
   return apiGet<PortfolioPosition[]>("/portfolio/positions/");
 }
+export function setDailyCapital(targetCash: number | string): Promise<PortfolioSummary> {
+  return apiPost<PortfolioSummary>("/portfolio/capital/daily/", { target_cash: targetCash });
+}
 
 // ---- Risk Management ----
 export function getRiskDecisions(): Promise<Paginated<RiskDecision>> {

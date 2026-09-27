@@ -207,6 +207,18 @@ class Command(BaseCommand):
         if csv_symbols.strip():
             return [s.strip().upper() for s in csv_symbols.split(",") if s.strip()]
 
+        # NIFTY200 screening: the IndexConstituent table is the source of
+        # truth (falling back to the configured watchlist when never synced);
+        # the account-scoped WatchlistEntry remains a bootstrap for legacy
+        # deployments that have not populated the universe yet.
+        from apps.market_data.application.universe_service import (
+            resolve_universe_symbols,
+        )
+
+        universe_symbols = resolve_universe_symbols()
+        if universe_symbols:
+            return universe_symbols
+
         from apps.watchlist.infrastructure.models import WatchlistEntry
 
         seen: list[str] = []

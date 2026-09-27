@@ -381,6 +381,25 @@ MARKET_DATA_POLL_WINDOW_SECONDS: int = config(
 MARKET_DATA_POLL_WATCHLIST: list[tuple[str, str]] = _parse_poll_watchlist(
     config("MARKET_DATA_POLL_WATCHLIST", default="")
 )
+# NIFTY200 index identity + weekly constituents CSV (source-of-truth universe).
+# When ``IndexConstituent`` is populated the env watchlist above is no longer
+# the polling driver — the table is canonical (see
+# apps.market_data.application.universe_service.resolve_universe).
+NIFTY200_INDEX_NAME: str = config("NIFTY200_INDEX_NAME", default="NIFTY200")
+NIFTY200_INDEX_EXCHANGE: str = config("NIFTY200_INDEX_EXCHANGE", default="NSE")
+NIFTY200_CSV_URL: str = config(
+    "NIFTY200_CSV_URL",
+    default="https://www.niftyindices.com/IndexConstituent/ind_nifty200list.csv",
+)
+# Kite Connect historical rate limit (3 req/s) / per-cycle poll burst budget.
+# One poll cycle processes a rotating batch of the universe so a full NIFTY200
+# sweep stays within Kite's cap and the Celery task time limit.
+MARKET_DATA_POLL_RATE_LIMIT_PER_SECOND: float = config(
+    "MARKET_DATA_POLL_RATE_LIMIT_PER_SECOND", default=3.0, cast=float
+)
+MARKET_DATA_POLL_BATCH_SIZE: int = config(
+    "MARKET_DATA_POLL_BATCH_SIZE", default=30, cast=int
+)
 # TTL of the Redis mutex guarding one ``poll_market_data_watchlist`` cycle
 # (batch M4 remediation). Celery hard-kills the task at
 # ``CELERY_TASK_TIME_LIMIT`` (60s); this is hard-kill time + safety margin, so
@@ -431,6 +450,24 @@ RULE_ENGINE_MAX_SILENCE_SECONDS: int = config(
 EXECUTION_MAX_SILENCE_SECONDS: int = config(
     "EXECUTION_MAX_SILENCE_SECONDS", default=600, cast=int
 )
+
+# ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# PORTFOLIO-DAILY-CAPITAL — daily capital reset.
+#
+# The SetDailyCapitalView endpoint (capital/daily/) lets an operator tell the
+# system "there is Rs X to trade with today". The Beat task below re-applies
+# the same target automatically each morning (before market open, IST ~08:30)
+# so the system starts every session with a known, operator-configured cash
+# amount instead of whatever P&L left behind. ``0``/empty disables the reset
+# (the task no-ops) — a zero default means the feature is opt-in.
+# ---------------------------------------------------------------------------
+PORTFOLIO_DAILY_CAPITAL: Decimal = Decimal(
+    config("PORTFOLIO_DAILY_CAPITAL", default="0")
+)
+# The reset reconciles the *primary* account's cash to PORTFOLIO_DAILY_CAPITAL
+# (delta-routed through set_daily_capital, so a day's P&L is swept and the
+# Invariant available_capital >= 0 is still enforced).
 
 # ---------------------------------------------------------------------------
 # PORTFOLIO-RECONCILE-1 — dashboard read-model reconciliation.
@@ -508,6 +545,13 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(hour=22, minute=30),
         "options": {"queue": "maintenance"},
     },
+    # Weekly NIFTY constituents refresh (source-of-truth universe). Sunday
+    # morning IST so the Monday session polls the freshest membership list.
+    "sync-nifty200-constituents": {
+        "task": "apps.market_data.infrastructure.tasks.sync_nifty200_constituents",
+        "schedule": crontab(hour=5, minute=30, day_of_week="sunday"),
+        "options": {"queue": "maintenance"},
+    },
     # Nightly per-symbol strategy backtests for every watchlist stock.
     # Shells out to `per_symbol_backtests` in an isolated process so the
     # command's force-eager / no-redis-mirror flags never leak into the
@@ -567,6 +611,14 @@ CELERY_BEAT_SCHEDULE = {
     "reconcile-all-accounts": {
         "task": "apps.portfolio_reconciliation.infrastructure.tasks.reconcile_all_accounts",
         "schedule": RECONCILIATION_BEAT_INTERVAL_SECONDS,
+        "options": {"queue": "maintenance"},
+    },
+    # PORTFOLIO-DAILY-CAPITAL — resets the primary account's cash to the
+    # operator-configured daily capital before market open (IST 08:30).
+    # No-ops when PORTFOLIO_DAILY_CAPITAL is 0/empty (opt-in).
+    "reset-daily-capital": {
+        "task": "apps.portfolio.tasks.reset_daily_capital",
+        "schedule": crontab(hour=3, minute=0),  # 08:30 IST (+5:30)
         "options": {"queue": "maintenance"},
     },
     # LIVE-PAPER-DRESS-REHEARSAL-1 — daily decision-chain reconciliation:
@@ -913,7 +965,7 @@ RISK_MANAGEMENT: dict = {
     "tradable_symbols": [],
     "max_freshness_seconds": 600,
     "market_hours_only": True,
-    "available_capital": Decimal("1000000"),
+    "available_capital": Decimal(config("RISK_AVAILABLE_CAPITAL", default="1000000")),
     "current_exposure": Decimal("0"),
     "daily_loss": Decimal("0"),
     "instrument_max_qty": None,

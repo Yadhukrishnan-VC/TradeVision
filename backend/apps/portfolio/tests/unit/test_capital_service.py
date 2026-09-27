@@ -146,3 +146,40 @@ class TestEvents:
             bus.published_events, "portfolio.AccountCapitalChanged"
         )[0]
         assert event.correlation_id == correlation
+
+
+class TestDailyCapital:
+    def test_set_daily_capital_increase_deposits_delta(self, account) -> None:
+        service = _service()
+        service.deposit(account.id, Decimal("1000"))
+        state = service.set_daily_capital(account.id, Decimal("10000"))
+        assert state.cash == Decimal("10000")
+        assert state.available_capital == Decimal("10000")
+        events = published_events_of_type(
+            get_event_bus().published_events, "portfolio.AccountCapitalChanged"
+        )
+        assert events[-1].payload["reason"] == "DAILY_ALLOCATION"
+
+    def test_set_daily_capital_decrease_withdraws_delta(self, account) -> None:
+        service = _service()
+        service.deposit(account.id, Decimal("10000"))
+        state = service.set_daily_capital(account.id, Decimal("2000"))
+        assert state.cash == Decimal("2000")
+        assert state.available_capital == Decimal("2000")
+
+    def test_set_daily_capital_noop_when_target_equals_cash(self, account) -> None:
+        service = _service()
+        service.deposit(account.id, Decimal("5000"))
+        bus = get_event_bus()
+        events_before = len(bus.published_events)
+        state = service.set_daily_capital(account.id, Decimal("5000"))
+        assert state.cash == Decimal("5000")
+        # delta == 0 => no adjustment, no event published
+        assert len(bus.published_events) == events_before
+
+    def test_set_daily_capital_below_margin_rejected(self, account) -> None:
+        service = _service()
+        service.deposit(account.id, Decimal("10000"))
+        service.reserve_margin(account.id, Decimal("8000"))
+        with pytest.raises(InsufficientAvailableCapitalError):
+            service.set_daily_capital(account.id, Decimal("7999"))

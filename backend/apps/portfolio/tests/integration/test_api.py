@@ -23,6 +23,7 @@ User = get_user_model()
 SUMMARY_PATH = "/api/v1/portfolio/"
 POSITIONS_PATH = "/api/v1/portfolio/positions/"
 FILLS_PATH = "/api/v1/portfolio/fills/"
+DAILY_CAPITAL_PATH = "/api/v1/portfolio/capital/daily/"
 
 
 @pytest.fixture(autouse=True)
@@ -253,3 +254,74 @@ class TestRecordFillAPI:
 
         assert response.status_code == status.HTTP_400_BAD_REQUEST
         assert response.data["type"] == "urn:tradevision:error:invalid-fill"
+
+
+class TestSetDailyCapitalAPI:
+    def test_requires_manage_capital_scope(
+        self, api_client: APIClient, user: Any, account: Any
+    ) -> None:
+        _scoped_client(api_client, user, [Scope.READ_PORTFOLIO])
+
+        response = api_client.post(
+            DAILY_CAPITAL_PATH, {"target_cash": "2000"}, format="json"
+        )
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_sets_daily_capital_and_returns_capital_snapshot(
+        self, api_client: APIClient, user: Any, account: Any
+    ) -> None:
+        _scoped_client(
+            api_client, user, [Scope.MANAGE_CAPITAL, Scope.READ_PORTFOLIO]
+        )
+        CapitalService().deposit(account.id, Decimal("1000000"))
+
+        response = api_client.post(
+            DAILY_CAPITAL_PATH, {"target_cash": "2000"}, format="json"
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data["account_id"] == str(account.id)
+        assert response.data["cash"] == "2000"
+        assert response.data["available_capital"] == "2000"
+
+        summary = api_client.get(SUMMARY_PATH)
+        assert summary.status_code == status.HTTP_200_OK
+        assert summary.data["cash"] == "2000"
+
+    def test_rejects_negative_target_cash(self, api_client: APIClient, user: Any) -> None:
+        _scoped_client(api_client, user, [Scope.MANAGE_CAPITAL])
+
+        response = api_client.post(
+            DAILY_CAPITAL_PATH, {"target_cash": "-2000"}, format="json"
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "target_cash" in response.data
+
+    def test_below_margin_returns_400(
+        self, api_client: APIClient, user: Any, account: Any
+    ) -> None:
+        service = CapitalService()
+        service.deposit(account.id, Decimal("10000"))
+        service.reserve_margin(account.id, Decimal("8000"))
+        _scoped_client(api_client, user, [Scope.MANAGE_CAPITAL])
+
+        response = api_client.post(
+            DAILY_CAPITAL_PATH, {"target_cash": "7999"}, format="json"
+        )
+
+        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.data["type"] == "urn:tradevision:error:insufficient-available-capital"
+
+    def test_404_without_primary_account(
+        self, api_client: APIClient, user: Any
+    ) -> None:
+        _scoped_client(api_client, user, [Scope.MANAGE_CAPITAL])
+
+        response = api_client.post(
+            DAILY_CAPITAL_PATH, {"target_cash": "2000"}, format="json"
+        )
+
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+        assert response.data["type"] == "urn:tradevision:error:no-primary-account"

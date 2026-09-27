@@ -116,3 +116,68 @@ def broker_environment_check(app_configs=None, **kwargs) -> list[checks.Error]:
             )
 
     return errors
+
+
+@checks.register("execution")
+def capital_readiness_check(app_configs=None, **kwargs) -> list[checks.Warning]:
+    """Warn when the configured available capital clears no watchlist symbol.
+
+    Reads ``RISK_MANAGEMENT['available_capital']`` (env RISK_AVAILABLE_CAPITAL)
+    and compares it against the worst-case ``min_capital = risk_per_unit /
+    risk_pct`` derived from the completed per-symbol backtest evidence runs
+    (see apps/backtesting/application/capital_requirement_service.py). A
+    symbol that needs more capital than is available will never clear
+    ``PositionSizingCheck`` (its raw size floors to zero) — so this is a
+    warning, not a hard block, flagging symbols the operator cannot trade.
+
+    Skipped when no watchlist is configured or no evidence exists yet.
+    """
+    warnings: list[checks.Warning] = []
+    risk = getattr(settings, "RISK_MANAGEMENT", {})
+    available_capital = risk.get("available_capital")
+    if available_capital is None:
+        return warnings
+    # Universe source of truth: IndexConstituent (NIFTY200), falling back to
+    # the configured watchlist for deployments that have not synced it yet.
+    from apps.market_data.application.universe_service import (  # noqa: PLC0415
+        resolve_universe_symbols,
+    )
+
+    symbols = resolve_universe_symbols()
+    if not symbols:
+        return warnings
+
+    from django.db import OperationalError, ProgrammingError
+
+    from apps.backtesting.application.capital_requirement_service import (
+        min_capital_requirement,
+    )
+
+    risk_pct = risk.get("risk_pct")
+    if not risk_pct:
+        return warnings
+
+    never_clear: list[tuple[str, str]] = []
+    try:
+        for symbol in symbols:
+            min_capital = min_capital_requirement(
+                symbol, risk_pct, worst_case=True
+            )
+            if min_capital is not None and min_capital > available_capital:
+                never_clear.append((symbol, str(min_capital)))
+    except (OperationalError, ProgrammingError):
+        return warnings
+
+    if never_clear:
+        detail = ", ".join(f"{s} (needs {c})" for s, c in never_clear)
+        warnings.append(
+            checks.Warning(
+                "Configured available capital is below the evidence-based "
+                f"minimum for position sizing on: {detail}.",
+                hint="Raise RISK_AVAILABLE_CAPITAL above the worst-case "
+                "min_capital, or these symbols will always be rejected by "
+                "PositionSizingCheck.",
+                id="execution.W001",
+            )
+        )
+    return warnings

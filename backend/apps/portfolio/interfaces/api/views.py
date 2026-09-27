@@ -9,15 +9,17 @@ from rest_framework.generics import GenericAPIView, ListAPIView
 from rest_framework.request import Request
 from rest_framework.response import Response
 
+from apps.portfolio.application.capital_service import CapitalService
 from apps.portfolio.application.position_ledger_service import PositionLedgerService
 from apps.portfolio.application.portfolio_query_service import PortfolioQueryService
-from apps.portfolio.domain.exceptions import PortfolioDomainError
+from apps.portfolio.domain.exceptions import InsufficientAvailableCapitalError, PortfolioDomainError
 from apps.portfolio.domain.value_objects import Side
-from apps.portfolio.interfaces.api.permissions import HasManageExecution, HasReadPortfolio
+from apps.portfolio.interfaces.api.permissions import HasManageCapital, HasManageExecution, HasReadPortfolio
 from apps.portfolio.interfaces.api.serializers import (
     AccountCapitalSerializer,
     FillRequestSerializer,
     PositionSerializer,
+    SetDailyCapitalSerializer,
 )
 
 
@@ -194,3 +196,58 @@ class RecordFillView(GenericAPIView):
             },
             status=status.HTTP_201_CREATED,
         )
+
+
+class SetDailyCapitalView(GenericAPIView):
+    """Set the day's trading capital (``manage:capital``).
+
+    Accepts a target cash amount; routes through ``CapitalService.set_daily_capital``
+    which computes ``delta = target_cash - state.cash`` and calls
+    ``deposit()`` or ``withdraw()`` accordingly.  The invariant
+    ``available_capital >= 0`` is enforced (``InsufficientAvailableCapitalError``
+    surfaces as 400).  Returns the same shape as
+    :class:`AccountCapitalSerializer` so the UI updates immediately.
+    """
+
+    permission_classes = [HasManageCapital]
+    serializer_class = SetDailyCapitalSerializer
+
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self._service = CapitalService()
+
+    def post(self, request: Request, *args: Any, **kwargs: Any) -> Response:
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        target_cash = serializer.validated_data["target_cash"]
+
+        account_id = request.data.get("account_id") or _resolve_primary_account_id()
+        if account_id is None:
+            return Response(
+                _problem_detail(
+                    "no-primary-account",
+                    "No default account configured",
+                    status.HTTP_404_NOT_FOUND,
+                    request.path,
+                ),
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            state = self._service.set_daily_capital(
+                account_id=account_id,
+                target_cash=target_cash,
+            )
+        except InsufficientAvailableCapitalError as exc:
+            return Response(
+                _problem_detail(
+                    "insufficient-available-capital",
+                    str(exc),
+                    status.HTTP_400_BAD_REQUEST,
+                    request.path,
+                ),
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = AccountCapitalSerializer(state)
+        return Response(serializer.data, status=status.HTTP_200_OK)

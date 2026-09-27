@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import logging
 import sys
+import time
 from datetime import timedelta
 from typing import Any
 
@@ -40,6 +41,7 @@ from apps.market_data.application.historical_sync_service import (
 )
 from apps.market_data.application.session_facts_service import SessionFactsService
 from apps.market_data.domain.value_objects import Timeframe
+from apps.market_data.infrastructure.rate_limiter import TokenBucketRateLimiter
 from apps.market_data.infrastructure.repositories import (
     CandleRepository,
     InstrumentRepository,
@@ -57,6 +59,84 @@ logger = logging.getLogger(__name__)
 # entire watchlist synchronously in one unit of work — there is no per-symbol
 # fan-out, so per-symbol locks would only add complexity, not safety.
 _POLL_LOCK_KEY = "tradevision:market_data:poll_watchlist:lock"
+
+# Key tracking the rotating window of the full universe processed per cycle.
+# The NIFTY200 universe (~200 symbols) cannot be polled in a single cycle at
+# Kite Connect's historical rate limit (3 req/s ≈ 67s of pure HTTP for a
+# full sweep) without blowing the 60s task time limit, so each cycle drains a
+# bounded, rotating slice instead.
+_POLL_CURSOR_KEY = "tradevision:market_data:poll_universe:cursor"
+
+# Local token bucket cache: the limiter is Redis-backed but treats a Redis
+# outage as fail-open (see _pace_rate_limit), matching the lock's philosophy.
+_poll_rate_limiter: TokenBucketRateLimiter | None = None
+
+
+def _poll_batch_size() -> int:
+    """Maximum universe slice processed in one cycle (see batch M4 + NIFTY200)."""
+    return int(getattr(settings, "MARKET_DATA_POLL_BATCH_SIZE", 0) or 0)
+
+
+def _universe_cursor(redis_client: redis.Redis) -> int:
+    """Read the rotating-universe cursor; fail-open to 0 on Redis errors."""
+    try:
+        raw = redis_client.get(_POLL_CURSOR_KEY)
+        if raw is None:
+            return 0
+        return int(raw)
+    except (redis.RedisError, TypeError, ValueError):
+        logger.warning(
+            "market_data_poll_cursor_read_failed",
+            extra={"cursor_key": _POLL_CURSOR_KEY},
+        )
+        return 0
+
+
+def _advance_universe_cursor(redis_client: redis.Redis, offset: int, mod: int) -> None:
+    """Persist the next rotating-window start; fail-open (never blocks)."""
+    if mod <= 0:
+        return
+    try:
+        redis_client.set(_POLL_CURSOR_KEY, str(offset % mod))
+    except redis.RedisError as exc:
+        logger.warning(
+            "market_data_poll_cursor_write_failed",
+            extra={"cursor_key": _POLL_CURSOR_KEY, "error": str(exc)},
+        )
+
+
+def _pace_rate_limit() -> None:
+    """Pace historical-sync fetches to Kite's cap using a token bucket.
+
+    Blocks until a slot is free, paced at ``MARKET_DATA_POLL_RATE_LIMIT_PER_SECOND``
+    (default 3/s — Kite historical). Redis failures fail open (polling must never
+    stall because the limiter is unavailable). This is a no-op when the configured
+    rate is ``<= 0``.
+    """
+    global _poll_rate_limiter
+
+    rate_per_second = float(
+        getattr(settings, "MARKET_DATA_POLL_RATE_LIMIT_PER_SECOND", 0) or 0
+    )
+    if rate_per_second <= 0:
+        return
+
+    if _poll_rate_limiter is None:
+        # Burst = the rate ceiling itself; steady-state drains at the cap.
+        _poll_rate_limiter = TokenBucketRateLimiter(
+            name="market-data-poll",
+            max_tokens=max(1, int(rate_per_second)),
+            refill_rate=rate_per_second,
+        )
+
+    try:
+        while not _poll_rate_limiter.acquire():
+            time.sleep(1.0 / rate_per_second)
+    except redis.RedisError as exc:
+        logger.warning(
+            "market_data_poll_rate_limiter_unavailable",
+            extra={"error": str(exc)},
+        )
 
 
 def _poll_lock_ttl_seconds() -> int:
@@ -296,6 +376,7 @@ def _backfill_frame(
     reason: str,
 ) -> None:
     """Backfill *timeframe* over the trailing lookback window, tolerantly."""
+    _pace_rate_limit()
     from_timestamp = reference_dt - timedelta(days=from_offset_days)
     try:
         service.backfill(
@@ -391,6 +472,7 @@ def poll_watchlist_sync(watchlist: list[tuple[str, str]]) -> int:
                 reference_dt=now,
             )
 
+            _pace_rate_limit()
             persisted = service.backfill(
                 instrument_token=instrument.instrument_token,
                 timeframe=timeframe,
@@ -474,11 +556,46 @@ def poll_market_data_watchlist(self: Any) -> int:
           still-held lock skips the cycle without an error or a retry.
     """
     try:
-        watchlist = list(getattr(settings, "MARKET_DATA_POLL_WATCHLIST", []) or [])
-        return _run_poll_cycle(watchlist, request_id=getattr(self.request, "id", "") or "")
+        batch = _resolve_poll_batch()
+        return _run_poll_cycle(batch, request_id=getattr(self.request, "id", "") or "")
     except DataProviderError as exc:
         logger.error("market_data_poll_retry", extra={"error": str(exc)})
         raise self.retry(exc=exc)
     except Exception as exc:
         logger.error("market_data_poll_failed", extra={"error": str(exc)})
         raise self.retry(exc=exc)
+
+
+def _resolve_poll_batch() -> list[tuple[str, str]]:
+    """Resolve the rotating slice of the universe for a single poll cycle.
+
+    The universe is the active ``IndexConstituent`` membership (source of
+    truth), falling back to ``MARKET_DATA_POLL_WATCHLIST`` when the table has
+    never been synced. When batching is configured, each cycle drains a
+    rotating ``MARKET_DATA_POLL_BATCH_SIZE``-wide window of the (sorted)
+    universe so a full NIFTY200 sweep spans several cycles without exceeding
+    the Kite rate cap or the task time limit.
+    """
+    from apps.market_data.application.universe_service import resolve_universe
+
+    universe = resolve_universe()
+    if not universe:
+        return []
+
+    batch_size = _poll_batch_size()
+    if batch_size <= 0 or batch_size >= len(universe):
+        return universe
+
+    redis_client = get_redis_client()
+    cursor = _universe_cursor(redis_client)
+    batch = (universe * 2)[cursor : cursor + batch_size]
+    _advance_universe_cursor(
+        redis_client,
+        offset=(cursor + batch_size) % len(universe),
+        mod=len(universe),
+    )
+    logger.info(
+        "market_data_poll_batch_selected",
+        extra={"universe_size": len(universe), "batch_size": len(batch), "cursor": cursor},
+    )
+    return batch

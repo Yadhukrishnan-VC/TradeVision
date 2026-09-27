@@ -68,12 +68,21 @@ class FillRequestSerializer(serializers.Serializer):
     source_fill_id = serializers.UUIDField(required=False)
     occurred_at = serializers.DateTimeField(required=False)
 
-    def validate_quantity(self, value: Decimal) -> Decimal:
-        if value <= 0:
-            raise serializers.ValidationError("quantity must be positive")
-        return value
 
-    def validate_price(self, value: Decimal) -> Decimal:
+class SetDailyCapitalSerializer(serializers.Serializer):
+    """Request body for the set daily capital endpoint (``manage:capital``).
+
+    One field, ``target_cash`` (DecimalField, max_digits=20,
+    decimal_places=8), validate > 0. Reject with a clear 400 if
+    target_cash would make ``available_capital`` negative given existing
+    ``margin_used`` — this invariant is enforced by
+    :class:`CapitalService.set_daily_capital` (raises
+    ``InsufficientAvailableCapitalError`` which we surface as 400).
+    """
+
+    target_cash = serializers.DecimalField(max_digits=20, decimal_places=8)
+
+    def validate_target_cash(self, value: Decimal) -> Decimal:
         if value <= 0:
-            raise serializers.ValidationError("price must be positive")
+            raise serializers.ValidationError("target_cash must be positive")
         return value
