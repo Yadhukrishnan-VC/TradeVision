@@ -334,31 +334,56 @@ def reclaim_stale_pending_events(
 
     import asyncio
 
-    async def _sweep() -> None:
+    async def _sweep() -> list[tuple[str, str, str, list[tuple[str, dict[str, Any], int]]]]:
+        """Claim idle pending entries; returns them for synchronous dispatch.
+
+        Re-dispatch is deliberately *not* done here: with an eager broker
+        ``.delay()`` executes inline and the task's ProcessedEvent lookup
+        touches the database, which Django forbids from an async context.
+        """
+        reclaimed: list[
+            tuple[str, str, str, list[tuple[str, dict[str, Any], int]]]
+        ] = []
         for event_type, handler_list in bus._handlers.items():
             stream_key = f"events:{event_type}"
             for handler_path, consumer_group in handler_list:
                 claimed = await _reclaim_one(
                     r, stream_key, handler_path, consumer_group, min_idle_seconds
                 )
-                _handle_claimed(stream_key, consumer_group, handler_path, claimed)
+                if claimed:
+                    reclaimed.append(
+                        (stream_key, consumer_group, handler_path, claimed)
+                    )
 
             wildcard_groups = getattr(bus, "wildcard_handlers", [])
             for handler_path, consumer_group in wildcard_groups:
                 claimed = await _reclaim_one(
                     r, stream_key, handler_path, consumer_group, min_idle_seconds
                 )
-                _handle_claimed(stream_key, consumer_group, handler_path, claimed)
+                if claimed:
+                    reclaimed.append(
+                        (stream_key, consumer_group, handler_path, claimed)
+                    )
+        return reclaimed
 
+    loop = asyncio.new_event_loop()
     try:
-        loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
-            loop.run_until_complete(_sweep())
+            reclaimed = loop.run_until_complete(_sweep())
         finally:
             loop.close()
+            # Do not leave the closed loop installed as this thread's current
+            # event loop: later asyncio/asgiref callers in the same worker
+            # thread would inherit it and hang or raise
+            # "Event loop is closed". Restore the thread to a clean state.
+            asyncio.set_event_loop(None)
     except Exception:
         logger.exception("Error reclaiming stale pending events")
+        return
+
+    for stream_key, consumer_group, handler_path, claimed in reclaimed:
+        _handle_claimed(stream_key, consumer_group, handler_path, claimed)
 
 
 def _handle_claimed(

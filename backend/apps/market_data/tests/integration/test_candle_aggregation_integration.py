@@ -43,12 +43,14 @@ class TestCandleAggregationSessionAlignment(TestCase):
             target_timeframe=Timeframe.MINUTE_15,
         )
 
+        # 60 one-minute bars from 09:15 IST => exactly four 15-minute buckets:
+        # 09:15 (i=0..14), 09:30 (i=15..29), 09:45 (i=30..44), 10:00 (i=45..59).
         self.assertEqual(len(candles), 4)
         self.assertEqual(candles[0].open, Decimal("100"))
-        self.assertEqual(candles[0].close, Decimal("114"))
+        self.assertEqual(candles[0].close, Decimal("116"))
 
         self.assertEqual(candles[1].open, Decimal("115"))
-        self.assertEqual(candles[1].close, Decimal("129"))
+        self.assertEqual(candles[1].close, Decimal("131"))
 
     def test_1min_passthrough_preserves_all_bars(self) -> None:
         bars = [

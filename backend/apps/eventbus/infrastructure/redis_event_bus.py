@@ -130,15 +130,16 @@ class RedisStreamsEventBus(EventBus):
                 continue
             if existing_path == handler_path:
                 return
-            logger.warning(
-                "Skipping duplicate subscription: event_type=%r consumer_group=%r "
-                "already bound to handler %r (ignoring %r)",
-                event_type,
-                consumer_group,
-                existing_path,
-                handler_path,
+            # Fail fast rather than silently dropping the new binding: two
+            # different handlers in one consumer group means one of them will
+            # never see an event, which is silent event loss (e.g. a risk or
+            # execution consumer silently shadowed by another). Matches the
+            # wildcard path above and ``FakeEventBus.subscribe``.
+            raise EventBusError(
+                f"Duplicate subscription for event_type={event_type!r} "
+                f"consumer_group={consumer_group!r} already bound to handler "
+                f"{existing_path!r}"
             )
-            return
 
         if event_type not in self._handlers:
             self._handlers[event_type] = []

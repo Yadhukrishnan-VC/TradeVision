@@ -147,8 +147,10 @@ class TestJournalAssemblyService:
         entries = JournalEntry.objects.filter(correlation_id=signal_created_event.correlation_id)
         assert entries.count() == 1
 
-    def test_entry_finalized_event_published(self, signal_created_event, position_opened_event, position_closed_event) -> None:
+    def test_entry_finalized_event_published(self, signal_created_event, position_opened_event, position_closed_event, settings) -> None:
         from apps.eventbus.infrastructure.event_bus_factory import reset_event_bus, get_event_bus
+        # An in-memory bus so ``published_events`` can be inspected without Redis.
+        settings.EVENT_BUS_IMPLEMENTATION = "fake"
         reset_event_bus()
         bus = get_event_bus()
 
@@ -172,7 +174,9 @@ class TestJournalAssemblyService:
         service = JournalAssemblyService()
         service.handle(event)
 
-        assert JournalEntry.objects.filter(correlation_id=correlation_id).count() == 1
+        # Risk alerts are not part of the trade-lifecycle journal, so handling
+        # one must not open an entry.
+        assert JournalEntry.objects.filter(correlation_id=correlation_id).count() == 0
 
 
 class TestJournalEntryManager:

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from decimal import Decimal
+from typing import Any
 
 import pytest
 
@@ -164,3 +165,63 @@ def seed_session_facts(monkeypatch):
         close=Decimal("100.50"),
         volume=500_000,
     )
+
+
+@pytest.fixture
+def gate_configs():
+    """Seed enabled RuleConfig rows with a GO verdict for the builtin rules.
+
+    ADR-029 §4 fail-closes the live go/no-go gate: without a ``RuleConfig``
+    row (or with a regime that carries no GO verdict) every rule is filtered
+    out and nothing reaches risk_management or execution. These tests run the
+    live path (no backtest account override), so they must clear the gate the
+    way a real operator would - an explicit enabled + GO decision. Mirrors
+    ``apps/rule_engine/tests/conftest.py::gate_configs``, which is not visible
+    across app test packages.
+    """
+    from apps.rule_engine.infrastructure.models import RuleConfig
+
+    builtin_rule_ids = (
+        "price_movement_v1",
+        "volume_spike_v1",
+        "breakout_v1",
+        "long_momentum_v1",
+        "short_sell_v1",
+        "volatility_breakout_v1",
+        "high_beta_breakout_v1",
+        "short_breakdown_v1",
+    )
+
+    def _seed(*rule_ids: str, regime: str = "BULLISH", regimes: Any = None) -> None:
+        verdicts = (
+            {r: {"status": "GO"} for r in regimes}
+            if regimes
+            else {regime: {"status": "GO"}}
+        )
+        for rule_id in rule_ids or builtin_rule_ids:
+            RuleConfig.objects.update_or_create(
+                rule_id=rule_id,
+                defaults={"enabled": True, "validated_regimes": verdicts},
+            )
+
+    return _seed
+
+
+@pytest.fixture
+def cleared_rule_gate(gate_configs):
+    """Clear the ADR-029 go/no-go gate for the live (non-replay) path.
+
+    Tests that exercise the real production cascade with no backtest account
+    override need this: ``RuleEvaluationService._filter_by_gate`` fail-closes
+    every rule unless a ``RuleConfig`` explicitly enables it for the packet
+    regime. The regime is classified deterministically from each payload (the
+    seeded indicators resolve to ``RANGING``), so the gate is cleared for every
+    regime the classifier can emit.
+
+    Opt-in rather than autouse: it writes to the database, and sibling tests
+    (e.g. ``test_live_startup_guard``) deliberately run without DB access.
+    """
+    from apps.intelligence.domain.market_regime import MarketRegime
+
+    gate_configs(regimes=[r.value for r in MarketRegime])
+    return True

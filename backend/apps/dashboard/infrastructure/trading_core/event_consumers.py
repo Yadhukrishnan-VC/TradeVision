@@ -11,6 +11,17 @@ from apps.dashboard.projection.trading_core.trade_projection_service import Trad
 from apps.eventbus.application.ports import EventBus
 from apps.eventbus.domain.events import DomainEvent
 
+
+def _group_slug(instance: object) -> str:
+    """Stable, lowercase consumer-group suffix for a bound projection handler."""
+    name = type(instance).__name__
+    if name.endswith("ProjectionService"):
+        name = name[: -len("ProjectionService")]
+    return "".join(
+        f"_{char.lower()}" if char.isupper() else char for char in name
+    ).lstrip("_")
+
+
 SUBSCRIBED_EVENTS: dict[str, list[Callable[[DomainEvent], None]]] = {
     "positions.PositionOpened": [
         PositionProjectionService().handle,
@@ -75,10 +86,19 @@ SUBSCRIBED_EVENTS: dict[str, list[Callable[[DomainEvent], None]]] = {
 
 
 def register_handlers(event_bus: EventBus) -> None:
+    """Subscribe each projection under its own consumer group.
+
+    Each projection service is an independent consumer with its own
+    ``ProcessedEvent`` dedup key, so they must not share a group: Redis
+    delivers a stream entry to exactly one member of a consumer group, which
+    would starve whichever projection lost the race (a silently stale
+    dashboard). The group name is derived per handler for that reason.
+    """
     for event_type, handlers in SUBSCRIBED_EVENTS.items():
         for handler in handlers:
+            instance = handler.__self__
             event_bus.subscribe(
                 event_type=event_type,
                 handler=handler,
-                consumer_group="dashboard_trading_core",
+                consumer_group=f"dashboard_trading_core_{_group_slug(instance)}",
             )

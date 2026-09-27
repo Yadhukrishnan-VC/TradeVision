@@ -224,14 +224,28 @@ def _seed_instrument(monkeypatch, db) -> None:
     )
 
 
+_BUILTIN_RULE_IDS: tuple[str, ...] = (
+    "price_movement_v1",
+    "volume_spike_v1",
+    "breakout_v1",
+    "long_momentum_v1",
+    "short_sell_v1",
+    "volatility_breakout_v1",
+    "high_beta_breakout_v1",
+    "short_breakdown_v1",
+)
+
+
 def _configure_fake_bus_and_risk_gates(monkeypatch, db) -> None:
     """Route the FakeEventBus and force the risk gates open (deterministic)."""
     from django.conf import settings as dj_settings
 
     from apps.eventbus.infrastructure.event_bus_factory import reset_event_bus
+    from apps.intelligence.domain.market_regime import MarketRegime
     from apps.risk_management.gateways.market_calendar_status_gateway import (
         MarketCalendarStatusGateway,
     )
+    from apps.rule_engine.infrastructure.models import RuleConfig
 
     dj_settings.EVENT_BUS_IMPLEMENTATION = "fake"
     reset_event_bus()
@@ -239,6 +253,21 @@ def _configure_fake_bus_and_risk_gates(monkeypatch, db) -> None:
         MarketCalendarStatusGateway, "is_market_open", lambda self, dt: True
     )
     monkeypatch.setattr(MarketCalendarStatusGateway, "is_fresh", lambda self, a, r: True)
+
+    # ADR-029 §4 fail-closes every rule unless a RuleConfig enables it for
+    # the packet regime. These tests drive the live (non-replay) path, so the
+    # go/no-go gate is opened for the builtins across all regimes the
+    # classifier can emit.
+    for rule_id in _BUILTIN_RULE_IDS:
+        RuleConfig.objects.update_or_create(
+            rule_id=rule_id,
+            defaults={
+                "enabled": True,
+                "validated_regimes": {
+                    regime.value: {"status": "GO"} for regime in MarketRegime
+                },
+            },
+        )
 
 
 def _poll_runtime(monkeypatch, settings) -> Any:
@@ -832,17 +861,23 @@ class TestIndicatorDrivenRESTPoll:
         poll_market_data_watchlist.apply().get()
 
         # ------------------------------------------------------------------
-        # M5 bridge: all four indicators computed from seeded persisted history
-        # ------------------------------------------------------------------
+        # M5 bridge: the indicators computed from seeded persisted history.
+        # ``supertrend_*`` is part of this set because volatility_breakout_v1
+        # consumes it; the bridge emits it whenever history is long enough.
         ta_event = next(
             e for e in bus.published_events
             if e.event_type == "technical_analysis.TechnicalAnalysisCompleted"
         )
         assert set(ta_event.payload["indicators"]) == {
             "vwap", "ema_20", "atr_14", "bb_upper", "rsi_14",
+            "supertrend_value", "supertrend_direction",
         }
-        for value in ta_event.payload["indicators"].values():
-            assert Decimal(value) > 0
+        for name, value in ta_event.payload["indicators"].items():
+            if name == "supertrend_direction":
+                # Directional flag, not a price level.
+                assert value in ("up", "down")
+            else:
+                assert Decimal(value) > 0
 
         packet_data = next(
             e for e in bus.published_events

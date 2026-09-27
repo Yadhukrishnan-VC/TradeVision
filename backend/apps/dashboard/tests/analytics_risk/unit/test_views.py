@@ -49,12 +49,15 @@ class TestPnLAnalyticsView(TestCase):
         response = view(request, self.account_id)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
-    def test_post_returns_501(self) -> None:
+    def test_post_is_not_allowed(self) -> None:
+        # PnL analytics is read-only: the view implements GET only, so DRF
+        # rejects POST with 405 Method Not Allowed. (A 501 was returned by an
+        # earlier hand-rolled stub; 405 is the correct REST semantic.)
         view = PnLAnalyticsView.as_view()
         request = self.factory.post(f"/api/v1/dashboard/accounts/{self.account_id}/pnl")
         force_authenticate(request, user=self.user)
         response = view(request, self.account_id)
-        self.assertEqual(response.status_code, status.HTTP_501_NOT_IMPLEMENTED)
+        self.assertEqual(response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED)
 
 
 class TestDailyRollupView(TestCase):

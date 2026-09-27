@@ -143,6 +143,20 @@ ANALYTICS_APPS = {
 }
 
 
+@pytest.fixture(autouse=True)
+def _channels_dispatch_needs_db(db: object) -> object:
+    """Every message routed through a Channels consumer calls
+    ``aclose_old_connections()`` (``channels.consumer.AsyncConsumer.dispatch``),
+    which touches the database connection. Django's test client blocks database
+    access for tests that do not request it, so these consumer tests fail with
+    ``RuntimeError: Database access not allowed`` whenever another test has
+    already opened a connection — i.e. only when they are not the first tests to
+    run in the session. Requesting ``db`` here keeps the WS suite
+    order-independent.
+    """
+    return db
+
+
 @pytest.fixture
 def channel_layer() -> Any:
     return get_channel_layer()

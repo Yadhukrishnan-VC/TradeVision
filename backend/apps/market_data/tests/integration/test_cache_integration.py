@@ -25,6 +25,20 @@ class TestQuoteCacheIntegration:
     def cache(self) -> QuoteCache:
         return QuoteCache()
 
+    @pytest.fixture(autouse=True)
+    def _clean_redis(self):
+        """Give every test an empty Redis.
+
+        ``QuoteCache`` is backed by the real Redis service, which is *not*
+        rolled back by the test transaction. Without this, a key written by an
+        earlier test survives and the "missing key" assertions read a stale
+        value. Cleared before and after so the run leaves no residue.
+        """
+        redis = get_redis_client()
+        redis.flushdb()
+        yield
+        redis.flushdb()
+
     @pytest.fixture
     def symbol(self) -> Symbol:
         return Symbol(exchange="NSE", tradingsymbol="RELIANCE")

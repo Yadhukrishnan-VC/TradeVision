@@ -46,7 +46,7 @@ def _ingest_recorder(runner):
     """Monkeypatch ``_ingest`` to record the correlation ids it receives."""
     recorded: list[uuid.UUID] = []
 
-    def fake_ingest(raw_payload, correlation_id):
+    def fake_ingest(raw_payload, correlation_id, strategy_id=None, rule_allowlist=None):
         recorded.append(correlation_id)
 
     runner._ingest = fake_ingest  # type: ignore[assignment]
@@ -143,7 +143,9 @@ class TestRunnerReplay:
         attempts: list[uuid.UUID] = []
         calls = {"n": 0}
 
-        def flaky_ingest(raw_payload, correlation_id):
+        def flaky_ingest(
+            raw_payload, correlation_id, strategy_id=None, rule_allowlist=None
+        ):
             calls["n"] += 1
             if calls["n"] == 2:
                 raise RuntimeError("broker unavailable")

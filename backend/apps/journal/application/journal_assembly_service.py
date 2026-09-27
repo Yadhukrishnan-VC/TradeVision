@@ -90,14 +90,16 @@ class JournalAssemblyService:
                 position_id=UUID(event.payload["position_id"]),
             )
         elif event_type == "positions.PositionClosed":
-            try:
-                entry = JournalEntry.objects.get(correlation_id=correlation_id)
-            except JournalEntry.DoesNotExist:
-                logger.warning(
-                    "PositionClosed event received but no journal entry found",
-                    extra={"correlation_id": str(correlation_id)},
-                )
-                return
+            # Create the entry if it does not exist yet, mirroring
+            # ``PositionOpened``. Events for one trade can arrive out of order
+            # (the closed event is often consumed first on a replay or a
+            # redelivery), and bailing out here would silently drop the
+            # realized P&L and the finalization -- losing the audit record of a
+            # completed trade.
+            entry, _ = JournalEntry.objects.get_or_create(
+                correlation_id=correlation_id,
+                defaults={"account_id": UUID(event.payload["account_id"])},
+            )
 
             realized_pnl = Decimal(str(event.payload.get("realized_pnl", 0)))
             outcome = self._determine_outcome(realized_pnl)

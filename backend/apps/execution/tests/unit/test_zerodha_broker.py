@@ -22,6 +22,25 @@ class NetworkException(Exception):
     """Fake with the same class name kiteconnect uses for network errors."""
 
 
+@pytest.fixture(autouse=True)
+def _no_ambient_broker_credentials(settings):
+    """Strip operator credentials so the adapter's own guards are exercised.
+
+    ``ZerodhaBroker.__init__`` falls back to ``config.zerodha_*`` whenever an
+    explicit argument is falsey, and the live gate reads
+    ``config.algo_registration_id``. On a developer/CI box that exports real
+    Kite credentials and an ALGO_REGISTRATION_ID, tests asserting the
+    "no access token" and "live is refused" branches would silently take the
+    happy path instead. These are unit tests of the adapter's own guards, so
+    they must not inherit ambient state.
+    """
+    settings.ZERODHA_ACCESS_TOKEN = ""
+    settings.ZERODHA_REQUEST_TOKEN = ""
+    settings.ZERODHA_API_KEY = ""
+    settings.ZERODHA_API_SECRET = ""
+    settings.ALGO_REGISTRATION_ID = ""
+
+
 class FakeKiteClient:
     """In-memory double of ``kiteconnect.KiteConnect`` for adapter tests."""
 
@@ -324,11 +343,13 @@ class TestSessionAndSandbox:
 
         assert excinfo.value.code == "LIVE_UNREACHABLE_NO_ALGO_REGISTRATION"
 
-    def test_live_environment_with_registration_still_refused(self, settings) -> None:
-        # Even with ALGO_REGISTRATION_ID recorded, live is unreachable until
-        # the Phase 2 explicit unlock (ADR-030) exists.
+    def test_live_environment_with_registration_is_allowed(self, settings) -> None:
+        # ADR-030 Phase 2 (commit 0f533f6): once a SEBI algotrading
+        # registration id is recorded, the adapter is constructible for live
+        # and the remaining guard moves to the per-order path. The Phase-1
+        # LIVE_UNREACHABLE_PHASE_1 lock is intentionally gone.
         settings.ALGO_REGISTRATION_ID = "SEBI-ALGO-12345"
-        with pytest.raises(ExecutionDomainError) as excinfo:
-            _broker(FakeKiteClient(), environment="live")
 
-        assert excinfo.value.code == "LIVE_UNREACHABLE_PHASE_1"
+        broker = _broker(FakeKiteClient(), environment="live")
+
+        assert broker._environment == "live"

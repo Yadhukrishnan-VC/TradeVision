@@ -127,7 +127,9 @@ class TestJournalFullLifecycle:
         self._publish_all(bus, events)
 
         from apps.audit_log.infrastructure.models import AuditLogEntry
-        assert AuditLogEntry.objects.count() == 5
+        # 5 lifecycle events + the journal's own journal.EntryFinalized, which
+        # the audit log's wildcard ("*") subscription also records.
+        assert AuditLogEntry.objects.count() == 6
 
         event_types_in_audit = set(AuditLogEntry.objects.values_list("action", flat=True))
         for expected in ["signals.SignalCreated", "decisions.TradeDecisionMade", "orders.OrderPlaced", "positions.PositionOpened", "positions.PositionClosed"]:

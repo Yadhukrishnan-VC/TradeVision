@@ -286,6 +286,23 @@ class BacktestRunnerService(BaseService):
                         ReplaySignalExecutionService,
                     )
 
+                    # The drain is the *only* order path when the bus does not
+                    # dispatch inline (production Redis). When the real
+                    # risk -> execution chain already turned this RuleFired
+                    # into an ExecutionRequest, replaying it again would place
+                    # a second, duplicate order.
+                    #
+                    # The check is on the *effect* (an ExecutionRequest whose
+                    # ``causation_id`` is this RuleFired), not on whether a
+                    # consumer merely observed the event: the risk handler
+                    # runs for every RuleFired but legitimately rejects most of
+                    # them, and the deterministic replay bridge is the fallback
+                    # order path for those. Both the live chain and this replay
+                    # bridge set ``causation_id`` to the RuleFired event id, so
+                    # this test is path-independent.
+                    if self._order_already_placed_for(row.event_id):
+                        continue
+
                     event_for_replay = DomainEvent(
                         event_id=row.event_id,
                         event_type=row.event_type,
@@ -341,6 +358,27 @@ class BacktestRunnerService(BaseService):
 
         _dispatch({uuid.UUID(str(correlation_id))}, set(), 0)
         return dispatched, failures
+
+    @staticmethod
+    def _order_already_placed_for(event_id: uuid.UUID) -> bool:
+        """True when an ExecutionRequest already exists for this RuleFired.
+
+        ``_drain_run_events`` stands in for the Redis stream poller in replay,
+        so it is normally the only thing that turns a ``rule_engine.RuleFired``
+        into an order. When the bus dispatched inline (or a live worker already
+        consumed the event) the real risk -> execution chain produced the
+        ExecutionRequest, and the deterministic replay bridge must stay out of
+        the way instead of opening a second position for the same signal.
+
+        Keyed on ``causation_id`` (the RuleFired event id) rather than on a
+        consumer-dedup row, because "a consumer saw this event" and "an order
+        was opened for this event" are different facts: the risk handler runs
+        for every RuleFired and rejects most of them, and those rejections are
+        exactly the case replay exists to cover.
+        """
+        from apps.execution.infrastructure.models import ExecutionRequest
+
+        return ExecutionRequest.objects.filter(causation_id=event_id).exists()
 
     def _fill_pending_orders(
         self,

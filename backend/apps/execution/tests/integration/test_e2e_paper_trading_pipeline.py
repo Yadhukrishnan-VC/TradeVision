@@ -174,6 +174,7 @@ class TestE2EPaperTradingPipeline:
         register_rule_engine_handlers,
         register_risk_handlers,
         seed_session_facts,
+        cleared_rule_gate,
     ) -> None:
         from apps.execution.domain.value_objects import side_for_rule
         from apps.execution.infrastructure.models import ExecutionRequest, Fill, Order
@@ -344,6 +345,7 @@ class TestE2EPaperTradingPipeline:
         register_rule_engine_handlers,
         register_risk_handlers,
         seed_session_facts,
+        cleared_rule_gate,
     ) -> None:
         from apps.execution.infrastructure.models import ExecutionRequest, Fill, Order
         from apps.risk_management.infrastructure.models import RiskDecisionExecution
@@ -447,6 +449,7 @@ class TestE2EPaperTradingPipeline:
         register_rule_engine_handlers,
         register_risk_handlers,
         seed_session_facts,
+        cleared_rule_gate,
     ) -> None:
         from apps.execution.infrastructure.models import ExecutionRequest, Order
         from apps.risk_management.infrastructure.event_handlers import (
@@ -511,6 +514,7 @@ class TestE2EPaperTradingPipeline:
         register_rule_engine_handlers,
         register_risk_handlers,
         seed_session_facts,
+        cleared_rule_gate,
     ) -> None:
         from apps.execution.infrastructure.models import ExecutionRequest, Order
         from apps.execution.infrastructure.tasks import handle_risk_approved
@@ -551,6 +555,7 @@ class TestE2EPaperTradingPipeline:
         register_rule_engine_handlers,
         register_risk_handlers,
         seed_session_facts,
+        cleared_rule_gate,
     ) -> None:
         """Document the intended absence of dedup at the TA layer.
 

@@ -104,14 +104,26 @@ class TestCandleAggregationService:
         assert candles[0].open == Decimal("100")
         assert candles[1].open == Decimal("120")
 
-    def test_empty_bars_raises(self) -> None:
+    def test_empty_bars_returns_no_candles(self) -> None:
+        """Empty input aggregates to no candles (documented contract).
+
+        ``aggregate`` documents only ``UnsupportedTimeframeError`` and
+        ``StaleCandleDataError`` as raised; empty source bars yield an empty
+        result. This matters in production: ``refresh_candles`` passes
+        ``list(response.bars)``, which is legitimately empty whenever the
+        provider has no data for the window, and raising there would turn a
+        quiet market into a task failure. ``_merge_bars`` keeps its own
+        empty-list guard as an internal invariant.
+        """
         service = CandleAggregationService()
-        with pytest.raises(ValueError, match="Cannot merge empty"):
-            service.aggregate(
-                instrument_token=1001,
-                base_candles=[],
-                target_timeframe=Timeframe.MINUTE_15,
-            )
+
+        result = service.aggregate(
+            instrument_token=1001,
+            base_candles=[],
+            target_timeframe=Timeframe.MINUTE_15,
+        )
+
+        assert result == []
 
     def test_high_low_calculation(self) -> None:
         service = CandleAggregationService()
