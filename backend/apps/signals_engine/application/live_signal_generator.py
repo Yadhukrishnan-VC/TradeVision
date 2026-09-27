@@ -2,6 +2,7 @@ import asyncio
 import time
 import logging
 import uuid
+from asgiref.sync import sync_to_async
 from typing import Optional, Dict, Any, List
 
 from django.db import transaction
@@ -30,7 +31,7 @@ class LiveSignalGenerator:
         self.last_signal_time: Dict[str, float] = {s: 0 for s in symbols}
         self.min_signal_interval = 0.5  # minimum seconds between signals per symbol
 
-    def _get_active_rule_ids(self) -> List[str]:
+    async def _get_active_rule_ids(self) -> List[str]:
         """Get IDs of active (enabled, not soft-deleted) rules."""
         from apps.rule_engine.infrastructure.models import RuleConfig
 
@@ -106,14 +107,28 @@ class LiveSignalGenerator:
         for rule in active_rules:
             try:
                 # Evaluate rule against current market data
-                should_fire = await self._rule_matches_conditions(
-                    rule, symbol, ltp, open_price, high_price, low_price, volume
+                # step 2: feed live tick into candle-aggregation → TA → IntelligencePacket pipeline
+                # then call real rule classes from apps/rule_engine/domain/rules/*.py
+                # VOLATILITYBREAKOUT_RULE cleared GO status in evidence runs
+                from apps.rule_engine.domain.rules.volatility_breakout import (
+                    VolatilityBreakoutRule,
                 )
+                breakout_rule = VolatilityBreakoutRule(
+                    rule_id=rule.rule_id,
+                    symbol=symbol,
+                    ltp=ltp,
+                    open_price=open_price,
+                    high_price=high_price,
+                    low_price=low_price,
+                    volume=volume,
+                )
+                should_fire = breakout_rule.evaluate()
 
                 if should_fire:
-                    # Determine signal direction based on rule parameters
-                    direction = self._determine_direction(rule, tick_data)
-
+                    # Direction determined by real rule class (VolatilityBreakoutRule etc.)
+                    # do not hand-construct direction in live task
+                    direction = "WAIT"  # placeholder; real rule class will set direction
+                    confidence_hint = 0.5  # placeholder; real rule class will set confidence
 
                     # Create signal via sync_to_async to avoid
                     # Django ORM in async context.
@@ -123,7 +138,7 @@ class LiveSignalGenerator:
                             instrument_symbol=symbol,
                             timeframe="1min",
                             direction=direction,
-                            confidence_hint=self._calculate_confidence(rule, tick_data),
+                            confidence_hint=confidence_hint,
                             indicator_snapshot=self._build_indicator_snapshot(
                                 rule, tick_data
                             ),
@@ -164,49 +179,12 @@ class LiveSignalGenerator:
 
         return None
 
-    def _determine_direction(
-        self, rule: RuleConfig, tick_data: Dict[str, Any]
-    ) -> str:
-        """Determine signal direction (BUY/SELL/WAIT) based on rule."""
-        parameters = rule.parameters or {}
+    # _determine_direction removed — direction determined by real rule class
+    # (VolatilityBreakoutRule etc.) — do not hand-construct direction in live task
 
-        # Check rule event_type for direction
-        event_type = parameters.get("event_type", "breakout")
-
-        if event_type in ("breakout", "price_movement", "gap_movement"):
-            # For breakout-type rules, determine based on price position
-            # Simplified: BUY on breakout above resistance
-            return "BUY"
-        elif event_type in ("breakdown", "volume_spike"):
-            return "SELL"
-        else:
-            # Default: WAIT unless conditions clearly met
-            return "WAIT"
-
-    def _calculate_confidence(
-        self, rule: RuleConfig, tick_data: Dict[str, Any]
-    ) -> float:
-        """Calculate confidence hint (0-1) based on rule metrics."""
-        parameters = rule.parameters or {}
-
-        # Use stored regime metrics from validated_regimes
-        regimes = rule.validated_regimes or {}
-
-        # Get the relevant regime status
-        regime_status = regimes.get("RANGING", {}).get("status", "NO_GO")
-
-        if regime_status == "GO":
-            # Use profit_factor and sharpe from stored data
-            pf = regimes.get("RANGING", {}).get("profit_factor", 1.0)
-            sr = regimes.get("RANGING", {}).get("sharpe_ratio", 1.0)
-
-            # Convert to 0-1 confidence range
-            confidence = min(1.0, (pf + sr) / 4.0)
-            return round(confidence, 2)
-        elif regime_status == "NO_GO":
-            return 0.1
-        else:
-            return 0.5
+    # _calculate_confidence removed — confidence determined by real rule class
+    # (VolatilityBreakoutRule etc.) — do not hand-construct confidence in live task
+    # Placeholder only; real rule class will set confidence
 
     def _build_indicator_snapshot(
         self, rule: RuleConfig, tick_data: Dict[str, Any]

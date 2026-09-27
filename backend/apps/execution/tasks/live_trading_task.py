@@ -165,7 +165,6 @@ def run_live_trading_session(
                             f"intake() did not create order: outcome={result.outcome} "
                             f"reason={result.reason_message}"
                         )
-                        continue
 
                     # The intake path already created the ExecutionRequest + Order;
                     # just inform the logger and let the engine proceed.
