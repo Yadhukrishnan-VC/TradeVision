@@ -34,10 +34,12 @@ class LiveSignalGenerator:
         """Get IDs of active (enabled, not soft-deleted) rules."""
         from apps.rule_engine.infrastructure.models import RuleConfig
 
-        rules = RuleConfig.objects.filter(
-            enabled=True, is_deleted=False
-        )
-        return list(rules.values_list("rule_id", flat=True))
+        rule_ids = await sync_to_async(
+            lambda: list(
+                RuleConfig.objects.filter(enabled=True, is_deleted=False)
+            ).values_list("rule_id", flat=True)
+        )()
+        return rule_ids
 
     async def process_tick(self, tick_data: Dict[str, Any]) -> Optional[Signal]:
         """Process a single tick and generate if conditions met.
@@ -94,11 +96,12 @@ class LiveSignalGenerator:
 
         # Build market regime data
         from apps.rule_engine.infrastructure.models import RuleConfig
-        import json
 
-        active_rules = RuleConfig.objects.filter(
-            enabled=True, is_deleted=False
-        )
+        active_rules = await sync_to_async(
+            lambda: list(
+                RuleConfig.objects.filter(enabled=True, is_deleted=False)
+            )
+        )()
 
         for rule in active_rules:
             try:
@@ -111,18 +114,22 @@ class LiveSignalGenerator:
                     # Determine signal direction based on rule parameters
                     direction = self._determine_direction(rule, tick_data)
 
-                    # Create signal
-                    signal = Signal.objects.create(
-                        account_id=self._get_account_id(),
-                        instrument_symbol=symbol,
-                        timeframe="1min",
-                        direction=direction,
-                        confidence_hint=self._calculate_confidence(rule, tick_data),
-                        indicator_snapshot=self._build_indicator_snapshot(
-                            rule, tick_data
-                        ),
-                        source_alert_id=f"live_{rule.rule_id}_{int(time.time())}",
-                    )
+
+                    # Create signal via sync_to_async to avoid
+                    # Django ORM in async context.
+                    signal = await sync_to_async(
+                        lambda: Signal.objects.create(
+                            account_id=self._get_account_id(),
+                            instrument_symbol=symbol,
+                            timeframe="1min",
+                            direction=direction,
+                            confidence_hint=self._calculate_confidence(rule, tick_data),
+                            indicator_snapshot=self._build_indicator_snapshot(
+                                rule, tick_data
+                            ),
+                            source_alert_id=f"live_{rule.rule_id}_{int(time.time())}",
+                        )
+                    )()
 
                     # Publish signal event to event bus
                     get_event_bus().publish(
